@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from fastapi import Header, HTTPException
 import time
+import os
 
 # Define the image with all dependencies
 image = modal.Image.debian_slim().pip_install(
@@ -36,17 +37,15 @@ class ChatResponse(BaseModel):
     image=image,
     gpu="L40S", 
     scaledown_window=300,  
-    timeout=120
+    timeout=120,
+    secrets=[modal.Secret.from_name("secrets")]
 )
 
 class ChatAPI:
-    hf_token: str = modal.parameter()
-    api_key: str = modal.parameter() 
-    
     @modal.enter()
     def load_model(self):
-        # Login to HuggingFace (replace with your token)
-        login(token=self.hf_token)
+        login(token=os.environ["hf_token"])
+        self.api_key = os.environ["api_key"]
         
         # Load the model and tokenizer
         model_name = "meta-llama/Llama-3.2-3B-Instruct"
