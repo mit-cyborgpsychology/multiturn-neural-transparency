@@ -78,7 +78,8 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         showPercentages: options.showPercentages !== false,
         growthMultiplier: options.growthMultiplier !== undefined ? options.growthMultiplier : 1.25,
         showLabels: options.showLabels !== false,
-        oppositeLayout: options.oppositeLayout === true // default false = mirrored (shows neutral), true = opposite
+        oppositeLayout: options.oppositeLayout === true, // default false = mirrored (shows neutral), true = opposite
+        onTraitClick: options.onTraitClick || null
     };
 
     // Clear any existing SVG in the container
@@ -413,7 +414,9 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             .style('opacity', 0);
     })
     .on('click', function() {
-        // Click handler for future interactivity
+        if (config.onTraitClick) {
+            config.onTraitClick(item.originalTrait, item.oppositeTrait);
+        }
     });
     
     // Add label for this trait (if enabled)
@@ -443,6 +446,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
         // Create text element with trait name and activation value
         const labelGroup = g.append('g')
             .attr('transform', `translate(${labelX}, ${labelY}) rotate(${rotation})`)
+            .attr('data-trait-name', item.name)
             .style('cursor', 'pointer')
             .style('pointer-events', 'all'); // Enable pointer events for hover
         
@@ -1254,3 +1258,4 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
+ 

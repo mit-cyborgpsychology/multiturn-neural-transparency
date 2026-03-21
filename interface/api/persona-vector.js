@@ -24,21 +24,30 @@ export default async function handler(req, res) {
       }
   
       // Extract request data
-      const { system } = req.body;
-  
+      const { system, messages } = req.body;
+
       // Validate required fields
       if (!system) {
-        return res.status(400).json({ 
-          error: 'Invalid request: system prompt is required' 
+        return res.status(400).json({
+          error: 'Invalid request: system prompt is required'
         });
       }
-  
+
+      // Format as Llama chat template if messages are provided
+      let promptString = system;
+      if (messages && Array.isArray(messages) && messages.length > 0) {
+        promptString = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${system}<|eot_id|>`;
+        for (const msg of messages) {
+          promptString += `<|start_header_id|>${msg.role}<|end_header_id|>\n\n${msg.content}<|eot_id|>`;
+        }
+      }
+
       // Prepare the request for Modal API (matching ChatRequest format)
       const requestData = {
-        system: system
+        system: promptString
       };
   
-      // Call Modal API - using the FastAPI endpoint from your friend's code
+      // Call Modal API - using the FastAPI endpoint
       const response = await fetch('https://cyborgpsychologylab--persona-vector-api-persona-vector-endpoint.modal.run', {
         method: 'POST',
         headers: {

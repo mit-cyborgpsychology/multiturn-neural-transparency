@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       system: system
     };
 
-    // Call Modal API - using the FastAPI endpoint from your friend's code
+    // MODAL API
     const response = await fetch('https://cyborgpsychologylab--chat-api-chat-endpoint.modal.run', {
       method: 'POST',
       headers: {

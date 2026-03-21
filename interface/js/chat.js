@@ -76,6 +76,12 @@ if (typeof window.messageIdCounter === 'undefined') {
 if (typeof window.conversationHistory === 'undefined') {
     window.conversationHistory = []; // Store conversation history for API calls
 }
+if (typeof window.personaHistory === 'undefined') {
+    window.personaHistory = []; // Snapshots of persona scores per conversation turn
+}
+if (typeof window.activeDriftTrait === 'undefined') {
+    window.activeDriftTrait = null; // Currently selected trait for drift panel
+}
 // Track sunburst layout mode
 if (typeof window.sunburstOppositeLayout === 'undefined') {
     window.sunburstOppositeLayout = false; // Default: mirrored (shows neutral category at bottom)
@@ -683,6 +689,20 @@ function initializeDynamicInterface() {
             $('#personaPlaceholder').show();
         };
 
+        $(document).on('click', '#closeDriftBtn', function() {
+            d3.select('#driftAxisContainer').selectAll('*').remove();
+            $('#driftTraitLabel').text('Click a trait to see drift');
+            $('#closeDriftBtn').hide();
+            window.activeDriftTrait = null;
+        });
+
+        // Delegated click on any sunburst trait segment or label — survives re-renders
+        $(document).on('click', '#chatPersonaPanel [data-trait-name]', function() {
+            const rawName = $(this).attr('data-trait-name').toLowerCase();
+            window.activeDriftTrait = rawName;
+            renderTraitDrift(rawName);
+        });
+
         // Back to configuration
         backToConfigBtn.on('click', function() {
             switchToSystemPromptConfig();
@@ -779,6 +799,9 @@ function initializeDynamicInterface() {
 
             // Add assistant message to chat and save to Firebase
             await addMessage(assistantMessage, 'assistant');
+
+            // Update persona visualization with full conversation context
+            checkPersona(customSystemPrompt, window.conversationHistory);
 
         } catch (error) {
             console.error('Error calling AI API:', error);
@@ -1208,17 +1231,23 @@ async function autoSubmitPersonaCheck(systemPrompt) {
 }
 
 // Check Persona function - calls persona-vector endpoint
-async function checkPersona(systemPrompt) {
+async function checkPersona(systemPrompt, messages) {
     try {
         // Use provided system prompt or get from localStorage
-        const promptToUse = systemPrompt || 
-            localStorage.getItem('customSystemPrompt') || 
+        const promptToUse = systemPrompt ||
+            localStorage.getItem('customSystemPrompt') ||
             "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
 
         // Show loading state
         showPersonaVisualization();
-        const personaChart = $('#personaChart');
-        personaChart.html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
+        $('#personaChart').html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
+        showCenterLoadingIndicator('chatPersonaChart');
+
+        // Build request body — include messages if provided
+        const requestBody = { system: promptToUse };
+        if (messages && messages.length > 0) {
+            requestBody.messages = messages;
+        }
 
         // Call the persona-vector endpoint
         const response = await fetch('/api/persona-vector', {
@@ -1226,9 +1255,7 @@ async function checkPersona(systemPrompt) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                system: promptToUse
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (response.ok) {
@@ -1246,8 +1273,17 @@ async function checkPersona(systemPrompt) {
                 condition: 'experimental_with_visualization'
             });
             
-            // Render the persona vector bar chart
+            // Render to config panel and (if visible) chat panel
             renderPersonaChart(data.content);
+            renderPersonaChart(data.content, 'chatPersonaChart');
+
+            // Record snapshot for drift tracking
+            window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
+
+            // Re-render drift panel if it's open
+            if (window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+                renderTraitDrift(window.activeDriftTrait);
+            }
         } else {
             const errorData = await response.json();
             console.error('Persona Vector Error:', errorData);
@@ -1260,14 +1296,56 @@ async function checkPersona(systemPrompt) {
     }
 }
 
+// Show a rotating arc spinner in the center of the sunburst donut hole
+function showCenterLoadingIndicator(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const existingSvg = container.querySelector('svg');
+
+    if (!existingSvg) {
+        // First load — no sunburst yet, render a blank SVG with just the spinner
+        const svg = d3.select(`#${containerId}`)
+            .append('svg').attr('width', 380).attr('height', 380);
+        appendSpinner(svg, 190, 190);
+        return;
+    }
+
+    // Existing sunburst — overlay spinner in the center
+    const svgEl = d3.select(existingSvg);
+    const w = parseFloat(existingSvg.getAttribute('width')) || 380;
+    const h = parseFloat(existingSvg.getAttribute('height')) || 380;
+    svgEl.select('.center-loading-group').remove();
+    appendSpinner(svgEl, w / 2, h / 2);
+}
+
+function appendSpinner(svg, cx, cy) {
+    const g = svg.append('g')
+        .attr('class', 'center-loading-group')
+        .attr('transform', `translate(${cx}, ${cy})`);
+
+    // White backing circle to mask center text
+    g.append('circle').attr('r', 28).attr('fill', 'white').attr('opacity', 0.9);
+
+    // 270° arc spinner
+    g.append('path')
+        .attr('d', d3.arc()
+            .innerRadius(17).outerRadius(23)
+            .startAngle(0).endAngle(Math.PI * 1.5)()
+        )
+        .attr('fill', '#2196F3')
+        .attr('class', 'center-loading-arc');
+}
+
 // Render persona vector chart (sunburst or bar chart based on URL parameter)
 // Uses ?sunburst=true or ?sunburst=false URL parameter (defaults to true if not specified)
-function renderPersonaChart(personaData) {
-    const personaChart = $('#personaChart');
-    
+// containerId: the ID of the container div to render into (default: 'personaChart')
+function renderPersonaChart(personaData, containerId = 'personaChart') {
+    const personaChart = $(`#${containerId}`);
+
     // Use URL parameter to determine display mode (defaults to true if not specified)
     const useSunburst = typeof useSunburstDisplay === 'function' ? useSunburstDisplay() : true;
-    
+
     if (!personaData || typeof personaData !== 'object') {
         console.error('Invalid persona data:', personaData);
         personaChart.html('<div style="text-align: center; color: var(--text-muted);">No persona data available</div>');
@@ -1279,19 +1357,20 @@ function renderPersonaChart(personaData) {
         // Check if D3 is loaded
         if (typeof d3 === 'undefined') {
             console.error('D3.js not loaded! Falling back to bar chart.');
-            renderPersonaBarChart(personaData);
+            renderPersonaBarChart(personaData, containerId);
             return;
         }
-        
-        // Create container for sunburst
-        personaChart.html('<div id="personaChartSunburst"></div>');
-        
+
+        // Create container for sunburst (unique child ID per container)
+        const sunburstId = `${containerId}Sunburst`;
+        personaChart.html(`<div id="${sunburstId}"></div>`);
+
         // Create the sunburst visualization
         setTimeout(() => {
             if (typeof createPersonaSunburst === 'function') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
-                createPersonaSunburst(personaData, 'personaChartSunburst', {
+                createPersonaSunburst(personaData, sunburstId, {
                     width: 380,
                     height: 380,
                     innerRadius: 45,
@@ -1300,18 +1379,17 @@ function renderPersonaChart(personaData) {
                 });
             } else {
                 console.error('createPersonaSunburst function not found. Falling back to bar chart.');
-                // Fallback to bar chart
-                renderPersonaBarChart(personaData);
+                renderPersonaBarChart(personaData, containerId);
             }
         }, 100);
     } else {
-        renderPersonaBarChart(personaData);
+        renderPersonaBarChart(personaData, containerId);
     }
 }
 
 // Original bar chart rendering (fallback or primary based on USE_SUNBURST config)
-function renderPersonaBarChart(personaData) {
-    const personaChart = $('#personaChart');
+function renderPersonaBarChart(personaData, containerId = 'personaChart') {
+    const personaChart = $(`#${containerId}`);
     
     let chartHtml = '<div class="persona-fallback-list">';
     
@@ -1346,6 +1424,163 @@ function renderPersonaBarChart(personaData) {
     </div>`;
     
     personaChart.html(chartHtml);
+}
+
+// Render vertical drift axis showing how a trait has shifted across conversation turns
+// traitName: raw API key of clicked trait (e.g. 'empathetic')
+// oppositeTrait: formatted display name of the sister trait (e.g. 'Unempathetic')
+function renderTraitDrift(traitName) {
+    if (!traitName || !window.personaHistory || window.personaHistory.length === 0) return;
+
+    // Find which category contains this trait and get the raw opposite key
+    let categoryKey = null;
+    let oppositeKey = null;
+    const firstScores = window.personaHistory[0].scores;
+    if (!firstScores || typeof firstScores !== 'object') return;
+    for (const [catKey, traits] of Object.entries(firstScores)) {
+        if (traits && traitName in traits) {
+            categoryKey = catKey;
+            oppositeKey = Object.keys(traits).find(t => t !== traitName);
+            break;
+        }
+    }
+    if (!categoryKey || !oppositeKey) return;
+
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+    $('#driftTraitLabel').text(`${capitalize(traitName)}  ↔  ${capitalize(oppositeKey)}`);
+    $('#closeDriftBtn').show();
+
+    // Build history array: position 1 = traitName fully active, 0 = oppositeKey fully active
+    const history = window.personaHistory.map((entry, i) => {
+        const cat = entry.scores[categoryKey] || {};
+        const tVal = cat[traitName] || 0;
+        const oVal = cat[oppositeKey] || 0;
+        // position 0 = dot at left (traitName side), position 1 = dot at right (oppositeKey side)
+        const position = 0.5 - (tVal - oVal) * 0.5;
+        return { turn: i + 1, position };
+    });
+
+    // Render vertical SVG axis
+    const container = document.getElementById('driftAxisContainer');
+    if (!container) return;
+    d3.select('#driftAxisContainer').selectAll('*').remove();
+
+    const panelWidth = $('#chatPersonaPanel').width() || 380;
+    const leftX = 70;
+    const rightX = panelWidth - 70;
+    const axisSpan = rightX - leftX;
+    const rowHeight = 48;
+    const topPad = 40;
+    const svgHeight = topPad + history.length * rowHeight + 20;
+
+    const svg = d3.select('#driftAxisContainer')
+        .append('svg')
+        .attr('width', panelWidth)
+        .attr('height', svgHeight)
+        .style('opacity', 0)
+        .transition().duration(200)
+        .style('opacity', 1)
+        .selection();
+
+    // Pole labels
+    svg.append('text')
+        .attr('x', leftX).attr('y', 18)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '11px').attr('font-weight', '600')
+        .attr('fill', '#888').attr('letter-spacing', '0.05em')
+        .text(capitalize(traitName).toUpperCase());
+
+    svg.append('text')
+        .attr('x', rightX).attr('y', 18)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '11px').attr('font-weight', '600')
+        .attr('fill', '#888').attr('letter-spacing', '0.05em')
+        .text(capitalize(oppositeKey).toUpperCase());
+
+    // Dashed vertical guide lines (poles)
+    [leftX, rightX].forEach(x => {
+        svg.append('line')
+            .attr('x1', x).attr('y1', topPad - 8)
+            .attr('x2', x).attr('y2', svgHeight - 10)
+            .attr('stroke', '#ddd').attr('stroke-width', 1)
+            .attr('stroke-dasharray', '4,4');
+    });
+
+    // Center neutral line (0 activation)
+    const centerX = leftX + axisSpan / 2;
+    svg.append('line')
+        .attr('x1', centerX).attr('y1', topPad - 8)
+        .attr('x2', centerX).attr('y2', svgHeight - 10)
+        .attr('stroke', '#bbb').attr('stroke-width', 1)
+        .attr('stroke-dasharray', '2,4');
+    svg.append('text')
+        .attr('x', centerX).attr('y', topPad - 12)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '9px').attr('fill', '#aaa')
+        .text('0');
+
+    // Connecting line through all dots — draws itself top to bottom
+    if (history.length > 1) {
+        const linePoints = history.map((entry, i) => {
+            const x = leftX + entry.position * axisSpan;
+            const y = topPad + i * rowHeight + rowHeight / 2;
+            return `${x},${y}`;
+        }).join(' ');
+        const polyline = svg.append('polyline')
+            .attr('points', linePoints)
+            .attr('fill', 'none')
+            .attr('stroke', '#2196F3')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-opacity', 0.35);
+
+        // Animate line drawing using stroke-dashoffset
+        const totalLength = polyline.node().getTotalLength();
+        polyline
+            .attr('stroke-dasharray', totalLength)
+            .attr('stroke-dashoffset', totalLength)
+            .transition()
+            .duration(500)
+            .ease(d3.easeLinear)
+            .attr('stroke-dashoffset', 0);
+    }
+
+    // Horizontal row lines + dots per turn — staggered entrance
+    history.forEach((entry, i) => {
+        const y = topPad + i * rowHeight + rowHeight / 2;
+        const dotX = leftX + entry.position * axisSpan;
+        const isLatest = i === history.length - 1;
+        const delay = i * 80;
+
+        // Faint horizontal row line
+        svg.append('line')
+            .attr('x1', leftX).attr('y1', y)
+            .attr('x2', rightX).attr('y2', y)
+            .attr('stroke', '#eee').attr('stroke-width', 1)
+            .style('opacity', 0)
+            .transition().delay(delay).duration(200)
+            .style('opacity', 1);
+
+        // Dot — scales in from 0
+        svg.append('circle')
+            .attr('cx', dotX).attr('cy', y)
+            .attr('r', 0)
+            .attr('fill', isLatest ? '#2196F3' : '#bbb')
+            .attr('stroke', 'white').attr('stroke-width', 2)
+            .transition().delay(delay).duration(300)
+            .ease(d3.easeBackOut)
+            .attr('r', isLatest ? 9 : 6);
+
+        // Turn label — fades in after dot
+        svg.append('text')
+            .attr('x', dotX).attr('y', y + 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px').attr('font-weight', '600')
+            .attr('fill', isLatest ? 'white' : '#777')
+            .style('opacity', 0)
+            .text(entry.turn)
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+    });
 }
 
 // Test persona with mock data - for development/testing without API calls
@@ -1397,6 +1632,10 @@ function testPersonaWithMockData() {
         };
         
         renderPersonaChart(mockData);
+        renderPersonaChart(mockData, 'chatPersonaChart');
+
+        // Push mock snapshot so drift panel has data to display
+        window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: mockData });
     }, 800); // Simulate network delay
 }
 
