@@ -40,6 +40,12 @@
         <!-- Persona Vectors -->
         <script src="js/persona_vectors.js"></script>
 
+        <!-- Study Content (hardcoded prompts + scripted conversation) -->
+        <script src="js/study-content.js"></script>
+
+        <!-- Task Firebase writer — loaded once globally so task pages can call window.writeTaskData() -->
+        <script type="module" src="js/task-writer.js"></script>
+
         <!-- Firebase Config -->
         <!-- <script src="js/firebaseconfig.js"></script> -->
         <script src="js/firebasepsych1.1.js" type="module"></script>
@@ -108,25 +114,40 @@
                 }
                 
                 if (debugMode){
-                    // Debug mode - skip directly to avatar selection / chat interface
-                    // console.log('🐛 Debug mode enabled - skipping to chat interface');
-                    // $('#consent-main-content').load("html/consent.html?v=" + Date.now());
+                    // Debug mode - skip directly to Task 1
                     $("#consent-main-content").attr("hidden", true);
-                    // $("#task-header").attr("hidden", false);
                     $("#task-main-content").attr("hidden", false);
-                    $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
+                    $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
                 } else{
                     // Production mode - start with consent
                     $('#consent-main-content').load("html/consent.html?v=" + Date.now());
                 }
 
-                // Function to hide consent and show chat interface
-                window.showChatInterface = function() {
-                    $("#consent-main-content").attr("hidden", true);
-                    $("#task-header").attr("hidden", false);
+                // ── ROUTING FUNCTIONS ────────────────────────────────────────────────────
+                // Called by instructions.js after overview screen
+                window.showTask1 = function() {
+                    $("#instructions-main-content").attr("hidden", true);
                     $("#task-main-content").attr("hidden", false);
+                    $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
+                };
+
+                // Called by task1-calibration after submit
+                window.showTask2 = function() {
                     $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
                 };
+
+                // Called by chat.js completePostSurvey
+                window.showTask3 = function() {
+                    $('#task-main-content').load('html/task3-recalibration.html?v=' + Date.now());
+                };
+
+                // Called by task3-recalibration after submit
+                window.showTask4 = function() {
+                    $('#task-main-content').load('html/task4-final.html?v=' + Date.now());
+                };
+
+                // Legacy alias kept for any remaining references
+                window.showChatInterface = window.showTask2;
             });
         </script>
 

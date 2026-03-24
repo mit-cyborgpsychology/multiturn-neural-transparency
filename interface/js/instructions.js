@@ -106,19 +106,20 @@ $(document).ready(function() {
         }
         
         // Hide Instructions
-        // $("#instructions-header").attr("hidden", true);
         $("#instructions-main-content").attr("hidden", true);
-        
-        // Show Task
-        $("#task-header").attr("hidden", false);
-        $("#task-main-content").attr("hidden", false);
-        
-        // Load Chat Interface with cache-busting
-        $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
-        
+
         // Log completion
         console.log("User completed instructions and proceeded to main task at:", new Date().toISOString());
         console.log("Time spent on instructions:", Math.round((Date.now() - instructionsStartTime) / 1000), "seconds");
+
+        // Route to Task 1 via global routing function
+        if (typeof window.showTask1 === 'function') {
+            window.showTask1();
+        } else {
+            // Fallback: load task1 directly
+            $("#task-main-content").attr("hidden", false);
+            $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
+        }
     }
 
     /******************************************************************************

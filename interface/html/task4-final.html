@@ -1,0 +1,227 @@
+<!-- Task 4: Final Survey -->
+<div style="max-width: 700px; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1.5rem;">
+        <h4 style="margin: 0 0 4px 0; font-size: 1.1rem;">Task 4 of 4: Final Survey</h4>
+        <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">A few final questions, then you're done!</p>
+    </div>
+
+    <!-- ═══════════════════════════════ Phase 1: Trust resurvey + predictability -->
+    <div id="task4Phase1">
+        <div style="margin-bottom: 1.25rem;">
+            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Part 1: Reflection Questions</h5>
+            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Answer these based on your experience during the study.</p>
+        </div>
+
+        <!-- Q1 predictability post -->
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label">1. Looking back on the AI conversation you observed, how well could you predict the AI's behaviors from the system prompt alone?</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q1" value="1" id="t4q1_1"><label for="t4q1_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="2" id="t4q1_2"><label for="t4q1_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="3" id="t4q1_3"><label for="t4q1_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="4" id="t4q1_4"><label for="t4q1_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="5" id="t4q1_5"><label for="t4q1_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="6" id="t4q1_6"><label for="t4q1_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q1" value="7" id="t4q1_7"><label for="t4q1_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Not at all</span><span>Extremely well</span></div>
+        </div>
+
+        <!-- Q2 negative predictability post -->
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label">2. How well could you predict <em>negative</em> unintended behaviors from the system prompt?</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q2" value="1" id="t4q2_1"><label for="t4q2_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="2" id="t4q2_2"><label for="t4q2_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="3" id="t4q2_3"><label for="t4q2_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="4" id="t4q2_4"><label for="t4q2_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="5" id="t4q2_5"><label for="t4q2_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="6" id="t4q2_6"><label for="t4q2_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q2" value="7" id="t4q2_7"><label for="t4q2_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Not at all</span><span>Extremely well</span></div>
+        </div>
+
+        <!-- Q3 trust resurvey -->
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label">3. After everything you've seen in this study — AI models have demonstrated both beneficial and detrimental outcomes, including documented cases of AI-induced psychosis and the encouragement of harmful behaviors, alongside instances of providing constructive support and guidance. Given this dichotomous nature of AI behavior, to what extent do you <em>now</em> trust AI systems?</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q3" value="1" id="t4q3_1"><label for="t4q3_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="2" id="t4q3_2"><label for="t4q3_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="3" id="t4q3_3"><label for="t4q3_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="4" id="t4q3_4"><label for="t4q3_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="5" id="t4q3_5"><label for="t4q3_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="6" id="t4q3_6"><label for="t4q3_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q3" value="7" id="t4q3_7"><label for="t4q3_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Not at all</span><span>Completely</span></div>
+        </div>
+
+        <!-- Viz-only: Q4 visualization helpfulness -->
+        <div class="survey-question t4-viz-only" id="t4_q4_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">4. Did the visualization help you understand the AI's behavioral tendencies?</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q4" value="1" id="t4q4_1"><label for="t4q4_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="2" id="t4q4_2"><label for="t4q4_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="3" id="t4q4_3"><label for="t4q4_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="4" id="t4q4_4"><label for="t4q4_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="5" id="t4q4_5"><label for="t4q4_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="6" id="t4q4_6"><label for="t4q4_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q4" value="7" id="t4q4_7"><label for="t4q4_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Not at all</span><span>Extremely helpful</span></div>
+        </div>
+
+        <div style="text-align: right; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-primary" id="task4Phase1Btn" disabled>Next →</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════ Phase 2: Open-ended -->
+    <div id="task4Phase2" style="display: none;">
+        <div style="margin-bottom: 1rem;">
+            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Part 2: Open-Ended Feedback</h5>
+            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Please share any thoughts about your experience.</p>
+        </div>
+
+        <div class="survey-question" style="margin-bottom: 1rem;">
+            <label class="question-label">How did the interaction go? Was there anything that surprised you or that you found difficult?</label>
+            <textarea id="t4_openended1" class="form-control" rows="5"
+                placeholder="Share your thoughts here..."
+                style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+        </div>
+
+        <div class="survey-question" style="margin-bottom: 1rem;">
+            <label class="question-label">Any other feedback about the interface or the study in general?</label>
+            <textarea id="t4_openended2" class="form-control" rows="4"
+                placeholder="Optional..."
+                style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" id="task4Phase2BackBtn">← Back</button>
+            <button type="button" class="btn btn-primary" id="task4SubmitBtn" disabled>Submit &amp; Finish →</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════ Phase 3: Completion -->
+    <div id="task4Complete" style="display: none; text-align: center; padding: 2rem 1rem;">
+        <div style="font-size: 3.5rem; color: #28a745; margin-bottom: 1rem;">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h2 style="font-size: 1.75rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.75rem;">Thank You for Participating!</h2>
+        <p style="color: #6c757d; line-height: 1.6; margin-bottom: 1.5rem;">
+            You have successfully completed the MIT Media Lab study. Your responses have been recorded.
+        </p>
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left;">
+            <p style="margin: 0.3rem 0;"><strong>Compensation:</strong> $5.00 USD via Prolific</p>
+            <p style="margin: 0.3rem 0; font-size: 0.875rem; color: #6c757d;">Payments processed within 7–10 business days after data collection completes.</p>
+        </div>
+        <button class="btn btn-primary" id="task4ReturnProlificBtn" style="font-size: 1rem; padding: 0.75rem 2rem;">
+            <i class="fas fa-external-link-alt"></i> Return to Prolific
+        </button>
+        <p style="margin-top: 2rem; font-size: 0.85rem; color: #95a5a6;">
+            Questions? Contact <strong>Sheer Karny</strong> at
+            <a href="mailto:skarny@media.mit.edu" style="color: #007bff;">skarny@media.mit.edu</a>
+        </p>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── Show/hide viz-only question ──────────────────────────────────────────
+    const vizCondition = (window.experimentSettings || {}).visualizationCondition;
+    if (vizCondition === 1) {
+        document.getElementById('t4_q4_container').style.display = '';
+    }
+
+    // ── Phase 1 validation ───────────────────────────────────────────────────
+    const required = ['t4_q1', 't4_q2', 't4_q3'];
+    if (vizCondition === 1) required.push('t4_q4');
+
+    function checkPhase1() {
+        const allDone = required.every(name =>
+            document.querySelector(`input[name="${name}"]:checked`)
+        );
+        document.getElementById('task4Phase1Btn').disabled = !allDone;
+    }
+    document.querySelectorAll('input[name^="t4_q"]').forEach(el =>
+        el.addEventListener('change', checkPhase1)
+    );
+    document.getElementById('task4Phase1Btn').addEventListener('click', () => {
+        document.getElementById('task4Phase1').style.display = 'none';
+        document.getElementById('task4Phase2').style.display = '';
+        window.scrollTo(0, 0);
+    });
+
+    // ── Phase 2 validation ───────────────────────────────────────────────────
+    document.getElementById('t4_openended1').addEventListener('input', function() {
+        document.getElementById('task4SubmitBtn').disabled = this.value.trim().length === 0;
+    });
+    document.getElementById('task4Phase2BackBtn').addEventListener('click', () => {
+        document.getElementById('task4Phase2').style.display = 'none';
+        document.getElementById('task4Phase1').style.display = '';
+        window.scrollTo(0, 0);
+    });
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+    document.getElementById('task4SubmitBtn').addEventListener('click', async function() {
+        this.disabled = true;
+        this.textContent = 'Saving...';
+
+        const timestamp = new Date().toISOString();
+        const data = {
+            timestamp,
+            likert: {
+                predictabilityPost:         parseInt(document.querySelector('input[name="t4_q1"]:checked').value),
+                negativePredictabilityPost: parseInt(document.querySelector('input[name="t4_q2"]:checked').value),
+                trustPost:                  parseInt(document.querySelector('input[name="t4_q3"]:checked').value)
+            },
+            openEnded: {
+                interactionReflection: document.getElementById('t4_openended1').value.trim(),
+                generalFeedback:       document.getElementById('t4_openended2').value.trim()
+            },
+            condition: vizCondition === 1 ? 'experimental' : 'control'
+        };
+
+        if (vizCondition === 1) {
+            const q4el = document.querySelector('input[name="t4_q4"]:checked');
+            data.likert.visualizationHelpfulness = q4el ? parseInt(q4el.value) : null;
+        }
+
+        try {
+            if (typeof window.writeTaskData === 'function') {
+                await window.writeTaskData('task4FinalSurvey', data);
+                console.log('✅ Task 4 data saved to Firebase');
+            }
+        } catch (err) {
+            console.warn('Firebase write failed (continuing anyway):', err);
+        }
+
+        // Show completion screen
+        document.getElementById('task4Phase2').style.display = 'none';
+        document.getElementById('task4Complete').style.display = '';
+        window.scrollTo(0, 0);
+    });
+
+    // ── Prolific return button ───────────────────────────────────────────────
+    document.getElementById('task4ReturnProlificBtn').addEventListener('click', function() {
+        // Retrieve Prolific completion URL stored by firebasepsych / URL params
+        const prolificUrl = sessionStorage.getItem('prolificCompletionUrl') ||
+                            new URLSearchParams(window.location.search).get('completion_url');
+        if (prolificUrl) {
+            window.location.href = prolificUrl;
+        } else {
+            // Fallback: copy completion code if available
+            alert('Please return to the Prolific tab to confirm your submission.');
+        }
+    });
+
+    console.log('✅ Task 4 final survey ready');
+})();
+</script>

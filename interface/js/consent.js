@@ -43,9 +43,10 @@ This file should contain static experimental metadata such as:
             None! This needs to be modified by you!
 */
 var EXPERIMENT_SUMMARY = `
-    This experiment tests how people shape AIs such as ChatGPT's behavior. 
-    To test this, we built an interactive experiment that requires users to create AI characters using system prompts.
-    We want to see how users understand the consequences of their system prompts and see if there are ways to help inform them of these AIs prompts prior to interaction.
+    This study investigates how well people can understand and predict AI behavior through the lens of behavioral vectors —
+    directions in neural network activations that correspond to traits like empathy, honesty, and toxicity.
+    Participants read system prompts, observe AI conversations, and predict behavioral scores before and after interaction.
+    We aim to understand how humans calibrate their intuitions about AI behavior, and whether exposure to AI interactions changes those intuitions.
 `;
 
 /*
@@ -59,7 +60,7 @@ var EXPERIMENT_SUMMARY = `
         DEFAULT:
             30 minutes
 */
-var TIME_COMMITMENT = "30 minutes";
+var TIME_COMMITMENT = "25-35 minutes";
 
 /*
     Benefits and Risks

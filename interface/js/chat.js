@@ -32,10 +32,12 @@ localStorage.removeItem('preTaskSurveyData');
 // Write a simple test case to the database
 let studyId;
 if (DEBUG){
-    studyId = 'pilot-oct9-session3-debug';
+    studyId = 'exp2-debug';
 } else {
-    studyId = 'pilot-oct9-session3';
+    studyId = 'exp2';
 }
+// Expose globally so task1/task3/task4 pages can write to the same study path
+window.studyId = studyId;
 
 const testPath = studyId + '/participantData/' + firebaseUserId + '/testMessage';
 const testValue = {
@@ -169,88 +171,39 @@ function initializeDynamicInterface() {
     
     // SessionStorage is already cleared at the top of this file for fresh experience on every load
     
-    // Initialize avatar selection first
+    // Auto-assign a random avatar and go straight to system prompt config
     initializeAvatarSelection();
-    
+
     // Initialize system prompt configuration
     initializeSystemPromptConfig();
-    
+
     // Initialize chat functionality
     initializeChatFunctionality();
-    
-    // Show avatar instruction modal when interface loads
-    setTimeout(() => {
-        window.showInstructionModal('avatar');
-    }, 50);
 
-    function initializeAvatarSelection() {
-        const avatarGrid = $('.avatar-grid');
-        const confirmAvatarBtn = $('#confirmAvatarBtn');
-        
-        // Use settings from global settings object
-        const skipSurvey = window.experimentSettings.skipSurvey;
-        
-        if (skipSurvey) {
-            localStorage.setItem('preTaskSurveyCompleted', 'true');
-        }
-        
-        // Generate 12 avatar options
+    async function initializeAvatarSelection() {
+        // Avatar selection step removed — pick randomly and proceed immediately
         const avatarCount = 12;
-        let avatarHTML = '';
-        
-        for (let i = 1; i <= avatarCount; i++) {
-            const avatarPath = `Avatar/avatar-${i}.jpg`;
-            avatarHTML += `
-                <div class="avatar-option" data-avatar="${avatarPath}">
-                    <img src="${avatarPath}" alt="Avatar ${i}" />
-                    <div class="avatar-check">
-                        <i class="fas fa-check"></i>
-                    </div>
-                </div>
-            `;
-        }
-        
-        avatarGrid.html(avatarHTML);
-        
-        // Handle avatar selection
-        $('.avatar-option').on('click', async function() {
-            // Remove selection from all avatars
-            $('.avatar-option').css('border-color', 'transparent');
-            $('.avatar-check').hide();
-            
-            // Select this avatar
-            $(this).css('border-color', '#2196F3');
-            $(this).find('.avatar-check').css('display', 'flex');
-            
-            // Store selected avatar
-            const avatarPath = $(this).data('avatar');
-            window.selectedAvatar = avatarPath;
-            
-            // Enable confirm button
-            confirmAvatarBtn.prop('disabled', false);
-        });
-        
-        // Confirm avatar selection
-        confirmAvatarBtn.on('click', async function() {
-            if (!window.selectedAvatar) {
-                alert('Please select an avatar first.');
-                return;
-            }
-            
-            // Save to localStorage
-            localStorage.setItem('selectedAvatar', window.selectedAvatar);
-            
-            // Log to Firebase
+        const randomIndex = Math.floor(Math.random() * avatarCount) + 1;
+        const avatarPath = `Avatar/avatar-${randomIndex}.jpg`;
+
+        window.selectedAvatar = avatarPath;
+        localStorage.setItem('selectedAvatar', avatarPath);
+
+        // Log to Firebase
+        try {
             const avatarLogPath = studyId + '/participantData/' + firebaseUserId + '/selectedAvatar';
-            const avatarData = {
-                avatar: window.selectedAvatar,
+            await writeRealtimeDatabase(avatarLogPath, {
+                avatar: avatarPath,
+                assignmentMethod: 'random',
                 timestamp: new Date().toISOString()
-            };
-            await writeRealtimeDatabase(avatarLogPath, avatarData);
-            
-            // Switch to system prompt configuration
-            switchToSystemPromptConfig();
-        });
+            });
+        } catch (e) {
+            console.warn('Could not log avatar to Firebase:', e);
+        }
+
+        // Go directly to system prompt config (hide avatar screen, show prompt screen)
+        $('#avatarSelectionInterface').hide();
+        switchToSystemPromptConfig();
     }
 
     function initializeSystemPromptConfig() {
@@ -898,15 +851,10 @@ function initializeDynamicInterface() {
         avatarSelectionInterface.hide();
         systemPromptInterface.hide();
         chatInterface.show();
-        
+
         // Show chat instruction modal
         window.showInstructionModal('chat');
-        
-        // Show prompt refinement reminder modal (after a 15 second delay so users have time to start chatting)
-        setTimeout(() => {
-            window.showPromptRefinementModal();
-        }, 15000);
-        
+
         // Update initial message avatar with selected avatar
         const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
         if (selectedAvatar) {
@@ -915,6 +863,86 @@ function initializeDynamicInterface() {
                 initialAvatarDiv.html(`<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`);
             }
         }
+
+        // Disable user input — conversation is pre-scripted
+        $('#messageInput').prop('disabled', true);
+        $('#sendBtn').prop('disabled', true);
+        $('#messageInput').attr('placeholder', 'Observe the conversation below…');
+
+        // Play scripted conversation after a short pause
+        setTimeout(() => playScriptedConversation(), 1200);
+    }
+
+    // Replay STUDY_CONTENT.SCRIPTED_CONVERSATION with a typing delay between turns
+    async function playScriptedConversation() {
+        const script = (window.STUDY_CONTENT || {}).SCRIPTED_CONVERSATION;
+        if (!script || script.length === 0) {
+            console.warn('No scripted conversation found in STUDY_CONTENT');
+            return;
+        }
+
+        const TURN_DELAY_MS    = 2200;  // pause between turns
+        const TYPING_DELAY_MS  = 900;   // typing indicator duration
+
+        for (let i = 0; i < script.length; i++) {
+            const turn = script[i];
+
+            if (turn.role === 'assistant') {
+                // Show typing indicator briefly
+                $('#typingIndicator').show();
+                await new Promise(r => setTimeout(r, TYPING_DELAY_MS));
+                $('#typingIndicator').hide();
+            }
+
+            // Render message using existing addMessage helper
+            window.messageIdCounter = (window.messageIdCounter || 2) + 1;
+            const msgId = window.messageIdCounter;
+            const timestamp = new Date().toISOString();
+            const sender = turn.role === 'user' ? 'user' : 'assistant';
+            const messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
+
+            const avatarHtml = sender === 'user'
+                ? '<i class="fas fa-user"></i>'
+                : (() => {
+                    const av = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
+                    return av
+                        ? `<img src="${av}" alt="AI" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+                        : '<i class="fas fa-robot"></i>';
+                })();
+
+            const messageHtml = `
+                <div class="message ${messageClass}" data-message-id="${msgId}">
+                    <div class="message-avatar">${avatarHtml}</div>
+                    <div class="message-content"><div class="message-text">${turn.content.replace(/\n/g, '<br>')}</div></div>
+                </div>`;
+
+            messagesContainer.append(messageHtml);
+            messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+
+            // Record in conversation history for persona scoring
+            window.conversationHistory.push({ role: turn.role, content: turn.content });
+
+            // After each assistant turn, call persona check for viz condition
+            if (turn.role === 'assistant' && window.experimentSettings.visualizationCondition === 1) {
+                const currentPrompt = localStorage.getItem('customSystemPrompt') || '';
+                checkPersona(currentPrompt, window.conversationHistory).catch(console.warn);
+            }
+
+            // Wait before next turn
+            if (i < script.length - 1) {
+                await new Promise(r => setTimeout(r, TURN_DELAY_MS));
+            }
+        }
+
+        // All turns played — note completion in chat area
+        const doneHtml = `
+            <div style="text-align:center; color:#6c757d; font-size:0.85rem; padding:1rem 0; border-top:1px solid #dee2e6; margin-top:0.5rem;">
+                <i class="fas fa-check-circle" style="color:#4caf50;"></i> Conversation complete. The timer is still running — feel free to reflect on what you observed.
+            </div>`;
+        messagesContainer.append(doneHtml);
+        messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+
+        console.log('✅ Scripted conversation playback complete');
     }
 
     function switchToSystemPromptConfig() {
@@ -2139,18 +2167,19 @@ async function savePostPhase2Data() {
     }
 }
 
-// Complete post-survey and redirect to completion page
+// Complete post-survey and advance to Task 3
 function completePostSurvey() {
     // Hide modal
     $('#postSurveyModal').fadeOut(300);
-    
-    // Redirect to completion page after a short delay
+
+    // Route to Task 3 after a short delay
     setTimeout(function() {
-        // Load completion page into the main content area with cache-busting
-        $('#task-main-content').load('html/complete.html?v=' + Date.now());
-        
-        // Or redirect to completion page
-        // window.location.href = 'html/complete.html';
+        if (typeof window.showTask3 === 'function') {
+            window.showTask3();
+        } else {
+            // Fallback if routing function not available
+            $('#task-main-content').load('html/task3-recalibration.html?v=' + Date.now());
+        }
     }, 500);
 }
 
