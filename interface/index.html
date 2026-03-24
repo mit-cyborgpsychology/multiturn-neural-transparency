@@ -43,11 +43,21 @@
         <!-- Study Content (hardcoded prompts + scripted conversation) -->
         <script src="js/study-content.js"></script>
 
+        <!-- Firebase Config — must be defined as global BEFORE task-writer.js (module) loads -->
+        <script>
+            window.firebaseConfig = {
+                apiKey: "AIzaSyBnlqrGcIfgo59WCzure6azGQitEQaGhZg",
+                authDomain: "mech-chat-ee0c5.firebaseapp.com",
+                databaseURL: "https://mech-chat-ee0c5-default-rtdb.firebaseio.com",
+                projectId: "mech-chat-ee0c5",
+                storageBucket: "mech-chat-ee0c5.firebasestorage.app",
+                messagingSenderId: "1027129084043",
+                appId: "1:1027129084043:web:ece77d746e79110f98ec8e"
+            };
+        </script>
+
         <!-- Task Firebase writer — loaded once globally so task pages can call window.writeTaskData() -->
         <script type="module" src="js/task-writer.js"></script>
-
-        <!-- Firebase Config -->
-        <!-- <script src="js/firebaseconfig.js"></script> -->
         <script src="js/firebasepsych1.1.js" type="module"></script>
          
         <!-- Main CSS Styles -->
