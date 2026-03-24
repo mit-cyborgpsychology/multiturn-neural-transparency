@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "echo 'Static site - no build step required'",
-  "outputDirectory": ".",
-  "installCommand": "npm install",
   "headers": [
     {
       "source": "/(.*).html",
