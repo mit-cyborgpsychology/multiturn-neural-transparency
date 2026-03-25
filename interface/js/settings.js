@@ -85,6 +85,18 @@ function getExperimentSettingsFromURL() {
             }
             return sunburstParam.toLowerCase() === 'true' || sunburstParam === '1';
         })(),
+
+        /**
+         * Cognitive forcing function highlights — blink the element that caused the biggest persona swing
+         * Comma-separated list: 1=chat message bubble, 2=drift chart dot, 3=sunburst trait segment
+         * URL: ?highlight=1  or  ?highlight=1,2,3
+         * Default: [] (no highlights — only active when visualizationCondition=1)
+         */
+        highlight: (() => {
+            const param = urlParams.get('highlight');
+            if (!param) return [];
+            return param.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        })(),
         
         /**
          * Visualization condition - experimental control setting
@@ -147,6 +159,7 @@ let defaultSettings = {
     shortenPrompt: false,
     sunburst: false,
     visualizationCondition: null, // Random assignment (0 or 1)
+    highlight: [],
 };
 
 // ============================================

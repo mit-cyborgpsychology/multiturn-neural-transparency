@@ -81,6 +81,12 @@ if (typeof window.conversationHistory === 'undefined') {
 if (typeof window.personaHistory === 'undefined') {
     window.personaHistory = []; // Snapshots of persona scores per conversation turn
 }
+if (typeof window.personaTurnMessageIds === 'undefined') {
+    window.personaTurnMessageIds = []; // User message IDs aligned with personaHistory entries
+}
+if (typeof window.lastUserMessageId === 'undefined') {
+    window.lastUserMessageId = null; // Most recent user message ID, for persona-turn correlation
+}
 if (typeof window.activeDriftTrait === 'undefined') {
     window.activeDriftTrait = null; // Currently selected trait for drift panel
 }
@@ -657,6 +663,7 @@ function initializeDynamicInterface() {
 
         // Add user message to UI and save to Firebase
         const userMessageId = await addMessage(message, 'user');
+        window.lastUserMessageId = userMessageId; // record for persona-turn correlation
         messageInput.val('');
         sendBtn.prop('disabled', true);
         messageInput.css('height', 'auto');
@@ -1232,9 +1239,17 @@ async function checkPersona(systemPrompt, messages) {
 
             // Record snapshot for drift tracking
             window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
+            window.personaTurnMessageIds.push(window.lastUserMessageId);
 
-            // Re-render drift panel if it's open
-            if (window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+            // Compute biggest swing and apply cognitive forcing highlights (experimental condition only)
+            const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+            if (window.experimentSettings && window.experimentSettings.visualizationCondition === 1) {
+                const swing = computeBiggestSwing();
+                if (swing) applyHighlights(swing);
+            }
+
+            // Re-render drift panel if it's open and highlight mode 2 isn't handling it
+            if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
                 renderTraitDrift(window.activeDriftTrait);
             }
         } else {
@@ -1379,6 +1394,80 @@ function renderPersonaBarChart(personaData, containerId = 'personaChart') {
     personaChart.html(chartHtml);
 }
 
+// ============================================================
+// COGNITIVE FORCING FUNCTIONS — biggest-swing highlights
+// Activated by URL: ?highlight=1,2,3  (only in viz condition)
+// 1 = chat message bubble  2 = drift chart dot  3 = sunburst segment
+// ============================================================
+
+/**
+ * Finds the turn with the largest single-trait delta vs. the previous turn.
+ * Returns { turnIndex, categoryKey, traitKey, delta } or null if < 2 turns.
+ */
+function computeBiggestSwing() {
+    if (!window.personaHistory || window.personaHistory.length < 2) return null;
+    let maxDelta = -1;
+    let result = null;
+    for (let i = 1; i < window.personaHistory.length; i++) {
+        const prev = window.personaHistory[i - 1].scores;
+        const curr = window.personaHistory[i].scores;
+        for (const [catKey, traits] of Object.entries(curr)) {
+            if (!prev[catKey]) continue;
+            for (const [traitKey, val] of Object.entries(traits)) {
+                const prevVal = (prev[catKey][traitKey] != null) ? prev[catKey][traitKey] : 0;
+                const delta = Math.abs(val - prevVal);
+                if (delta > maxDelta) {
+                    maxDelta = delta;
+                    result = { turnIndex: i, categoryKey: catKey, traitKey, delta };
+                }
+            }
+        }
+    }
+    return result;
+}
+
+/** Dispatch to whichever highlight modes are enabled via ?highlight= */
+function applyHighlights(swing) {
+    const modes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+    if (!modes.length || !swing) return;
+    if (modes.includes(1)) applyMessageHighlight(swing);
+    if (modes.includes(2)) applyDriftDotHighlight(swing);
+    if (modes.includes(3)) applySunburstHighlight(swing);
+}
+
+/** Highlight 1: blink the user message bubble that caused the biggest swing */
+function applyMessageHighlight(swing) {
+    $('.message').removeClass('highlight-swing-msg');
+    const msgId = window.personaTurnMessageIds[swing.turnIndex];
+    if (msgId != null) {
+        $(`.message[data-message-id="${msgId}"]`).addClass('highlight-swing-msg');
+    }
+}
+
+/** Highlight 2: auto-open drift panel for most-swung trait and blink that turn's dot */
+function applyDriftDotHighlight(swing) {
+    window.activeDriftTrait = swing.traitKey;
+    renderTraitDrift(swing.traitKey);
+    // Wait for staggered dot entrance animation before applying the highlight class
+    const dotDelay = swing.turnIndex * 80 + 400;
+    setTimeout(() => {
+        d3.selectAll('#driftAxisContainer circle').classed('highlight-swing-dot', false);
+        d3.select(`#driftAxisContainer circle.drift-dot-turn-${swing.turnIndex}`).classed('highlight-swing-dot', true);
+    }, dotDelay);
+}
+
+/** Highlight 3: blink the sunburst outer-ring arc for the most-swung trait */
+function applySunburstHighlight(swing) {
+    const containers = ['#chatPersonaChart', '#personaChart'];
+    containers.forEach(sel => {
+        $(`${sel} [data-trait-name]`).each(function() {
+            const attrName = $(this).attr('data-trait-name') || '';
+            const isMatch = attrName.toLowerCase() === swing.traitKey.toLowerCase();
+            $(this).toggleClass('highlight-swing-segment', isMatch);
+        });
+    });
+}
+
 // Render vertical drift axis showing how a trait has shifted across conversation turns
 // traitName: raw API key of clicked trait (e.g. 'empathetic')
 // oppositeTrait: formatted display name of the sister trait (e.g. 'Unempathetic')
@@ -1517,6 +1606,7 @@ function renderTraitDrift(traitName) {
         svg.append('circle')
             .attr('cx', dotX).attr('cy', y)
             .attr('r', 0)
+            .attr('class', `drift-dot drift-dot-turn-${i}`)
             .attr('fill', isLatest ? '#2196F3' : '#bbb')
             .attr('stroke', 'white').attr('stroke-width', 2)
             .transition().delay(delay).duration(300)
