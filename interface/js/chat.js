@@ -87,6 +87,9 @@ if (typeof window.personaTurnMessageIds === 'undefined') {
 if (typeof window.lastUserMessageId === 'undefined') {
     window.lastUserMessageId = null; // Most recent user message ID, for persona-turn correlation
 }
+if (typeof window.currentSwing === 'undefined') {
+    window.currentSwing = null; // Latest biggest-swing result for click-through navigation
+}
 if (typeof window.activeDriftTrait === 'undefined') {
     window.activeDriftTrait = null; // Currently selected trait for drift panel
 }
@@ -606,6 +609,19 @@ function initializeDynamicInterface() {
             const rawName = $(this).attr('data-trait-name').toLowerCase();
             window.activeDriftTrait = rawName;
             renderTraitDrift(rawName);
+        });
+
+        // Click a highlighted message → jump to drift panel + sunburst for that swing
+        $(document).on('click', '.message.highlight-swing-msg', function() {
+            const swing = window.currentSwing;
+            if (!swing) return;
+            // Open drift panel to the swung trait and highlight the dot
+            applyDriftDotHighlight(swing);
+            // Highlight the sunburst segment
+            applySunburstHighlight(swing);
+            // Scroll the persona panel into view
+            const panel = document.getElementById('chatPersonaPanel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
         // Back to configuration
@@ -1429,6 +1445,7 @@ function computeBiggestSwing() {
 function applyHighlights(swing) {
     const modes = (window.experimentSettings && window.experimentSettings.highlight) || [];
     if (!modes.length || !swing) return;
+    window.currentSwing = swing; // store for click-through navigation
     if (modes.includes(1)) applyMessageHighlight(swing);
     if (modes.includes(2)) applyDriftDotHighlight(swing);
     if (modes.includes(3)) applySunburstHighlight(swing);

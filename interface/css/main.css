@@ -2150,7 +2150,10 @@ body {
     50%       { opacity: 0.35; }
 }
 
-/* Highlight 1 — chat message bubble */
+/* Highlight 1 — chat message bubble (clickable → navigates to drift + sunburst) */
+.message.highlight-swing-msg {
+    cursor: pointer;
+}
 .message.highlight-swing-msg .message-content {
     box-shadow:
         0 0 0 3px rgba(255, 160, 0, 0.9),
