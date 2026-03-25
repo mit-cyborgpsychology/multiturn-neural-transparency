@@ -249,6 +249,12 @@
             <p id="task3Step3PromptReminder" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
         </details>
 
+        <!-- Conversation transcript reminder -->
+        <details class="toggle-prompt" data-label="conversation transcript" style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Show conversation transcript</summary>
+            <div id="task3Step3TranscriptReminder" style="margin: 0.75rem 0 0 0; max-height: 300px; overflow-y: auto;"></div>
+        </details>
+
         <!-- Part B trait sliders -->
         <div class="trait-predictions-container" id="task3TraitsB">
 
@@ -417,11 +423,27 @@
         document.getElementById('task3Step3PromptReminder').textContent   = content.TASK3_PROMPT;
 
         // Build transcript with message-by-message reveal
+        const conversation = content.TASK3_CONVERSATION || [];
         window.buildTranscriptReveal(
-            content.TASK3_CONVERSATION || [],
+            conversation,
             document.getElementById('task3Transcript'),
             document.getElementById('task3Step2Btn')
         );
+
+        // Build plain transcript for Step 3 reminder
+        const reminderEl = document.getElementById('task3Step3TranscriptReminder');
+        let html = '';
+        conversation.forEach(turn => {
+            const isUser = turn.role === 'user';
+            const label  = isUser ? 'User' : 'AI';
+            const bg     = isUser ? '#e3f2fd' : '#f8f9fa';
+            const align  = isUser ? 'right' : 'left';
+            html += `<div style="margin-bottom: 0.75rem; text-align: ${align};">
+                <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #6c757d; display: block; margin-bottom: 2px;">${label}</span>
+                <div style="display: inline-block; max-width: 85%; background: ${bg}; border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.85rem; line-height: 1.5; color: #2c3e50; text-align: left;">${turn.content.replace(/\n/g, '<br>')}</div>
+            </div>`;
+        });
+        reminderEl.innerHTML = html;
     }
 
     // ── Step navigation ──────────────────────────────────────────────────────
@@ -516,7 +538,8 @@
     document.querySelectorAll('.toggle-prompt').forEach(details => {
         details.addEventListener('toggle', () => {
             const summary = details.querySelector('summary');
-            summary.textContent = details.open ? 'Hide system prompt' : 'Show system prompt';
+            const label = details.dataset.label || 'system prompt';
+            summary.textContent = details.open ? 'Hide ' + label : 'Show ' + label;
         });
     });
 
