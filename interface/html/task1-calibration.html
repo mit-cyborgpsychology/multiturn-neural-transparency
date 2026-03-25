@@ -9,11 +9,12 @@
         </div>
     </div>
 
-    <!-- Progress bar: 3 parts -->
+    <!-- Progress bar: 4 parts -->
     <div style="display: flex; gap: 8px; margin-bottom: 1.5rem;">
         <div class="t1-step-dot" data-step="0" style="flex:1; height: 4px; background: #2196F3; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="1" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="2" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
+        <div class="t1-step-dot" data-step="3" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -203,12 +204,19 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- STEP 2 — Part B: Conversation transcript + trait sliders               -->
+    <!-- STEP 2 — Part B: Read conversation transcript (message reveal)        -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <div id="task1Step2" class="task1-step" style="display: none;">
         <div style="margin-bottom: 1rem;">
-            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Part B: Rate the Conversation</h5>
-            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Read the full conversation transcript below, then predict the AI's behavioral trait activations based on what you observe across the whole interaction.</p>
+            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Part B: Conversation Transcript</h5>
+            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Now read the conversation between a user and an AI configured with the system prompt you just rated.</p>
+        </div>
+
+        <div class="sentence-reveal-instructions">
+            <strong>Read critically:</strong> Step through each message in this conversation one at a time.
+            Consider how the AI's responses reflect — or diverge from — the system prompt you rated.
+            Think about how the conversation's flow shapes the AI's behavior turn by turn.
+            You must read every message before rating.
         </div>
 
         <!-- System prompt reminder -->
@@ -217,8 +225,29 @@
             <p id="task1ConvSystemPrompt" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
         </details>
 
-        <!-- Conversation transcript -->
-        <div id="task1Transcript" style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;"></div>
+        <!-- Conversation transcript (message reveal) -->
+        <div id="task1Transcript" style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;"></div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+            <button type="button" class="btn btn-secondary" id="task1Step2BackBtn">← Back</button>
+            <button type="button" class="btn btn-primary" id="task1Step2Btn" disabled>Rate this conversation →</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- STEP 3 — Part B: Trait sliders for conversation                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <div id="task1Step3" class="task1-step" style="display: none;">
+        <div style="margin-bottom: 1rem;">
+            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Part B: Rate the Conversation</h5>
+            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Based on the system prompt and conversation you just read, predict the AI's behavioral trait activations across the whole interaction.</p>
+        </div>
+
+        <!-- System prompt reminder -->
+        <details class="toggle-prompt" style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Show system prompt</summary>
+            <p id="task1Step3PromptReminder" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
+        </details>
 
         <!-- Part B trait sliders -->
         <div class="trait-predictions-container" id="task1TraitsB">
@@ -362,7 +391,7 @@
         </div>
 
         <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
-            <button type="button" class="btn btn-secondary" id="task1Step2BackBtn">← Back</button>
+            <button type="button" class="btn btn-secondary" id="task1Step3BackBtn">← Back</button>
             <button type="button" class="btn btn-primary" id="task1SubmitBtn" disabled>Submit & Continue →</button>
         </div>
     </div>
@@ -383,34 +412,16 @@
             document.getElementById('task1CalibrationPrompt'),
             document.getElementById('task1Step0Btn')
         );
-        document.getElementById('task1PartAPromptReminder').textContent = content.CALIBRATION_PROMPT;
-        document.getElementById('task1ConvSystemPrompt').textContent    = content.CALIBRATION_PROMPT;
+        document.getElementById('task1PartAPromptReminder').textContent  = content.CALIBRATION_PROMPT;
+        document.getElementById('task1ConvSystemPrompt').textContent     = content.CALIBRATION_PROMPT;
+        document.getElementById('task1Step3PromptReminder').textContent  = content.CALIBRATION_PROMPT;
 
-        // Build transcript HTML from SCRIPTED_CONVERSATION
-        const transcriptEl = document.getElementById('task1Transcript');
-        const conversation = content.SCRIPTED_CONVERSATION || [];
-        let html = '';
-        if (conversation.length === 0) {
-            html = '<p style="color:#6c757d; font-style:italic;">No conversation available.</p>';
-        } else {
-            conversation.forEach(turn => {
-                const isUser = turn.role === 'user';
-                const label  = isUser ? 'User' : 'AI';
-                const bg     = isUser ? '#e3f2fd' : '#f8f9fa';
-                const align  = isUser ? 'right' : 'left';
-                html += `
-                <div style="margin-bottom: 0.75rem; text-align: ${align};">
-                    <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-                                 color: #6c757d; display: block; margin-bottom: 2px;">${label}</span>
-                    <div style="display: inline-block; max-width: 85%; background: ${bg};
-                                border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.9rem;
-                                line-height: 1.5; color: #2c3e50; text-align: left;">
-                        ${turn.content.replace(/\n/g, '<br>')}
-                    </div>
-                </div>`;
-            });
-        }
-        transcriptEl.innerHTML = html;
+        // Build transcript with message-by-message reveal
+        window.buildTranscriptReveal(
+            content.SCRIPTED_CONVERSATION || [],
+            document.getElementById('task1Transcript'),
+            document.getElementById('task1Step2Btn')
+        );
     }
 
     // ── Step navigation ──────────────────────────────────────────────────────
@@ -432,6 +443,8 @@
     document.getElementById('task1Step0Btn').addEventListener('click', () => showStep(1));
     document.getElementById('task1Step1BackBtn').addEventListener('click', () => showStep(0));
     document.getElementById('task1Step2BackBtn').addEventListener('click', () => showStep(1));
+    document.getElementById('task1Step2Btn').addEventListener('click', () => showStep(3));
+    document.getElementById('task1Step3BackBtn').addEventListener('click', () => showStep(2));
 
     // ── Part A validation ────────────────────────────────────────────────────
     function checkPartA() {

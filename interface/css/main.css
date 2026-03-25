@@ -2318,3 +2318,87 @@ body {
     animation: btn-activate 0.4s ease;
 }
 
+/* ── Message (transcript) reveal ──────────────────────────────────────── */
+
+.message-reveal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.message-block {
+    position: relative;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: background 0.3s;
+}
+
+.message-block .message-bubble {
+    filter: blur(6px);
+    user-select: none;
+    transition: filter 0.4s ease;
+}
+
+.message-block .message-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 249, 250, 0.6);
+    border-radius: 8px;
+    cursor: not-allowed;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    gap: 2px;
+}
+
+.message-block .message-overlay .overlay-icon {
+    font-size: 1.1rem;
+    opacity: 0.4;
+}
+
+.message-block .message-overlay .overlay-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.message-block.next {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.04);
+    animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+.message-block.next .message-overlay {
+    cursor: pointer;
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.message-block.next .message-overlay .overlay-icon {
+    opacity: 0.8;
+    color: #3b82f6;
+}
+
+.message-block.next .message-overlay .overlay-label {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.message-block.revealed .message-bubble {
+    filter: blur(0);
+    user-select: auto;
+}
+
+.message-block.revealed .message-overlay {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.message-block.revealed {
+    border-color: transparent;
+    background: transparent;
+    animation: none;
+}
+

@@ -66,11 +66,47 @@ For the calibration prompt ("You are Alex..."), this produces 5 clean sentences.
 
 6. **Shared utility function.** `buildSentenceReveal(promptText, containerEl, buttonEl)` is reusable across all three tasks, avoiding code duplication.
 
+## Transcript Reveal (Part B)
+
+The same forcing-function pattern is applied to conversation transcripts in Part B of Tasks 1 and 3. This uses a dedicated step (Step 2) inserted between the Part A trait rating and the Part B trait rating.
+
+### Step Flow (Tasks 1 & 3)
+
+| Step | Content | Proceed Button |
+|------|---------|----------------|
+| 0 | System prompt sentence reveal | "Rate this prompt ->" |
+| 1 | Part A trait sliders | "Next: Conversation Transcript ->" |
+| 2 | Transcript message reveal | "Rate this conversation ->" |
+| 3 | Part B trait sliders + submit | "Submit & Continue ->" |
+
+### Unit of Reveal: Per-Message
+
+Each conversation turn (user message or AI response) is one clickable block, preserving the conversational flow as the natural reading unit.
+
+### Framing
+
+The instruction callout emphasizes the connection between system prompt and conversation:
+> "Step through each message in this conversation one at a time. Consider how the AI's responses reflect — or diverge from — the system prompt you rated. Think about how the conversation's flow shapes the AI's behavior turn by turn."
+
+A collapsible system prompt reminder is available on the transcript step so participants can cross-reference.
+
+### Visual Design
+
+Reuses the same patterns as sentence reveal:
+- Chat bubbles start with `filter: blur(6px)`
+- `.message-block.next` gets the pulsing blue border
+- Sequential click-through with progress counter ("3 of 8 messages read")
+- Proceed button gated until all messages revealed
+
+### Function: `buildTranscriptReveal(conversation, containerEl, buttonEl)`
+
+Added to `sentence-reveal.js`. Takes the conversation array, renders each turn as a blurred chat bubble with overlay, enforces sequential reveal, gates the proceed button.
+
 ## Files
 
-- `interface/js/sentence-reveal.js` — `buildSentenceReveal()` utility (sentence splitting, DOM construction, click handling, button gating)
-- `interface/css/main.css` — `.sentence-reveal-*` styles, `@keyframes pulse-border`, `@keyframes btn-activate`
-- `interface/html/task1-calibration.html` — Step 0 HTML + JS wiring
-- `interface/html/task2-prompt-reading.html` — Prompt display HTML + JS wiring
-- `interface/html/task3-recalibration.html` — Step 0 HTML + JS wiring
+- `interface/js/sentence-reveal.js` — `buildSentenceReveal()` + `buildTranscriptReveal()` utilities
+- `interface/css/main.css` — `.sentence-reveal-*` and `.message-*` styles, `@keyframes pulse-border`, `@keyframes btn-activate`
+- `interface/html/task1-calibration.html` — Steps 0-3 (4-step flow with transcript reveal at Step 2)
+- `interface/html/task2-prompt-reading.html` — Prompt display with sentence reveal
+- `interface/html/task3-recalibration.html` — Steps 0-3 (4-step flow with transcript reveal at Step 2)
 - `interface/index.html` — `<script>` tag loading `sentence-reveal.js`

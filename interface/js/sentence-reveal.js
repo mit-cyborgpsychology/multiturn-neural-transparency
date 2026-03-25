@@ -113,6 +113,108 @@
         wrapper.querySelector('[data-index="0"]').classList.add('next');
     }
 
+    /**
+     * Build a turn-by-turn transcript reveal UI.
+     *
+     * @param {Array<{role:string, content:string}>} conversation — The conversation turns
+     * @param {HTMLElement} containerEl — The element to render into
+     * @param {HTMLElement} buttonEl   — The proceed button to gate
+     */
+    function buildTranscriptReveal(conversation, containerEl, buttonEl) {
+        if (!conversation || conversation.length === 0) {
+            containerEl.innerHTML = '<p style="color:#6c757d; font-style:italic;">No conversation available.</p>';
+            return;
+        }
+
+        const total = conversation.length;
+        let revealedCount = 0;
+
+        // Disable button
+        buttonEl.disabled = true;
+
+        // Clear container
+        containerEl.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-reveal-container';
+
+        conversation.forEach(function (turn, i) {
+            var isUser = turn.role === 'user';
+            var label = isUser ? 'User' : 'AI';
+            var bg = isUser ? '#e3f2fd' : '#f8f9fa';
+            var align = isUser ? 'right' : 'left';
+
+            var block = document.createElement('div');
+            block.className = 'message-block';
+            block.dataset.index = i;
+
+            // The chat bubble (blurred by default via CSS)
+            var bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.style.textAlign = align;
+            bubble.innerHTML =
+                '<span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; ' +
+                'color: #6c757d; display: block; margin-bottom: 2px;">' + label + '</span>' +
+                '<div style="display: inline-block; max-width: 85%; background: ' + bg + '; ' +
+                'border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.9rem; ' +
+                'line-height: 1.5; color: #2c3e50; text-align: left;">' +
+                turn.content.replace(/\n/g, '<br>') + '</div>';
+
+            var overlay = document.createElement('div');
+            overlay.className = 'message-overlay';
+            overlay.innerHTML =
+                '<span class="overlay-icon">\uD83D\uDC41\uFE0F</span>' +
+                '<span class="overlay-label">Click to reveal message ' + (i + 1) + ' of ' + total + '</span>';
+
+            block.appendChild(bubble);
+            block.appendChild(overlay);
+            wrapper.appendChild(block);
+
+            // Click handler
+            overlay.addEventListener('click', function () {
+                if (!block.classList.contains('next')) return;
+
+                block.classList.remove('next');
+                block.classList.add('revealed');
+                revealedCount++;
+
+                updateProgress();
+
+                if (i + 1 < total) {
+                    var nextBlock = wrapper.querySelector('[data-index="' + (i + 1) + '"]');
+                    nextBlock.classList.add('next');
+                }
+
+                if (revealedCount === total) {
+                    buttonEl.disabled = false;
+                    buttonEl.classList.add('btn-just-enabled');
+                    setTimeout(function () { buttonEl.classList.remove('btn-just-enabled'); }, 500);
+                }
+            });
+        });
+
+        containerEl.appendChild(wrapper);
+
+        // Progress indicator
+        var progress = document.createElement('div');
+        progress.className = 'sentence-reveal-progress';
+        progress.textContent = '0 of ' + total + ' messages read';
+        containerEl.appendChild(progress);
+
+        function updateProgress() {
+            if (revealedCount === total) {
+                progress.textContent = 'All ' + total + ' messages read \u2014 you may now proceed.';
+                progress.classList.add('complete');
+            } else {
+                progress.textContent = revealedCount + ' of ' + total + ' messages read';
+            }
+        }
+
+        // Mark first message as next
+        wrapper.querySelector('[data-index="0"]').classList.add('next');
+    }
+
     // Expose globally
     window.buildSentenceReveal = buildSentenceReveal;
+    window.buildTranscriptReveal = buildTranscriptReveal;
 })();
