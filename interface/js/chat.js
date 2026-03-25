@@ -228,7 +228,6 @@ function initializeDynamicInterface() {
         systemPromptInput.val(calibrationPrompt).prop('readonly', true);
 
         // Hide editing controls — prompt is pre-determined
-        $('#submitPromptBtn').hide();
         $('#characterCounter').hide();
         $('#resetConfig').hide();
 
@@ -346,82 +345,6 @@ function initializeDynamicInterface() {
             // Disable Start Chat until persona is checked
             $('#startChatBtn').prop('disabled', true);
         }
-
-        // Submit Prompt button - triggers survey
-        $('#submitPromptBtn').on('click', function() {
-            const systemPrompt = $('#systemPromptInput').val();
-            
-            if (!systemPrompt.trim()) {
-                alert('Please enter a system prompt first.');
-                return;
-            }
-            
-            // Check minimum length unless bypassed
-            if (!shortenPrompt && systemPrompt.length < MIN_CHAR_LENGTH) {
-                alert(`Please enter at least ${MIN_CHAR_LENGTH} characters. Current length: ${systemPrompt.length}`);
-                return;
-            }
-            
-            // Mark system prompt as submitted
-            window.systemPromptSubmitted = true;
-            window.promptHasChangedSinceSubmit = false; // Reset change tracking
-            
-            // Reset persona checked flag since we have a new/updated prompt
-            window.personaCheckedForCurrentPrompt = false;
-            
-            // Keep Start Chat disabled until persona is checked (or auto-unlocked in no-viz)
-            $('#startChatBtn').prop('disabled', true);
-            
-            // Check if survey was already completed OR if skipSurvey mode is on
-            const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
-            const skipSurvey = window.experimentSettings.skipSurvey;
-            const visualizationCondition = window.experimentSettings.visualizationCondition;
-            const isDemoMode = window.experimentSettings.demo;
-            
-            if (surveyCompleted || skipSurvey) {
-                if (skipSurvey) {
-                    localStorage.setItem('preTaskSurveyCompleted', 'true');
-                    if (isDemoMode) {
-                        console.log('🎬 Demo mode: Skipping pre-task survey, proceeding to visualization');
-                    }
-                }
-                
-                // Hide Submit button
-                $('#submitPromptBtn').hide();
-                
-                // Check visualization condition
-                if (visualizationCondition === 0) {
-                    // NO-VIZ: Auto-submit flow
-                    // Keep placeholder visible for trait definitions
-                    $('#initialPlaceholder').show();
-                    autoSubmitPersonaCheck(systemPrompt);
-                    // Enable interface buttons (autoSubmitPersonaCheck handles Start Chat)
-                    enableInterfaceButtons();
-                } else {
-                    // VIZ: Show Check Persona buttons
-                    $('.persona-check-buttons').show();
-                    $('#initialPlaceholder').show();
-                    $('#initialPlaceholder').html(`
-                        <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                            <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to analyze and enable chat</p>
-                        </div>
-                    `);
-                    // Enable interface buttons (except Start Chat which requires persona check)
-                    enableInterfaceButtons();
-                    $('#startChatBtn').prop('disabled', true); // Keep disabled until persona check
-                }
-                
-                return;
-            }
-            
-            // Hide placeholder and show survey
-            $('#initialPlaceholder').hide();
-            renderInlineSurvey();
-            
-            // Hide Submit Prompt button after clicking
-            $('#submitPromptBtn').prop('disabled', true).hide();
-        });
 
         // Reset configuration
         resetConfig.on('click', async function() {
