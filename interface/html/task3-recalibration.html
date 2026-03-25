@@ -369,15 +369,19 @@
         document.getElementById('task3RecalibrationPrompt').textContent = content.RECALIBRATION_PROMPT;
         document.getElementById('task3ConvSystemPrompt').textContent    = content.CALIBRATION_PROMPT;
 
-        // Build transcript HTML
+        // Build transcript HTML from the actual live conversation
         const transcriptEl = document.getElementById('task3Transcript');
+        const conversation = window.conversationHistory || [];
         let html = '';
-        content.SCRIPTED_CONVERSATION.forEach(turn => {
-            const isUser = turn.role === 'user';
-            const label  = isUser ? 'You' : 'AI';
-            const bg     = isUser ? '#e3f2fd' : '#f8f9fa';
-            const align  = isUser ? 'right' : 'left';
-            html += `
+        if (conversation.length === 0) {
+            html = '<p style="color:#6c757d; font-style:italic;">No conversation recorded.</p>';
+        } else {
+            conversation.forEach(turn => {
+                const isUser = turn.role === 'user';
+                const label  = isUser ? 'You' : 'AI';
+                const bg     = isUser ? '#e3f2fd' : '#f8f9fa';
+                const align  = isUser ? 'right' : 'left';
+                html += `
                 <div style="margin-bottom: 0.75rem; text-align: ${align};">
                     <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
                                  color: #6c757d; display: block; margin-bottom: 2px;">${label}</span>
@@ -387,7 +391,8 @@
                         ${turn.content.replace(/\n/g, '<br>')}
                     </div>
                 </div>`;
-        });
+            });
+        }
         transcriptEl.innerHTML = html;
     }
 
@@ -447,7 +452,7 @@
             },
             partB: {
                 systemPromptShown:    content ? content.CALIBRATION_PROMPT : '',
-                conversationShown:    content ? content.SCRIPTED_CONVERSATION : [],
+                conversationShown:    window.conversationHistory || [],
                 traitPredictions: {}
             }
         };

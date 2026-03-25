@@ -810,13 +810,9 @@ function initializeDynamicInterface() {
             }
         }
 
-        // Disable user input — conversation is pre-scripted
-        $('#messageInput').prop('disabled', true);
-        $('#sendBtn').prop('disabled', true);
-        $('#messageInput').attr('placeholder', 'Observe the conversation below…');
-
-        // Play scripted conversation after a short pause
-        setTimeout(() => playScriptedConversation(), 1200);
+        // Enable user input for live conversation
+        $('#messageInput').prop('disabled', false);
+        $('#messageInput').attr('placeholder', 'Type your message here...');
     }
 
     // Replay STUDY_CONTENT.SCRIPTED_CONVERSATION with a typing delay between turns
