@@ -45,8 +45,8 @@
         </div>
 
         <!-- System prompt reminder -->
-        <details open style="margin-bottom: 1rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
-            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 600; color: #6c757d;">Show system prompt</summary>
+        <details open class="toggle-prompt" style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Hide system prompt</summary>
             <p id="task3PartAPromptReminder" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
         </details>
 
@@ -206,8 +206,8 @@
         </div>
 
         <!-- System prompt reminder -->
-        <details style="margin-bottom: 1rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
-            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 600; color: #6c757d;">Show system prompt used for this conversation</summary>
+        <details class="toggle-prompt" style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Show system prompt</summary>
             <p id="task3ConvSystemPrompt" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
         </details>
 
@@ -489,8 +489,16 @@
         }
     });
 
+    // ── Toggle summary text on open/close ──────────────────────────────────
+    document.querySelectorAll('.toggle-prompt').forEach(details => {
+        details.addEventListener('toggle', () => {
+            const summary = details.querySelector('summary');
+            summary.textContent = details.open ? 'Hide system prompt' : 'Show system prompt';
+        });
+    });
+
     // ── Init ─────────────────────────────────────────────────────────────────
     showStep(0);
-    console.log('✅ Task 3 recalibration page ready');
+    console.log('Task 3 recalibration page ready');
 })();
 </script>
