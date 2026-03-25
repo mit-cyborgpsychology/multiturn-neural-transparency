@@ -2179,3 +2179,142 @@ body {
     filter: drop-shadow(0 0 7px rgba(255, 111, 0, 0.8));
 }
 
+/* ====================================== */
+/* SENTENCE REVEAL MECHANIC               */
+/* ====================================== */
+
+/* Instruction callout */
+.sentence-reveal-instructions {
+    background: #fff8e1;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+/* Container for all sentence blocks */
+.sentence-reveal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Individual sentence block */
+.sentence-block {
+    position: relative;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background 0.3s;
+    border: 2px solid transparent;
+}
+
+/* The actual sentence text — blurred by default */
+.sentence-block .sentence-text {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: #2c3e50;
+    font-family: 'Courier New', monospace;
+    filter: blur(6px);
+    user-select: none;
+    transition: filter 0.4s ease;
+}
+
+/* Clickable overlay */
+.sentence-block .sentence-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 249, 250, 0.6);
+    border-radius: 6px;
+    cursor: not-allowed;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    gap: 2px;
+}
+
+.sentence-block .sentence-overlay .overlay-icon {
+    font-size: 1.1rem;
+    opacity: 0.4;
+}
+
+.sentence-block .sentence-overlay .overlay-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* "Next" sentence — the one the user should click */
+.sentence-block.next {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.04);
+    animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+.sentence-block.next .sentence-overlay {
+    cursor: pointer;
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.sentence-block.next .sentence-overlay .overlay-icon {
+    opacity: 0.8;
+    color: #3b82f6;
+}
+
+.sentence-block.next .sentence-overlay .overlay-label {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+@keyframes pulse-border {
+    0%, 100% { border-color: #3b82f6; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.15); }
+    50%      { border-color: #60a5fa; box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.2); }
+}
+
+/* Revealed sentence — blur removed, overlay hidden */
+.sentence-block.revealed .sentence-text {
+    filter: blur(0);
+    user-select: auto;
+}
+
+.sentence-block.revealed .sentence-overlay {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sentence-block.revealed {
+    border-color: transparent;
+    background: transparent;
+    animation: none;
+}
+
+/* Progress indicator */
+.sentence-reveal-progress {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.75rem;
+    text-align: center;
+    transition: color 0.3s;
+}
+
+.sentence-reveal-progress.complete {
+    color: #10b981;
+    font-weight: 600;
+}
+
+/* Button enable animation */
+@keyframes btn-activate {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.btn-just-enabled {
+    animation: btn-activate 0.4s ease;
+}
+

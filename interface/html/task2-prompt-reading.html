@@ -9,10 +9,16 @@
         </div>
     </div>
 
+    <div class="sentence-reveal-instructions">
+        <strong>Read critically:</strong> Each sentence of this system prompt is hidden below.
+        Click each one in order to reveal it. As you read, consider what behavior each instruction
+        would produce in an AI. You must read every sentence before you can proceed.
+    </div>
+
     <!-- System Prompt Display -->
     <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
         <p style="margin: 0 0 0.75rem 0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6c757d;">System Prompt</p>
-        <p id="task2SystemPrompt" style="margin: 0; font-size: 0.95rem; line-height: 1.7; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
+        <div id="task2SystemPrompt"></div>
     </div>
 
     <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 16px; border-radius: 4px; margin-bottom: 1.25rem;">
@@ -22,7 +28,7 @@
     </div>
 
     <div style="text-align: right;">
-        <button type="button" class="btn btn-primary" id="task2ProceedBtn">Begin Chat →</button>
+        <button type="button" class="btn btn-primary" id="task2ProceedBtn" disabled>Begin Chat →</button>
     </div>
 
 </div>
@@ -34,7 +40,11 @@
     // ── Populate system prompt ───────────────────────────────────────────────
     const content = window.STUDY_CONTENT;
     if (content) {
-        document.getElementById('task2SystemPrompt').textContent = content.TASK2_PROMPT;
+        window.buildSentenceReveal(
+            content.TASK2_PROMPT,
+            document.getElementById('task2SystemPrompt'),
+            document.getElementById('task2ProceedBtn')
+        );
     }
 
     // ── Proceed to chat ─────────────────────────────────────────────────────

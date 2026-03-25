@@ -25,13 +25,19 @@
             <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Read this different system prompt carefully before rating its behavioral traits.</p>
         </div>
 
+        <div class="sentence-reveal-instructions">
+            <strong>Read critically:</strong> Each sentence of this system prompt is hidden below.
+            Click each one in order to reveal it. As you read, consider what behavior each instruction
+            would produce in an AI. You must read every sentence before you can proceed.
+        </div>
+
         <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
             <p style="margin: 0 0 0.75rem 0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6c757d;">System Prompt</p>
-            <p id="task3RecalibrationPrompt" style="margin: 0; font-size: 0.95rem; line-height: 1.7; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
+            <div id="task3RecalibrationPrompt"></div>
         </div>
 
         <div style="text-align: right;">
-            <button type="button" class="btn btn-primary" id="task3Step0Btn">Rate this prompt →</button>
+            <button type="button" class="btn btn-primary" id="task3Step0Btn" disabled>Rate this prompt →</button>
         </div>
     </div>
 
@@ -372,7 +378,11 @@
 
     // ── Populate prompts ─────────────────────────────────────────────────────
     if (content) {
-        document.getElementById('task3RecalibrationPrompt').textContent    = content.TASK3_PROMPT;
+        window.buildSentenceReveal(
+            content.TASK3_PROMPT,
+            document.getElementById('task3RecalibrationPrompt'),
+            document.getElementById('task3Step0Btn')
+        );
         document.getElementById('task3PartAPromptReminder').textContent  = content.TASK3_PROMPT;
         document.getElementById('task3ConvSystemPrompt').textContent     = content.TASK3_PROMPT;
 
