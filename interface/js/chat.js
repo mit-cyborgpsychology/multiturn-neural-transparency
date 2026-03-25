@@ -214,18 +214,41 @@ function initializeDynamicInterface() {
         initializePreTaskSurvey();
 
         // LocalStorage already cleared at the top of this file for fresh experience
-        
+
         // Get visualization condition from settings
         const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
+
         // IMPORTANT: Log condition explicitly
         console.log('=== SYSTEM PROMPT CONFIG INITIALIZATION ===');
         console.log('Visualization Condition:', visualizationCondition === 0 ? 'CONTROL (no-viz)' : 'EXPERIMENTAL (viz)');
         console.log('==========================================');
 
+        // ── Pre-fill system prompt (users never write their own) ──────────────
+        const calibrationPrompt = window.STUDY_CONTENT ? window.STUDY_CONTENT.CALIBRATION_PROMPT : '';
+        systemPromptInput.val(calibrationPrompt).prop('readonly', true);
+
+        // Hide editing controls — prompt is pre-determined
+        $('#submitPromptBtn').hide();
+        $('#characterCounter').hide();
+        $('#resetConfig').hide();
+
+        // Fire persona analysis in the background immediately for data collection
+        if (calibrationPrompt) {
+            fetch('/api/persona-vector', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ system: calibrationPrompt })
+            }).then(r => r.ok ? r.json() : null).then(data => {
+                if (data) {
+                    window.backgroundPersonaData = data;
+                    console.log('✅ Background persona analysis complete');
+                }
+            }).catch(e => console.warn('Background persona analysis failed:', e));
+        }
+
         // Always start with Check/Test Persona buttons hidden
         $('.persona-check-buttons').hide();
-        
+
         // Hide visualization elements if in control condition
         if (visualizationCondition === 0) {
             // Hide persona visualization container permanently
@@ -235,7 +258,7 @@ function initializeDynamicInterface() {
             // Hide toggle layout button
             $('#toggleLayoutBtn').remove();
         }
-        
+
         // Check for debug mode - hide Test Persona button if not in debug mode
         const urlParams = new URLSearchParams(window.location.search);
         const debugMode = urlParams.get('debug') === 'true';
@@ -950,54 +973,37 @@ function initializeDynamicInterface() {
         chatInterface.hide();
         systemPromptInterface.show();
         
-        // Show prompt instruction modal
-        window.showInstructionModal('prompt');
-        
         // Display selected avatar in header
         const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
         if (selectedAvatar) {
             $('#selectedAvatarImage').attr('src', selectedAvatar);
             $('#selectedAvatarDisplay').show();
         }
-        
-        // Check if prompt has changed since submission
+
         const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
         const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
-        if (window.promptHasChangedSinceSubmit) {
-            // Prompt was edited - require re-submission
-            $('#submitPromptBtn').show();
-            $('.persona-check-buttons').hide();
-            $('#startChatBtn').prop('disabled', true);
-        } else if (surveyCompleted && window.systemPromptSubmitted) {
-            // Survey done and prompt was submitted without changes
-            
+
+        if (surveyCompleted) {
+            // Survey already done — restore post-survey state
             if (visualizationCondition === 0) {
-                // NO-VIZ: No buttons to show, just keep Start Chat state
-                $('#submitPromptBtn').hide();
-                $('.persona-check-buttons').hide();
-                
-                // If persona was already checked, keep Start Chat enabled
+                $('#initialPlaceholder').show();
                 if (window.personaCheckedForCurrentPrompt) {
                     $('#startChatBtn').prop('disabled', false);
-                    // Show trait definitions placeholder (same as after survey)
-                    $('#initialPlaceholder').show();
                     showTraitDefinitionsNoViz();
-                } else {
-                    $('#startChatBtn').prop('disabled', true);
                 }
             } else {
-                // VIZ: Show Check Persona buttons
-                $('#submitPromptBtn').hide();
-                $('.persona-check-buttons').show();
-                
-                // If persona was already checked, keep Start Chat enabled, otherwise disable it
                 if (window.personaCheckedForCurrentPrompt) {
                     $('#startChatBtn').prop('disabled', false);
                 } else {
+                    $('.persona-check-buttons').show();
                     $('#startChatBtn').prop('disabled', true);
                 }
             }
+        } else {
+            // Survey not yet done — auto-show the assessment immediately
+            $('#initialPlaceholder').hide();
+            $('#startChatBtn').prop('disabled', true);
+            renderInlineSurvey();
         }
     }
 
