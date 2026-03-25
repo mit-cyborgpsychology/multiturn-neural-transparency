@@ -1401,25 +1401,24 @@ function renderPersonaBarChart(personaData, containerId = 'personaChart') {
 // ============================================================
 
 /**
- * Finds the turn with the largest single-trait delta vs. the previous turn.
+ * Finds the trait with the largest delta between the last two persona snapshots.
  * Returns { turnIndex, categoryKey, traitKey, delta } or null if < 2 turns.
  */
 function computeBiggestSwing() {
     if (!window.personaHistory || window.personaHistory.length < 2) return null;
+    const i = window.personaHistory.length - 1;
+    const prev = window.personaHistory[i - 1].scores;
+    const curr = window.personaHistory[i].scores;
     let maxDelta = -1;
     let result = null;
-    for (let i = 1; i < window.personaHistory.length; i++) {
-        const prev = window.personaHistory[i - 1].scores;
-        const curr = window.personaHistory[i].scores;
-        for (const [catKey, traits] of Object.entries(curr)) {
-            if (!prev[catKey]) continue;
-            for (const [traitKey, val] of Object.entries(traits)) {
-                const prevVal = (prev[catKey][traitKey] != null) ? prev[catKey][traitKey] : 0;
-                const delta = Math.abs(val - prevVal);
-                if (delta > maxDelta) {
-                    maxDelta = delta;
-                    result = { turnIndex: i, categoryKey: catKey, traitKey, delta };
-                }
+    for (const [catKey, traits] of Object.entries(curr)) {
+        if (!prev[catKey]) continue;
+        for (const [traitKey, val] of Object.entries(traits)) {
+            const prevVal = (prev[catKey][traitKey] != null) ? prev[catKey][traitKey] : 0;
+            const delta = Math.abs(val - prevVal);
+            if (delta > maxDelta) {
+                maxDelta = delta;
+                result = { turnIndex: i, categoryKey: catKey, traitKey, delta };
             }
         }
     }
