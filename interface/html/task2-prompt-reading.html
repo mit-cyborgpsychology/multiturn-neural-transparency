@@ -1,0 +1,63 @@
+<!-- Task 2: System Prompt Reading -->
+<div class="task2-prompt-container" style="max-width: 800px; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- Header -->
+    <div style="margin-bottom: 1.5rem;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1rem;">
+            <h4 style="margin: 0 0 4px 0; font-size: 1.1rem;">Task 2 of 4: AI Conversation</h4>
+            <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">Read the system prompt below carefully before proceeding to the chat.</p>
+        </div>
+    </div>
+
+    <!-- System Prompt Display -->
+    <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6c757d;">System Prompt</p>
+        <p id="task2SystemPrompt" style="margin: 0; font-size: 0.95rem; line-height: 1.7; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
+    </div>
+
+    <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 16px; border-radius: 4px; margin-bottom: 1.25rem;">
+        <p style="margin: 0; font-size: 0.875rem; color: #2e7d32;">
+            <strong>Your task:</strong> Read this system prompt carefully. In the next step you will have a live conversation with an AI configured using this prompt.
+        </p>
+    </div>
+
+    <div style="text-align: right;">
+        <button type="button" class="btn btn-primary" id="task2ProceedBtn">Begin Chat →</button>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── Populate system prompt ───────────────────────────────────────────────
+    const content = window.STUDY_CONTENT;
+    if (content) {
+        document.getElementById('task2SystemPrompt').textContent = content.TASK2_PROMPT;
+    }
+
+    // ── Proceed to chat ─────────────────────────────────────────────────────
+    document.getElementById('task2ProceedBtn').addEventListener('click', async function() {
+        // Save prompt reading record to Firebase
+        try {
+            if (typeof window.writeTaskData === 'function') {
+                await window.writeTaskData('task2PromptReading', {
+                    timestamp: new Date().toISOString(),
+                    systemPromptShown: content ? content.TASK2_PROMPT : ''
+                });
+            }
+        } catch (err) {
+            console.warn('Firebase write failed (continuing anyway):', err);
+        }
+
+        if (typeof window.showTask2Chat === 'function') {
+            window.showTask2Chat();
+        } else {
+            console.warn('window.showTask2Chat not defined');
+        }
+    });
+
+    console.log('Task 2 prompt reading page ready');
+})();
+</script>

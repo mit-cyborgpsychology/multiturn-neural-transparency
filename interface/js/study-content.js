@@ -1,12 +1,14 @@
 /**
  * study-content.js
  *
- * Hardcoded study content: system prompts and scripted conversation
+ * Hardcoded study content: system prompts and scripted conversations
  * for the multi-turn behavioral vectors study.
  *
- * CALIBRATION_PROMPT   — shown in Task 1 (baseline calibration)
- * RECALIBRATION_PROMPT — shown in Task 3-A (new system prompt rating)
- * SCRIPTED_CONVERSATION — replayed in Task 2 chat; shown as transcript in Task 3-B
+ * CALIBRATION_PROMPT        — shown in Task 1 (baseline calibration, Part A & B)
+ * SCRIPTED_CONVERSATION     — shown as transcript in Task 1 Part B
+ * TASK2_PROMPT              — shown in Task 2 (prompt reading + live chat)
+ * TASK3_PROMPT              — shown in Task 3 (recalibration, Part A)
+ * TASK3_CONVERSATION        — shown as transcript in Task 3 Part B
  */
 
 window.STUDY_CONTENT = {
@@ -20,15 +22,15 @@ casual, friendly tone and use humor occasionally to lighten difficult moments. \
 You are always honest with the user, even when it might be uncomfortable, because \
 you believe genuine support matters more than empty reassurance.`,
 
-    // ─── TASK 3-A: RECALIBRATION PROMPT ──────────────────────────────────────
-    RECALIBRATION_PROMPT: `You are Dr. Morgan, a highly professional research \
-assistant specializing in cognitive behavioral techniques. You provide precise, \
-evidence-based information and structure every response with clear logic. You \
-maintain formal language at all times and do not engage in casual conversation. \
-If a user expresses distress, you acknowledge it briefly but redirect them toward \
-practical coping strategies. You never speculate beyond what the data supports.`,
+    // ─── TASK 2: LIVE CHAT SYSTEM PROMPT ─────────────────────────────────────
+    // TODO: Replace with actual Task 2 system prompt
+    TASK2_PROMPT: `[TODO] Replace this with the new system prompt for Task 2 live chat.`,
 
-    // ─── TASK 2 & 3-B: SCRIPTED CONVERSATION ─────────────────────────────────
+    // ─── TASK 3: RECALIBRATION PROMPT ────────────────────────────────────────
+    // TODO: Replace with actual Task 3 system prompt (third distinct prompt)
+    TASK3_PROMPT: `[TODO] Replace this with the third distinct system prompt for Task 3.`,
+
+    // ─── TASK 1 PART B: SCRIPTED CONVERSATION (Alex) ─────────────────────────
     // role: 'user' | 'assistant'
     // The system prompt used for this conversation is CALIBRATION_PROMPT (Alex).
     SCRIPTED_CONVERSATION: [
@@ -71,6 +73,21 @@ practical coping strategies. You never speculate beyond what the data supports.`
         {
             role: 'assistant',
             content: "Yeah. That's a really important thing to recognize about yourself. It takes courage to admit when something isn't sustainable. You don't have to have all the answers right now — but it sounds like some part of you is ready to stop just enduring this and start doing something about it. What would feel like a manageable first step, even a tiny one?"
+        }
+    ],
+
+    // ─── TASK 3 PART B: SCRIPTED CONVERSATION ────────────────────────────────
+    // role: 'user' | 'assistant'
+    // The system prompt used for this conversation is TASK3_PROMPT.
+    // TODO: Replace with actual Task 3 conversation transcript
+    TASK3_CONVERSATION: [
+        {
+            role: 'user',
+            content: '[TODO] Replace with Task 3 conversation transcript message 1.'
+        },
+        {
+            role: 'assistant',
+            content: '[TODO] Replace with Task 3 conversation transcript response 1.'
         }
     ]
 };

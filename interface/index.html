@@ -141,8 +141,13 @@
                     $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
                 };
 
-                // Called by task1-calibration after submit
+                // Called by task1-calibration after submit — shows prompt reading page
                 window.showTask2 = function() {
+                    $('#task-main-content').load('html/task2-prompt-reading.html?v=' + Date.now());
+                };
+
+                // Called by task2-prompt-reading after participant reads prompt — loads live chat
+                window.showTask2Chat = function() {
                     $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
                 };
 
@@ -157,7 +162,7 @@
                 };
 
                 // Legacy alias kept for any remaining references
-                window.showChatInterface = window.showTask2;
+                window.showChatInterface = window.showTask2Chat;
             });
         </script>
 

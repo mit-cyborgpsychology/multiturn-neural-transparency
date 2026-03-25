@@ -233,7 +233,7 @@ function initializeDynamicInterface() {
         console.log('==========================================');
 
         // ── Pre-fill system prompt (users never write their own) ──────────────
-        const calibrationPrompt = window.STUDY_CONTENT ? window.STUDY_CONTENT.CALIBRATION_PROMPT : '';
+        const calibrationPrompt = window.STUDY_CONTENT ? window.STUDY_CONTENT.TASK2_PROMPT : '';
         systemPromptInput.val(calibrationPrompt).prop('readonly', true);
 
         // Hide editing controls — prompt is pre-determined
