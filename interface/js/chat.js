@@ -1472,11 +1472,11 @@ function applyDriftDotHighlight(swing) {
     }, dotDelay);
 }
 
-/** Highlight 3: blink the sunburst outer-ring arc for the most-swung trait */
+/** Highlight 3: blink the sunburst outer-ring arc for the most-swung trait (paths only, not labels) */
 function applySunburstHighlight(swing) {
     const containers = ['#chatPersonaChart', '#personaChart'];
     containers.forEach(sel => {
-        $(`${sel} [data-trait-name]`).each(function() {
+        $(`${sel} path[data-trait-name]`).each(function() {
             const attrName = $(this).attr('data-trait-name') || '';
             const isMatch = attrName.toLowerCase() === swing.traitKey.toLowerCase();
             $(this).toggleClass('highlight-swing-segment', isMatch);

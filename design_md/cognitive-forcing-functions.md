@@ -39,7 +39,9 @@ Comma-separated, any combination. Only active when `visualizationCondition=1`.
 
 6. **Message-turn correlation.** `personaTurnMessageIds[]` maps each persona snapshot back to the user message ID that preceded it, so highlight 1 can target the correct bubble.
 
-7. **Click-through navigation.** Clicking a highlighted message (mode 1) cross-links to the right panel: opens the drift chart to the swung trait, highlights the turn dot, highlights the sunburst segment, and smooth-scrolls the persona panel into view. Works regardless of which highlight modes are active — the click handler always triggers modes 2 + 3.
+7. **Segment-only highlight (mode 3).** The sunburst highlight targets only `path[data-trait-name]` elements, not the surrounding text labels. Both share the `data-trait-name` attribute, so the selector must be scoped to paths.
+
+8. **Click-through navigation.** Clicking a highlighted message (mode 1) cross-links to the right panel: opens the drift chart to the swung trait, highlights the turn dot, highlights the sunburst segment, and smooth-scrolls the persona panel into view. Works regardless of which highlight modes are active — the click handler always triggers modes 2 + 3.
 
 ## Example URLs
 

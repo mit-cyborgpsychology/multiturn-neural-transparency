@@ -2170,9 +2170,9 @@ body {
     filter: drop-shadow(0 0 5px rgba(255, 111, 0, 0.85));
 }
 
-/* Highlight 3 — sunburst outer-ring trait arc (SVG path) */
-#chatPersonaChart [data-trait-name].highlight-swing-segment,
-#personaChart [data-trait-name].highlight-swing-segment {
+/* Highlight 3 — sunburst outer-ring trait arc only (not labels) */
+#chatPersonaChart path[data-trait-name].highlight-swing-segment,
+#personaChart path[data-trait-name].highlight-swing-segment {
     stroke: #FF6F00 !important;
     stroke-width: 4 !important;
     animation: swing-pulse 1.1s ease-in-out infinite;
