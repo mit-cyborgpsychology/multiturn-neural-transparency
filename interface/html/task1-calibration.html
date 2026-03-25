@@ -44,6 +44,12 @@
             <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Predict the activation level (0–10) for each trait based on the system prompt you just read.</p>
         </div>
 
+        <!-- System prompt reminder -->
+        <details open style="margin-bottom: 1rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 600; color: #6c757d;">Show system prompt</summary>
+            <p id="task1PartAPromptReminder" style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;"></p>
+        </details>
+
         <div class="trait-predictions-container" id="task1TraitsA">
 
             <div class="trait-pair"><div class="trait-item">
@@ -366,8 +372,9 @@
 
     // ── Populate prompts ─────────────────────────────────────────────────────
     if (content) {
-        document.getElementById('task1CalibrationPrompt').textContent = content.CALIBRATION_PROMPT;
-        document.getElementById('task1ConvSystemPrompt').textContent  = content.CALIBRATION_PROMPT;
+        document.getElementById('task1CalibrationPrompt').textContent    = content.CALIBRATION_PROMPT;
+        document.getElementById('task1PartAPromptReminder').textContent = content.CALIBRATION_PROMPT;
+        document.getElementById('task1ConvSystemPrompt').textContent    = content.CALIBRATION_PROMPT;
 
         // Build transcript HTML from SCRIPTED_CONVERSATION
         const transcriptEl = document.getElementById('task1Transcript');
