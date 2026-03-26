@@ -137,6 +137,25 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .style('z-index', '10000')
         .style('max-width', '250px');
 
+    // Draw activation reference rings (50% and 100%)
+    const midActivationR = middleRadius + 0.5 * (maxOuterRadius - middleRadius);
+    [{r: midActivationR, label: '50%'}, {r: maxOuterRadius, label: '100%'}].forEach(ring => {
+        g.append('circle')
+            .attr('r', ring.r)
+            .attr('fill', 'none')
+            .attr('stroke', '#999')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '4,5')
+            .attr('opacity', 0.35);
+        g.append('text')
+            .attr('x', 5)
+            .attr('y', -ring.r - 4)
+            .attr('fill', '#999')
+            .attr('font-size', Math.max(8, radius * 0.022))
+            .attr('font-weight', 600)
+            .text(ring.label);
+    });
+
     // Draw category arcs (inner ring)
     categories.forEach((category, catIndex) => {
         const categoryArc = g.append('path')
@@ -280,6 +299,37 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
             .style('fill', '#666')
             .text(config.centerSubLabel);
     }
+
+    // Draw curved category labels inside the inner circle
+    const labelRadius = innerRadius * 0.62;
+    categories.forEach(category => {
+        // Calculate the midpoint angle of this category (D3 convention: 0 = top, clockwise)
+        const midD3 = (category.startAngle + category.endAngle) / 2;
+        // Convert to math angle for arc path: mathAngle = D3angle - PI/2
+        const midMath = midD3 - Math.PI / 2;
+        const span = 1.1; // arc span for the text path
+        const sa = midMath - span / 2;
+        const ea = midMath + span / 2;
+        // Flip text if it would be upside down (bottom half)
+        const flip = midMath > 0 && midMath < Math.PI;
+        const [a1, a2, sw] = flip ? [ea, sa, 0] : [sa, ea, 1];
+        const pathId = `cat-label-${containerId}-${category.name.replace(/\s+/g, '-')}`;
+
+        g.append('defs').append('path').attr('id', pathId)
+            .attr('d', `M ${labelRadius * Math.cos(a1)},${labelRadius * Math.sin(a1)} A ${labelRadius},${labelRadius} 0 0 ${sw} ${labelRadius * Math.cos(a2)},${labelRadius * Math.sin(a2)}`);
+
+        g.append('text')
+            .attr('fill', category.color)
+            .attr('font-size', Math.max(8, radius * 0.022))
+            .attr('font-weight', 700)
+            .attr('letter-spacing', '2.5px')
+            .attr('opacity', 0.85)
+            .append('textPath')
+                .attr('href', `#${pathId}`)
+                .attr('startOffset', '50%')
+                .attr('text-anchor', 'middle')
+                .text(category.name.toUpperCase());
+    });
 
     // Animate on load
     if (config.animate) {
