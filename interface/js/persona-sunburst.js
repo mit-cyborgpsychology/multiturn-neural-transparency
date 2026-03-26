@@ -261,36 +261,6 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .attr('stroke-width', Math.max(3, radius * 0.01));
 
 
-    // Draw curved category labels inside the inner circle
-    const labelRadius = innerRadius * 0.62;
-    categories.forEach(category => {
-        // Calculate the midpoint angle of this category (D3 convention: 0 = top, clockwise)
-        const midD3 = (category.startAngle + category.endAngle) / 2;
-        // Convert to math angle for arc path: mathAngle = D3angle - PI/2
-        const midMath = midD3 - Math.PI / 2;
-        const span = 1.1; // arc span for the text path
-        const sa = midMath - span / 2;
-        const ea = midMath + span / 2;
-        // Flip text if it would be upside down (bottom half)
-        const flip = midMath > 0 && midMath < Math.PI;
-        const [a1, a2, sw] = flip ? [ea, sa, 0] : [sa, ea, 1];
-        const pathId = `cat-label-${containerId}-${category.name.replace(/\s+/g, '-')}`;
-
-        g.append('defs').append('path').attr('id', pathId)
-            .attr('d', `M ${labelRadius * Math.cos(a1)},${labelRadius * Math.sin(a1)} A ${labelRadius},${labelRadius} 0 0 ${sw} ${labelRadius * Math.cos(a2)},${labelRadius * Math.sin(a2)}`);
-
-        g.append('text')
-            .attr('fill', category.color)
-            .attr('font-size', Math.max(8, radius * 0.022))
-            .attr('font-weight', 700)
-            .attr('letter-spacing', '2.5px')
-            .attr('opacity', 0.85)
-            .append('textPath')
-                .attr('href', `#${pathId}`)
-                .attr('startOffset', '50%')
-                .attr('text-anchor', 'middle')
-                .text(category.name.toUpperCase());
-    });
 
     // Animate on load
     if (config.animate) {
