@@ -138,8 +138,11 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .style('max-width', '250px');
 
     // Draw activation reference rings (50% and 100%)
-    const midActivationR = middleRadius + 0.5 * (maxOuterRadius - middleRadius);
-    [{r: midActivationR, label: '50%'}, {r: maxOuterRadius, label: '100%'}].forEach(ring => {
+    // Rings must match the actual bar extension formula: middleRadius + value * growthMultiplier * (maxOuterRadius - middleRadius)
+    const growthMult = config.growthMultiplier !== undefined ? config.growthMultiplier : 1.25;
+    const fullActivationR = middleRadius + 1.0 * growthMult * (maxOuterRadius - middleRadius);
+    const halfActivationR = middleRadius + 0.5 * growthMult * (maxOuterRadius - middleRadius);
+    [{r: halfActivationR, label: '50%'}, {r: fullActivationR, label: '100%'}].forEach(ring => {
         g.append('circle')
             .attr('r', ring.r)
             .attr('fill', 'none')

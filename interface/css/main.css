@@ -561,8 +561,7 @@ body {
 }
 
 #chatPersonaChart {
-    flex-shrink: 0;
-    min-height: 50vh;
+    flex: 1 0 auto;
     border: none;
     border-radius: 0;
     padding: 0.75rem;
@@ -570,6 +569,11 @@ body {
     align-items: center;
     justify-content: center;
     overflow: visible;
+}
+
+#chatPersonaChart svg {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 #traitDriftPanel {
