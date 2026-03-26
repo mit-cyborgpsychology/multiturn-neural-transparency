@@ -491,10 +491,16 @@
         el.addEventListener('change', checkPartB)
     );
 
-    // ── Skip mode: unlock all gated buttons immediately ───────────────────────
+    // ── Skip mode: unlock all gated buttons and auto-fill traits ─────────────
     if (window.experimentSettings && window.experimentSettings.skip) {
         document.getElementById('task3Step1Btn').disabled = false;
         document.getElementById('task3SubmitBtn').disabled = false;
+        TRAITS.forEach(t => {
+            const a = document.querySelector(`input[name="t3a_${t}"][value="5"]`);
+            const b = document.querySelector(`input[name="t3b_${t}"][value="5"]`);
+            if (a) a.checked = true;
+            if (b) b.checked = true;
+        });
     }
 
     // ── Submit ───────────────────────────────────────────────────────────────
