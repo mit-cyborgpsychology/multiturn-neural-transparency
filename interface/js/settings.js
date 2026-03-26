@@ -67,6 +67,14 @@ function getExperimentSettingsFromURL() {
         skipSurvey: isDemoMode || urlParams.get('skipSurvey') === 'true',
         
         /**
+         * Skip mode - auto-reveals all sentence/transcript reveals and unlocks all
+         * gated next buttons immediately on load (for quick navigation during testing)
+         * URL: ?skip=true
+         * Default: false
+         */
+        skip: urlParams.get('skip') === 'true',
+
+        /**
          * Shorten system prompt minimum character requirement (bypasses 100 char minimum)
          * URL: ?shortenPrompt=true
          * Default: false
@@ -155,6 +163,7 @@ let defaultSettings = {
     debug: false,
     debugTimer: false,
     fresh: false,
+    skip: false,
     skipSurvey: false,
     shortenPrompt: false,
     sunburst: false,

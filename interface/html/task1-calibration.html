@@ -491,6 +491,12 @@
         el.addEventListener('change', checkPartB)
     );
 
+    // ── Skip mode: unlock all gated buttons immediately ───────────────────────
+    if (window.experimentSettings && window.experimentSettings.skip) {
+        document.getElementById('task1Step1Btn').disabled = false;
+        document.getElementById('task1SubmitBtn').disabled = false;
+    }
+
     // ── Submit ───────────────────────────────────────────────────────────────
     document.getElementById('task1SubmitBtn').addEventListener('click', async function() {
         this.disabled = true;

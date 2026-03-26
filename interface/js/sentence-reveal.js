@@ -35,9 +35,10 @@
         const sentences = splitIntoSentences(promptText);
         const total = sentences.length;
         let revealedCount = 0;
+        const skipMode = window.experimentSettings && window.experimentSettings.skip;
 
-        // Disable button
-        buttonEl.disabled = true;
+        // Disable button (unless skip mode)
+        buttonEl.disabled = !skipMode;
 
         // Clear container and build structure
         containerEl.innerHTML = '';
@@ -109,8 +110,18 @@
             }
         }
 
-        // Mark first sentence as next
-        wrapper.querySelector('[data-index="0"]').classList.add('next');
+        if (skipMode) {
+            // Reveal all sentences immediately
+            wrapper.querySelectorAll('.sentence-block').forEach(block => {
+                block.classList.add('revealed');
+                block.classList.remove('next');
+            });
+            revealedCount = total;
+            updateProgress();
+        } else {
+            // Mark first sentence as next
+            wrapper.querySelector('[data-index="0"]').classList.add('next');
+        }
     }
 
     /**
@@ -128,9 +139,10 @@
 
         const total = conversation.length;
         let revealedCount = 0;
+        const skipMode = window.experimentSettings && window.experimentSettings.skip;
 
-        // Disable button
-        buttonEl.disabled = true;
+        // Disable button (unless skip mode)
+        buttonEl.disabled = !skipMode;
 
         // Clear container
         containerEl.innerHTML = '';
@@ -210,8 +222,18 @@
             }
         }
 
-        // Mark first message as next
-        wrapper.querySelector('[data-index="0"]').classList.add('next');
+        if (skipMode) {
+            // Reveal all messages immediately
+            wrapper.querySelectorAll('.message-block').forEach(function (block) {
+                block.classList.add('revealed');
+                block.classList.remove('next');
+            });
+            revealedCount = total;
+            updateProgress();
+        } else {
+            // Mark first message as next
+            wrapper.querySelector('[data-index="0"]').classList.add('next');
+        }
     }
 
     // Expose globally
