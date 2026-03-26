@@ -218,6 +218,38 @@ body {
     line-height: 1.6;
 }
 
+/* Full-viewport mode — applied when chat interface is active */
+body.chat-active {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.chat-active .site-header {
+    flex-shrink: 0;
+}
+
+body.chat-active #super-container,
+body.chat-active .main-container,
+body.chat-active .page-content,
+body.chat-active #task-main-content,
+body.chat-active .dynamic-chat-container {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+    min-height: 0;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .site-header {
     background-color: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
@@ -534,11 +566,10 @@ body {
 
 /* Enhanced Chat Interface Styles */
 .chat-interface {
-    height: 100vh;
+    flex: 1 1 0;
+    min-height: 0;
     display: flex;
     flex-direction: row;
-    background-color: var(--bg-secondary);
-    border-radius: var(--radius-lg);
     overflow: hidden;
 }
 
@@ -550,25 +581,25 @@ body {
 }
 
 .chat-right-panel {
-    width: 50%;
-    min-width: 400px;
+    width: 55%;
+    min-width: 420px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background-color: var(--bg-primary);
     border-right: 1px solid var(--border-color);
 }
 
 #chatPersonaChart {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-height: 0;
     border: none;
     border-radius: 0;
-    padding: 0.75rem;
+    padding: 0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: visible;
+    overflow: hidden;
 }
 
 #chatPersonaChart svg {
@@ -577,8 +608,10 @@ body {
 }
 
 #traitDriftPanel {
-    flex: 1;
+    flex: 0 0 auto;
+    max-height: 35%;
     overflow-y: auto;
+    min-height: 0;
 }
 
 .chat-panel-header {
@@ -596,7 +629,6 @@ body {
 .chat-persona-header {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-secondary);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -753,7 +785,7 @@ body {
 .input-container {
     padding: 1rem;
     border-top: 1px solid var(--border-color);
-    background-color: var(--bg-secondary);
+    flex-shrink: 0;
 }
 
 .input-wrapper {
@@ -1106,7 +1138,7 @@ body {
 }
 
 .dynamic-chat-container {
-    min-height: 60vh;
+    /* min-height removed — flex chain from body.chat-active controls sizing */
 }
 
 /* Persona Vector Visualization Styles */
@@ -1140,7 +1172,6 @@ body {
 .trait-drift-panel {
     border-top: 1px solid var(--border-color);
     padding: 1rem;
-    background-color: var(--bg-primary);
 }
 
 .drift-header {
@@ -1475,15 +1506,15 @@ body {
     }
 
     .chat-interface {
-        height: 60vh;
         flex-direction: column;
     }
 
     .chat-right-panel {
         width: 100%;
+        min-width: unset;
+        flex: 0 0 45vh;
         border-right: none;
-        border-top: 1px solid var(--border-color);
-        max-height: 250px;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .input-actions {

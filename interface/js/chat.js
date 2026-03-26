@@ -800,6 +800,7 @@ function initializeDynamicInterface() {
         avatarSelectionInterface.hide();
         systemPromptInterface.hide();
         chatInterface.show();
+        document.body.classList.add('chat-active');
 
         // Show chat instruction modal
         window.showInstructionModal('chat');
@@ -893,6 +894,7 @@ function initializeDynamicInterface() {
     function switchToSystemPromptConfig() {
         avatarSelectionInterface.hide();
         chatInterface.hide();
+        document.body.classList.remove('chat-active');
         systemPromptInterface.show();
         
         // Display selected avatar in header
@@ -1318,16 +1320,20 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
 
         // Create container for sunburst (unique child ID per container)
         const sunburstId = `${containerId}Sunburst`;
-        personaChart.html(`<div id="${sunburstId}"></div>`);
+        personaChart.html(`<div id="${sunburstId}" style="width:100%;height:100%;"></div>`);
 
         // Create the sunburst visualization
         setTimeout(() => {
             if (typeof createPersonaSunburst === 'function') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
+                const chartEl = document.getElementById(containerId);
+                const w = chartEl ? chartEl.clientWidth : 700;
+                const h = chartEl ? chartEl.clientHeight : 700;
+                const dim = Math.max(Math.min(w, h), 300) || 700;
                 createPersonaSunburst(personaData, sunburstId, {
-                    width: 700,
-                    height: 700,
+                    width: dim,
+                    height: dim,
                     innerRadius: 65,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
