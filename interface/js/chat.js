@@ -26,8 +26,6 @@ sessionStorage.setItem('firebaseUserId', preservedFirebaseUserId || firebaseUser
 
 // Clear localStorage states that would prevent fresh experience on reload
 localStorage.removeItem('selectedAvatar');
-localStorage.removeItem('preTaskSurveyCompleted');
-localStorage.removeItem('preTaskSurveyData');
 
 // Write a simple test case to the database
 let studyId;
@@ -219,9 +217,6 @@ function initializeDynamicInterface() {
         // Get the system prompt input
         const systemPromptInput = $('#systemPromptInput');
 
-        // Initialize survey
-        initializePreTaskSurvey();
-
         // LocalStorage already cleared at the top of this file for fresh experience
 
         // Get visualization condition from settings
@@ -325,35 +320,20 @@ function initializeDynamicInterface() {
         // Update character counter on input
         systemPromptInput.on('input', updateCharacterCounter);
 
-        // Check if survey has been completed
-        const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
-        
-        if (!surveyCompleted) {
-            // Disable all buttons except Submit Prompt
-            disableInterfaceButtons();
-            // Show initial placeholder (survey will show after Submit Prompt clicked)
-            $('#initialPlaceholder').show();
-            $('#preTaskSurveyContainer').hide();
-            $('#personaVisualization').hide();
-            // Explicitly hide Check/Test Persona buttons until survey is complete
-            $('.persona-check-buttons').hide();
-        } else {
-            // Survey already completed - show Submit Prompt initially so user can submit their prompt
-            $('#submitPromptBtn').show();
-            $('#initialPlaceholder').show();
-            $('#initialPlaceholder').html(`
-                <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                    <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to continue</p>
-                </div>
-            `);
-            $('#preTaskSurveyContainer').hide();
-            $('#personaVisualization').hide();
-            // Hide Check/Test Persona buttons initially
-            $('.persona-check-buttons').hide();
-            // Disable Start Chat until persona is checked
-            $('#startChatBtn').prop('disabled', true);
-        }
+        // Show Submit Prompt initially so user can submit their prompt
+        $('#submitPromptBtn').show();
+        $('#initialPlaceholder').show();
+        $('#initialPlaceholder').html(`
+            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
+                <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to continue</p>
+            </div>
+        `);
+        $('#personaVisualization').hide();
+        // Hide Check/Test Persona buttons initially
+        $('.persona-check-buttons').hide();
+        // Disable Start Chat until persona is checked
+        $('#startChatBtn').prop('disabled', true);
 
         // Reset configuration
         resetConfig.on('click', async function() {
@@ -922,30 +902,21 @@ function initializeDynamicInterface() {
             $('#selectedAvatarDisplay').show();
         }
 
-        const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
         const visualizationCondition = window.experimentSettings.visualizationCondition;
 
-        if (surveyCompleted) {
-            // Survey already done — restore post-survey state
-            if (visualizationCondition === 0) {
-                $('#initialPlaceholder').show();
-                if (window.personaCheckedForCurrentPrompt) {
-                    $('#startChatBtn').prop('disabled', false);
-                    showTraitDefinitionsNoViz();
-                }
-            } else {
-                if (window.personaCheckedForCurrentPrompt) {
-                    $('#startChatBtn').prop('disabled', false);
-                } else {
-                    $('.persona-check-buttons').show();
-                    $('#startChatBtn').prop('disabled', true);
-                }
+        if (visualizationCondition === 0) {
+            $('#initialPlaceholder').show();
+            if (window.personaCheckedForCurrentPrompt) {
+                $('#startChatBtn').prop('disabled', false);
+                showTraitDefinitionsNoViz();
             }
         } else {
-            // Survey not yet done — auto-show the assessment immediately
-            $('#initialPlaceholder').hide();
-            $('#startChatBtn').prop('disabled', true);
-            renderInlineSurvey();
+            if (window.personaCheckedForCurrentPrompt) {
+                $('#startChatBtn').prop('disabled', false);
+            } else {
+                $('.persona-check-buttons').show();
+                $('#startChatBtn').prop('disabled', true);
+            }
         }
     }
 
@@ -1698,284 +1669,7 @@ function testPersonaWithMockData() {
     }, 800); // Simulate network delay
 }
 
-// ============================================
-// PRE-TASK SURVEY FUNCTIONS
-// ============================================
 
-// Initialize pre-task survey (called on page load)
-function initializePreTaskSurvey() {
-    // This is now just a placeholder - actual event listeners are set up
-    // in setupSurveyEventListeners() after HTML is inserted
-}
-
-// Set up survey event listeners (called after HTML is inserted)
-function setupSurveyEventListeners() {
-    const phase1 = $('#surveyPhase1');
-    const phase2 = $('#surveyPhase2');
-    const phase3 = $('#surveyPhase3');
-    
-    const phase1ProceedBtn = $('#phase1ProceedBtn');
-    const phase2ProceedBtn = $('#phase2ProceedBtn');
-    const phase3ProceedBtn = $('#phase3ProceedBtn');
-    
-    // Phase 1: Listen to radio button changes
-    $('input[name="phase1_q1"], input[name="phase1_q2"]').on('change', function() {
-        const q1Answered = $('input[name="phase1_q1"]:checked').length > 0;
-        const q2Answered = $('input[name="phase1_q2"]:checked').length > 0;
-        const bothAnswered = q1Answered && q2Answered;
-        phase1ProceedBtn.prop('disabled', !bothAnswered);
-    });
-    
-    // Phase 1 Proceed button
-    phase1ProceedBtn.on('click', async function() {
-        
-        // Save Phase 1 data to Firebase
-        await savePhase1Data();
-        
-        phase1.hide();
-        phase2.show();
-    });
-    
-    // Phase 2: Listen to all trait radio buttons
-    const traitNames = [
-        'trait_empathy',
-        'trait_encouraging',
-        'trait_sociality',
-        'trait_honesty',
-        'trait_hallucination',
-        'trait_toxicity',
-        'trait_funniness',
-        'trait_formality'
-    ];
-    
-    traitNames.forEach(traitName => {
-        $(`input[name="${traitName}"]`).on('change', validatePhase2);
-    });
-    
-    function validatePhase2() {
-        const allAnswered = traitNames.every(traitName => {
-            return $(`input[name="${traitName}"]:checked`).length > 0;
-        });
-        phase2ProceedBtn.prop('disabled', !allAnswered);
-    }
-    
-    // Phase 2 Proceed button
-    phase2ProceedBtn.on('click', async function() {
-        // Save Phase 2 data to Firebase
-        await savePhase2Data();
-        
-        phase2.hide();
-        phase3.show();
-    });
-    
-    // Phase 3: Listen to trust question
-    $('input[name="phase3_trust"]').on('change', function() {
-        const trustAnswered = $('input[name="phase3_trust"]:checked').length > 0;
-        phase3ProceedBtn.prop('disabled', !trustAnswered);
-    });
-    
-    // Phase 3 Proceed button - save data and close
-    phase3ProceedBtn.on('click', async function() {
-        // Save Phase 3 data to Firebase
-        await savePhase3Data();
-        
-        closePreTaskSurvey();
-    });
-}
-
-// Render survey inline in the right column
-function renderInlineSurvey() {
-    // Show survey instruction modal
-    window.showInstructionModal('survey');
-    
-    // Get survey phases from hidden source
-    const surveySource = $('#surveyPhasesSource .survey-phases-wrapper');
-    
-    if (surveySource.length > 0) {
-        const surveyHTML = surveySource.html();
-        $('#surveyPhasesContainer').html(surveyHTML);
-        
-        // NOW set up event listeners after HTML is in place
-        setupSurveyEventListeners();
-    } else {
-        console.error('Survey source not found!');
-    }
-    
-    // Show survey container
-    $('#preTaskSurveyContainer').show();
-    
-    // Reset to phase 1
-    setTimeout(() => {
-        $('#surveyPhase1').show();
-        $('#surveyPhase2').hide();
-        $('#surveyPhase3').hide();
-    }, 100);
-}
-
-// Close/hide inline survey
-function closePreTaskSurvey() {
-    // Hide survey container
-    $('#preTaskSurveyContainer').hide();
-    
-    // Mark survey as completed
-    localStorage.setItem('preTaskSurveyCompleted', 'true');
-    
-    // Enable interface buttons now that survey is complete
-    enableInterfaceButtons();
-    
-    // Check visualization condition to determine next step
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
-    
-    // Log the condition being applied after survey
-    console.log('=== POST-SURVEY: APPLYING CONDITION ===');
-    console.log('Condition:', visualizationCondition === 0 ? 'CONTROL (no-viz)' : 'EXPERIMENTAL (viz)');
-    console.log('======================================');
-    
-    if (visualizationCondition === 0) {
-        // NO-VIZ CONDITION: Auto-submit persona check
-        // Show placeholder while processing
-        $('#initialPlaceholder').show();
-        $('#initialPlaceholder').html(`
-            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                <p style="margin: 0; font-size: 1.1rem;">Processing your system prompt...</p>
-            </div>
-        `);
-        
-        // Get the system prompt and auto-submit
-        const systemPrompt = $('#systemPromptInput').val();
-        autoSubmitPersonaCheck(systemPrompt);
-        
-    } else {
-        // VIZ CONDITION: Show Check Persona buttons
-        // Show placeholder in persona area with instructions
-        $('#personaVisualization').hide();
-        $('#initialPlaceholder').show();
-        $('#initialPlaceholder').html(`
-            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to analyze and enable chat</p>
-            </div>
-        `);
-        
-        // But keep Start Chat disabled until persona is checked
-        $('#startChatBtn').prop('disabled', true);
-        
-        // Show Check Persona and Test Persona buttons
-        $('.persona-check-buttons').show();
-    }
-}
-
-// Disable interface buttons (called before survey)
-function disableInterfaceButtons() {
-    $('#startChatBtn').prop('disabled', true);
-    $('#resetConfig').prop('disabled', true);
-    $('#checkPersonaBtn').prop('disabled', true);
-    $('#testPersonaBtn').prop('disabled', true);
-    // Submit Prompt button state is controlled by character counter
-    // Don't override it here - let updateCharacterCounter() handle it
-}
-
-// Enable interface buttons (called after survey)
-function enableInterfaceButtons() {
-    $('#startChatBtn').prop('disabled', false);
-    $('#resetConfig').prop('disabled', false);
-    $('#checkPersonaBtn').prop('disabled', false);
-    $('#testPersonaBtn').prop('disabled', false);
-    // Submit Prompt button already hidden/disabled after use
-}
-
-// Save Phase 1 data to Firebase
-async function savePhase1Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        const systemPrompt = $('#systemPromptInput').val();
-        
-        // Collect Phase 1 responses
-        const phase1Data = {
-            "How well could you predict unintended behaviors from your system prompt?": parseInt($('input[name="phase1_q1"]:checked').val()),
-            "How well could you predict negative unintended behaviors from your system prompt?": parseInt($('input[name="phase1_q2"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase1WriteData = {
-            responses: phase1Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase1`, phase1WriteData);
-        
-        // Save metadata on first phase
-        const metadataWriteData = {
-            system_prompt: systemPrompt,
-            start_timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/metadata`, metadataWriteData);
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 1 data:', error);
-    }
-}
-
-// Save Phase 2 data to Firebase
-async function savePhase2Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        // Collect Phase 2 responses (trait predictions)
-        const phase2Data = {
-            "Empathy": parseInt($('input[name="trait_empathy"]:checked').val()),
-            "Encouraging": parseInt($('input[name="trait_encouraging"]:checked').val()),
-            "Sociality": parseInt($('input[name="trait_sociality"]:checked').val()),
-            "Honesty": parseInt($('input[name="trait_honesty"]:checked').val()),
-            "Hallucination": parseInt($('input[name="trait_hallucination"]:checked').val()),
-            "Toxicity": parseInt($('input[name="trait_toxicity"]:checked').val()),
-            "Funniness": parseInt($('input[name="trait_funniness"]:checked').val()),
-            "Formality": parseInt($('input[name="trait_formality"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase2WriteData = {
-            responses: phase2Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase2`, phase2WriteData);
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 2 data:', error);
-    }
-}
-
-// Save Phase 3 data to Firebase
-async function savePhase3Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        // Collect Phase 3 response
-        const phase3Data = {
-            "Given the relevant background about unintended model behaviors, how much do you trust this model?": parseInt($('input[name="phase3_trust"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase3WriteData = {
-            responses: phase3Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase3`, phase3WriteData);
-        
-        // Update metadata with completion time
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_timestamp`, timestamp);
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_time`, Date.now());
-        
-        // Mark survey as completed
-        localStorage.setItem('preTaskSurveyCompleted', 'true');
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 3 data:', error);
-    }
-}
 
 // ============================================
 // TIMER FUNCTIONS

@@ -9,16 +9,73 @@
         </div>
     </div>
 
-    <!-- Progress bar: 4 parts -->
+    <!-- Progress bar: 5 parts -->
     <div style="display: flex; gap: 8px; margin-bottom: 1.5rem;">
         <div class="t1-step-dot" data-step="0" style="flex:1; height: 4px; background: #2196F3; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="1" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="2" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="3" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
+        <div class="t1-step-dot" data-step="4" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- STEP 0 — Read system prompt                                            -->
+    <!-- STEP 0 — Pre-survey questions                                          -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <div id="task1PreSurvey" class="task1-step">
+        <div style="margin-bottom: 1rem;">
+            <h5 style="font-weight: 600; margin-bottom: 0.25rem;">Before You Begin</h5>
+            <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Please answer these questions before viewing the calibration materials.</p>
+        </div>
+
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">1. How well could you predict unintended behaviors from an AI system prompt?</label>
+            <div class="likert-scale" style="display: flex; gap: 8px; align-items: center; margin-bottom: 0.25rem;">
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="1" id="t1pre_q1_1"><label for="t1pre_q1_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="2" id="t1pre_q1_2"><label for="t1pre_q1_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="3" id="t1pre_q1_3"><label for="t1pre_q1_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="4" id="t1pre_q1_4"><label for="t1pre_q1_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="5" id="t1pre_q1_5"><label for="t1pre_q1_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="6" id="t1pre_q1_6"><label for="t1pre_q1_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q1" value="7" id="t1pre_q1_7"><label for="t1pre_q1_7">7</label></div>
+            </div>
+            <div class="scale-labels" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #6c757d;"><span>Not at all</span><span>Extremely well</span></div>
+        </div>
+
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">2. How well could you predict negative unintended behaviors from an AI system prompt?</label>
+            <div class="likert-scale" style="display: flex; gap: 8px; align-items: center; margin-bottom: 0.25rem;">
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="1" id="t1pre_q2_1"><label for="t1pre_q2_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="2" id="t1pre_q2_2"><label for="t1pre_q2_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="3" id="t1pre_q2_3"><label for="t1pre_q2_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="4" id="t1pre_q2_4"><label for="t1pre_q2_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="5" id="t1pre_q2_5"><label for="t1pre_q2_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="6" id="t1pre_q2_6"><label for="t1pre_q2_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_q2" value="7" id="t1pre_q2_7"><label for="t1pre_q2_7">7</label></div>
+            </div>
+            <div class="scale-labels" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #6c757d;"><span>Not at all</span><span>Extremely well</span></div>
+        </div>
+
+        <div class="survey-question" style="margin-bottom: 1.25rem;">
+            <label class="question-label" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">3. AI models have demonstrated both beneficial and detrimental outcomes, including documented cases of AI-induced psychosis and the encouragement of harmful behaviors, alongside instances of providing constructive support and guidance. Given this dichotomous nature of AI behavior, to what extent do you trust AI systems?</label>
+            <div class="likert-scale" style="display: flex; gap: 8px; align-items: center; margin-bottom: 0.25rem;">
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="1" id="t1pre_trust_1"><label for="t1pre_trust_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="2" id="t1pre_trust_2"><label for="t1pre_trust_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="3" id="t1pre_trust_3"><label for="t1pre_trust_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="4" id="t1pre_trust_4"><label for="t1pre_trust_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="5" id="t1pre_trust_5"><label for="t1pre_trust_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="6" id="t1pre_trust_6"><label for="t1pre_trust_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t1pre_trust" value="7" id="t1pre_trust_7"><label for="t1pre_trust_7">7</label></div>
+            </div>
+            <div class="scale-labels" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #6c757d;"><span>Not at all</span><span>Completely</span></div>
+        </div>
+
+        <div style="text-align: right;">
+            <button type="button" class="btn btn-primary" id="task1PreSurveyBtn" disabled>Continue →</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- STEP 1 — Read system prompt                                            -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <div id="task1Step0" class="task1-step">
         <div style="margin-bottom: 1rem;">
@@ -462,11 +519,23 @@
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
-    document.getElementById('task1Step0Btn').addEventListener('click', () => showStep(1));
-    document.getElementById('task1Step1BackBtn').addEventListener('click', () => showStep(0));
-    document.getElementById('task1Step2BackBtn').addEventListener('click', () => showStep(1));
-    document.getElementById('task1Step2Btn').addEventListener('click', () => showStep(3));
-    document.getElementById('task1Step3BackBtn').addEventListener('click', () => showStep(2));
+    document.getElementById('task1PreSurveyBtn').addEventListener('click', () => showStep(1));
+    document.getElementById('task1Step0Btn').addEventListener('click', () => showStep(2));
+    document.getElementById('task1Step1BackBtn').addEventListener('click', () => showStep(1));
+    document.getElementById('task1Step2BackBtn').addEventListener('click', () => showStep(2));
+    document.getElementById('task1Step2Btn').addEventListener('click', () => showStep(4));
+    document.getElementById('task1Step3BackBtn').addEventListener('click', () => showStep(3));
+
+    // ── Pre-survey validation ────────────────────────────────────────────────
+    function checkPreSurvey() {
+        const allAnswered = ['t1pre_q1', 't1pre_q2', 't1pre_trust'].every(name =>
+            document.querySelector(`input[name="${name}"]:checked`)
+        );
+        document.getElementById('task1PreSurveyBtn').disabled = !allAnswered;
+    }
+    document.querySelectorAll('input[name^="t1pre_"]').forEach(el =>
+        el.addEventListener('change', checkPreSurvey)
+    );
 
     // ── Part A validation ────────────────────────────────────────────────────
     function checkPartA() {
@@ -478,7 +547,7 @@
     document.querySelectorAll('input[name^="t1a_"]').forEach(el =>
         el.addEventListener('change', checkPartA)
     );
-    document.getElementById('task1Step1Btn').addEventListener('click', () => showStep(2));
+    document.getElementById('task1Step1Btn').addEventListener('click', () => showStep(3));
 
     // ── Part B validation ────────────────────────────────────────────────────
     function checkPartB() {
@@ -493,6 +562,11 @@
 
     // ── Skip mode: unlock all gated buttons and auto-fill traits ─────────────
     if (window.experimentSettings && window.experimentSettings.skip) {
+        document.getElementById('task1PreSurveyBtn').disabled = false;
+        ['t1pre_q1', 't1pre_q2', 't1pre_trust'].forEach(name => {
+            const el = document.querySelector(`input[name="${name}"][value="4"]`);
+            if (el) el.checked = true;
+        });
         document.getElementById('task1Step1Btn').disabled = false;
         document.getElementById('task1SubmitBtn').disabled = false;
         TRAITS.forEach(t => {
@@ -510,6 +584,11 @@
 
         const data = {
             timestamp: new Date().toISOString(),
+            preSurvey: {
+                predictability:         parseInt(document.querySelector('input[name="t1pre_q1"]:checked').value),
+                negativePredictability: parseInt(document.querySelector('input[name="t1pre_q2"]:checked').value),
+                trust:                  parseInt(document.querySelector('input[name="t1pre_trust"]:checked').value)
+            },
             partA: {
                 systemPromptShown: content ? content.CALIBRATION_PROMPT : '',
                 traitPredictions: {}
