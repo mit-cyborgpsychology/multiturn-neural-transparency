@@ -260,21 +260,6 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .attr('stroke', '#ccc')
         .attr('stroke-width', Math.max(3, radius * 0.01));
 
-    // Center label text
-    g.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', '-0.5em')
-        .style('font-size', `${Math.max(16, radius * 0.045)}px`)
-        .style('font-weight', 'bold')
-        .style('fill', '#333')
-        .text(config.centerLabel);
-
-    g.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', '1.2em')
-        .style('font-size', `${Math.max(14, radius * 0.038)}px`)
-        .style('fill', '#666')
-        .text(config.centerSubLabel);
 
     // Draw curved category labels inside the inner circle
     const labelRadius = innerRadius * 0.62;
