@@ -154,6 +154,7 @@ function initializeDynamicInterface() {
     const typingIndicator = $('#typingIndicator');
     const attachBtn = $('#attachBtn');
     const imageBtn = $('#imageBtn');
+    let isWaiting = false;
 
     // System prompt configuration elements
     const resetConfig = $('#resetConfig');
@@ -617,7 +618,7 @@ function initializeDynamicInterface() {
     function initializeChatFunctionality() {
         // Enable/disable send button based on input
         messageInput.on('input', function() {
-            sendBtn.prop('disabled', messageInput.val().trim() === '');
+            sendBtn.prop('disabled', isWaiting || messageInput.val().trim() === '');
         });
 
         // Auto-resize textarea
@@ -630,7 +631,7 @@ function initializeDynamicInterface() {
         sendBtn.on('click', sendMessage);
         
         messageInput.on('keypress', function(e) {
-            if (e.which === 13 && !e.shiftKey) {
+            if (e.which === 13 && !e.shiftKey && !isWaiting) {
                 e.preventDefault();
                 sendMessage();
             }
@@ -664,14 +665,23 @@ function initializeDynamicInterface() {
         const userMessageId = await addMessage(message, 'user');
         window.lastUserMessageId = userMessageId; // record for persona-turn correlation
         messageInput.val('');
-        sendBtn.prop('disabled', true);
         messageInput.css('height', 'auto');
+        isWaiting = true;
+        messageInput.prop('disabled', true);
+        sendBtn.prop('disabled', true);
 
         // Show typing indicator
         typingIndicator.show();
 
         // Call AI API for response
         callAIAPI(message);
+    }
+
+    function unlockInput() {
+        isWaiting = false;
+        messageInput.prop('disabled', false);
+        sendBtn.prop('disabled', messageInput.val().trim() === '');
+        messageInput.focus();
     }
 
     // Function to call AI API (generalized for both Claude and Modal)
@@ -689,9 +699,10 @@ function initializeDynamicInterface() {
             };
 
             const data = await makeAPIRequest(requestData);
-            
-            // Hide typing indicator
+
+            // Hide typing indicator and re-enable input
             typingIndicator.hide();
+            unlockInput();
 
             // Extract the assistant's response
             const assistantMessage = data.content[0].text;
@@ -711,9 +722,10 @@ function initializeDynamicInterface() {
         } catch (error) {
             console.error('Error calling AI API:', error);
             
-            // Hide typing indicator
+            // Hide typing indicator and re-enable input
             typingIndicator.hide();
-            
+            unlockInput();
+
             // Show appropriate error message based on error type
             let errorMessage;
             if (error.message.includes('API key not found') || error.message.includes('not configured')) {

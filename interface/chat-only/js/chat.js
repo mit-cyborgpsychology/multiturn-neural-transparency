@@ -3,6 +3,7 @@
 // Initialize conversation history
 let conversationHistory = [];
 let messageIdCounter = 1;
+let isWaiting = false;
 
 $(document).ready(function() {
     initializeChat();
@@ -19,7 +20,7 @@ function initializeChat() {
 
     // Enable/disable send button based on input
     messageInput.on('input', function() {
-        sendBtn.prop('disabled', messageInput.val().trim() === '');
+        sendBtn.prop('disabled', isWaiting || messageInput.val().trim() === '');
         
         // Auto-resize textarea
         this.style.height = 'auto';
@@ -31,7 +32,7 @@ function initializeChat() {
 
     // Send message on Enter (but allow Shift+Enter for new line)
     messageInput.on('keypress', function(e) {
-        if (e.which === 13 && !e.shiftKey) {
+        if (e.which === 13 && !e.shiftKey && !isWaiting) {
             e.preventDefault();
             sendMessage();
         }
@@ -64,6 +65,8 @@ async function sendMessage() {
     // Clear input and reset height
     messageInput.val('');
     messageInput.css('height', 'auto');
+    isWaiting = true;
+    messageInput.prop('disabled', true);
     $('#sendBtn').prop('disabled', true);
 
     // Show typing indicator
@@ -71,6 +74,14 @@ async function sendMessage() {
 
     // Call AI API
     await callAIAPI();
+}
+
+function unlockInput() {
+    isWaiting = false;
+    const messageInput = $('#messageInput');
+    messageInput.prop('disabled', false);
+    $('#sendBtn').prop('disabled', messageInput.val().trim() === '');
+    messageInput.focus();
 }
 
 // Call AI API
@@ -84,9 +95,10 @@ async function callAIAPI() {
         };
 
         const data = await makeAPIRequest(requestData);
-        
-        // Hide typing indicator
+
+        // Hide typing indicator and re-enable input
         $('#typingIndicator').hide();
+        unlockInput();
 
         // Extract assistant's response
         const assistantMessage = data.content[0].text;
@@ -103,9 +115,10 @@ async function callAIAPI() {
     } catch (error) {
         console.error('Error calling AI API:', error);
         
-        // Hide typing indicator
+        // Hide typing indicator and re-enable input
         $('#typingIndicator').hide();
-        
+        unlockInput();
+
         // Show error message
         let errorMessage = 'Sorry, I encountered an error. Please try again.';
         
