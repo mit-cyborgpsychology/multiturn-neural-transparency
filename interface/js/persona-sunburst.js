@@ -91,8 +91,9 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
     // Set up dimensions
     const width = config.width;
     const height = config.height;
-    // Use more of the available space - only leave small margin for labels
-    const radius = Math.min(width, height) / 2 - 20;
+    // Radius is always min(w,h)/2.5 so the chart window is exactly 2.5x the radius:
+    // 0.25*radius margin on each side, no excess whitespace.
+    const radius = Math.min(width, height) / 2.5;
 
     // Create SVG container that fills its container
     const svg = d3.select(`#${containerId}`)
@@ -103,10 +104,9 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .attr('preserveAspectRatio', 'xMidYMid meet')
         .attr('style', 'max-width: 100%; max-height: 100%;');
 
-    // Create a group for the sunburst, positioned for visual centering
-    // Account for labels extending outward and visual weight distribution
+    // Create a group for the sunburst, centered in the viewBox
     const g = svg.append('g')
-        .attr('transform', `translate(${width / 2},${height * 0.44})`);
+        .attr('transform', `translate(${width / 2},${height / 2})`);
 
     // Define ring radii with better proportions
     // Smaller inner circles give bars more room to grow and show activation differences

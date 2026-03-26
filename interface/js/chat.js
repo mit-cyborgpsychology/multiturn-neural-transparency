@@ -556,9 +556,12 @@ function initializeDynamicInterface() {
             
             // Redraw the sunburst if we have persona data
             if (window.currentPersonaData && typeof createPersonaSunburst === 'function') {
+                const configChartEl = document.getElementById('personaChart');
+                const cw = Math.max(configChartEl ? configChartEl.clientWidth : 700, 300);
+                const ch = Math.max(configChartEl ? configChartEl.clientHeight : 700, 300);
                 createPersonaSunburst(window.currentPersonaData, 'personaChartSunburst', {
-                    width: 700,
-                    height: 700,
+                    width: cw,
+                    height: ch,
                     innerRadius: 65,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
@@ -1328,12 +1331,11 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
                 const chartEl = document.getElementById(containerId);
-                const w = chartEl ? chartEl.clientWidth : 700;
-                const h = chartEl ? chartEl.clientHeight : 700;
-                const dim = Math.max(Math.min(w, h), 300) || 700;
+                const w = Math.max(chartEl ? chartEl.clientWidth : 700, 300);
+                const h = Math.max(chartEl ? chartEl.clientHeight : 700, 300);
                 createPersonaSunburst(personaData, sunburstId, {
-                    width: dim,
-                    height: dim,
+                    width: w,
+                    height: h,
                     innerRadius: 65,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
