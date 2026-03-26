@@ -939,10 +939,6 @@ body.chat-active .dynamic-chat-container {
 }
 
 .config-form {
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
@@ -992,6 +988,9 @@ body.chat-active .dynamic-chat-container {
 
 .persona-section-wrapper {
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -1143,6 +1142,10 @@ body.chat-active .dynamic-chat-container {
 
 /* Persona Vector Visualization Styles */
 .persona-visualization {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     margin-top: 0;
     padding-top: 0;
     animation: slideDown 0.3s ease-out;
@@ -1213,11 +1216,11 @@ body.chat-active .dynamic-chat-container {
 }
 
 .persona-chart {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .persona-bar-item {
@@ -1334,15 +1337,22 @@ body.chat-active .dynamic-chat-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
-    border-radius: 10px;
-    margin: 1rem 0;
-    min-height: 420px;
+    flex: 1;
+    min-height: 0;
+}
+
+#personaChartSunburst,
+#chatPersonaChartSunburst {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #personaSunburstContainer svg,
-#personaChartSunburst svg {
+#personaChartSunburst svg,
+#chatPersonaChartSunburst svg {
     max-width: 100%;
     height: auto;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
@@ -1528,10 +1538,13 @@ body.chat-active .dynamic-chat-container {
     }
 
     .preview-box,
-    .persona-chart,
     .persona-placeholder {
         min-height: 200px;
         max-height: 300px;
+    }
+
+    .persona-chart {
+        min-height: 300px;
     }
 }
 
