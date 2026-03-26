@@ -2025,7 +2025,7 @@ window.showPromptRefinementModal = function() {
     
     if (visualizationCondition === 0) {
         // NO-VIZ: Remove visualization mention
-        modalContent.find('p').eq(1).html('<strong>How to refine:</strong> Click "Back to Configuration" to adjust your prompt and test the updated behavior.');
+        modalContent.find('p').eq(1).html('<strong>How to refine:</strong> Click "View System Prompt" to adjust your prompt and test the updated behavior.');
     }
     
     $('#promptRefinementModal').fadeIn(600);

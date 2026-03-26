@@ -24,7 +24,7 @@
             <img id="selectedAvatarImage" src="" alt="Selected Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-md);" />
         </div>
         <div class="config-header" style="margin-bottom: 1rem;">
-            <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Configure Your AI Companion</h3>
+            <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Your System Prompt</h3>
             <p class="config-description" style="font-size: 0.85rem;">Customize your AI companion's personality and behavior so that it can provide emotional support through difficult times.</p>
         </div>
 
@@ -88,6 +88,7 @@
         <!-- Action Buttons -->
         <div class="config-actions">
             <button type="button" class="btn btn-secondary" id="resetConfig">Reset to Default</button>
+            <button type="button" class="btn btn-primary" id="submitPromptBtn" disabled>Submit Prompt</button>
             <button type="button" class="btn btn-primary" id="startChatBtn">Start Chat</button>
         </div>
     </div>
@@ -99,7 +100,7 @@
             <div class="chat-persona-header">
                 <h4>Persona Analysis</h4>
                 <button class="btn btn-secondary" id="backToConfigBtn">
-                    <i class="fas fa-cog"></i> Back to Configuration
+                    <i class="fas fa-cog"></i> View System Prompt
                 </button>
             </div>
             <div id="chatPersonaChart" class="persona-chart"></div>
@@ -927,7 +928,7 @@
     <div class="instruction-modal-content">
         <h4>Refine Your Prompt Anytime</h4>
         <p>You can and should refine your system prompt throughout this session to improve your AI companion.</p>
-        <p><strong>How to refine:</strong> Click "Back to Configuration" to adjust your prompt and review the updated visualization.</p>
+        <p><strong>How to refine:</strong> Click "View System Prompt" to adjust your prompt and review the updated visualization.</p>
         <p><strong>Note:</strong> Refining your prompt will start a new conversation with the AI, allowing you to test the updated behavior from scratch.</p>
         <button class="btn btn-primary" id="dismissPromptRefinement">Got it!</button>
     </div>
