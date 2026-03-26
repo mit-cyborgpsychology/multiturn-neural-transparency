@@ -520,8 +520,12 @@ body.chat-active .dynamic-chat-container {
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
 }
 
-/* Card Styling */
+/* Card Styling — explicitly override Bootstrap's .card defaults */
 .card {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     padding: 1.5rem;
 }
 
