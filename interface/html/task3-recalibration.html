@@ -5,7 +5,7 @@
     <div style="margin-bottom: 1.5rem;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1rem;">
             <h4 style="margin: 0 0 4px 0; font-size: 1.1rem;">Task 3 of 4: Recalibration</h4>
-            <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">You'll rate two more scenarios — a new system prompt, then a full conversation transcript.</p>
+            <p id="task3HeaderDesc" style="margin: 0; font-size: 0.875rem; opacity: 0.9;">You'll rate two more scenarios — a new system prompt, then a full conversation transcript.</p>
         </div>
     </div>
 
@@ -500,6 +500,32 @@
             const b = document.querySelector(`input[name="t3b_${t}"][value="5"]`);
             if (a) a.checked = true;
             if (b) b.checked = true;
+        });
+    }
+
+    // ── Disable transcript calibration: skip Part B entirely ─────────────────
+    if (window.experimentSettings && window.experimentSettings.disableTranscriptCalibration) {
+        // Update header description
+        const headerDesc = document.getElementById('task3HeaderDesc');
+        if (headerDesc) headerDesc.textContent = "You'll rate one scenario — a new AI system prompt.";
+
+        // Hide progress bar dots for transcript and Part B steps
+        document.querySelectorAll('.t3-step-dot[data-step="2"], .t3-step-dot[data-step="3"]').forEach(d => d.style.display = 'none');
+
+        // Auto-fill hidden Part B traits so form submission passes validation
+        TRAITS.forEach(t => {
+            const b = document.querySelector(`input[name="t3b_${t}"][value="5"]`);
+            if (b) b.checked = true;
+        });
+        document.getElementById('task3SubmitBtn').disabled = false;
+
+        // Replace Part A "Next" button to clear the showStep(2) listener, wire to submit instead
+        const oldBtn = document.getElementById('task3Step1Btn');
+        const newBtn = oldBtn.cloneNode(true);
+        newBtn.textContent = 'Submit & Continue →';
+        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+        document.getElementById('task3Step1Btn').addEventListener('click', () => {
+            document.getElementById('task3SubmitBtn').click();
         });
     }
 

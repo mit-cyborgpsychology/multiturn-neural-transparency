@@ -75,6 +75,14 @@ function getExperimentSettingsFromURL() {
         skip: urlParams.get('skip') === 'true',
 
         /**
+         * Disable transcript calibration - hides Part B (transcript reading + trait ratings)
+         * in Task 1 and Task 3. Flow ends after Part A (system prompt ratings) only.
+         * To re-enable: change to false
+         * Default: true (temporarily disabled)
+         */
+        disableTranscriptCalibration: true,
+
+        /**
          * Shorten system prompt minimum character requirement (bypasses 100 char minimum)
          * URL: ?shortenPrompt=true
          * Default: false
@@ -169,6 +177,7 @@ let defaultSettings = {
     sunburst: false,
     visualizationCondition: null, // Random assignment (0 or 1)
     highlight: [],
+    disableTranscriptCalibration: true,
 };
 
 // ============================================
