@@ -577,9 +577,9 @@ function initializeDynamicInterface() {
             // Redraw the sunburst if we have persona data
             if (window.currentPersonaData && typeof createPersonaSunburst === 'function') {
                 createPersonaSunburst(window.currentPersonaData, 'personaChartSunburst', {
-                    width: 450,
-                    height: 450,
-                    innerRadius: 50,
+                    width: 500,
+                    height: 500,
+                    innerRadius: 55,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
                 });
@@ -1355,9 +1355,9 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
                 createPersonaSunburst(personaData, sunburstId, {
-                    width: 450,
-                    height: 450,
-                    innerRadius: 50,
+                    width: 500,
+                    height: 500,
+                    innerRadius: 55,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
                 });
