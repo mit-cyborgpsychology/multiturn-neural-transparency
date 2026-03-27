@@ -376,6 +376,33 @@ function initializeDynamicInterface() {
             });
         });
 
+        // Submit Prompt button
+        $('#submitPromptBtn').on('click', async function() {
+            const systemPrompt = $('#systemPromptInput').val();
+
+            // Mark as submitted
+            window.systemPromptSubmitted = true;
+            window.promptHasChangedSinceSubmit = false;
+
+            // Log submission to Firebase
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            await writeRealtimeDatabase(promptLogPath, {
+                prompt: systemPrompt,
+                action: 'submit_prompt',
+                timestamp: new Date().toISOString()
+            });
+
+            if (visualizationCondition === 0) {
+                // Control condition: auto-check persona and reveal trait definitions
+                $('#submitPromptBtn').hide();
+                await autoSubmitPersonaCheck(systemPrompt);
+            } else {
+                // Viz conditions: hide submit, show Check/Test Persona buttons
+                $('#submitPromptBtn').hide();
+                $('.persona-check-buttons').show();
+            }
+        });
+
         // Start chat
         startChatBtn.on('click', async function() {
             const systemPrompt = $('#systemPromptInput').val();
