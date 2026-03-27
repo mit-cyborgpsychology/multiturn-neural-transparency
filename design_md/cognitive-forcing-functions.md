@@ -22,7 +22,7 @@ Comma-separated, any combination. Only active when `visualizationCondition=1`.
 
 - After each AI reply, the persona vector API returns a new trait snapshot.
 - `computeBiggestSwing()` compares **only the last two snapshots** (current turn vs. previous turn).
-- It finds the single trait with the largest absolute delta across all 6 category pairs.
+- It finds the single trait with the largest absolute delta across all 8 category pairs (empathy, encouraging, sociality, honesty, factuality, respectfulness, funniness, formality).
 - That result drives all three highlight modes.
 
 ## Design Decisions

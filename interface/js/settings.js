@@ -135,7 +135,7 @@ function getExperimentSettingsFromURL() {
             // Check for URL parameter override first
             if (conditionParam !== null) {
                 const value = parseInt(conditionParam, 10);
-                if (value === 0 || value === 1) {
+                if (value === 0 || value === 1 || value === 2) {
                     // Store in sessionStorage to maintain across navigations
                     sessionStorage.setItem('visualizationCondition', value.toString());
                     sessionStorage.setItem('conditionAssignmentMethod', 'manual_url');
@@ -150,8 +150,9 @@ function getExperimentSettingsFromURL() {
                 return parseInt(storedCondition, 10);
             }
             
-            // Random 50/50 assignment for new sessions
-            const randomCondition = Math.random() < 0.5 ? 0 : 1;
+            // Random 1/3 assignment for new sessions (0=control, 1=single-turn, 2=multi-turn)
+            const rand = Math.random();
+            const randomCondition = rand < 1/3 ? 0 : rand < 2/3 ? 1 : 2;
             sessionStorage.setItem('visualizationCondition', randomCondition.toString());
             sessionStorage.setItem('conditionAssignmentMethod', 'random');
             return randomCondition;
@@ -175,7 +176,7 @@ let defaultSettings = {
     skipSurvey: false,
     shortenPrompt: false,
     sunburst: false,
-    visualizationCondition: null, // Random assignment (0 or 1)
+    visualizationCondition: null, // Random assignment (0=control, 1=single-turn, 2=multi-turn)
     highlight: [],
     disableTranscriptCalibration: true,
 };
@@ -210,7 +211,7 @@ if (window.experimentSettings.demo) {
 console.log('⚙️ Experiment Settings Loaded:', window.experimentSettings);
 
 // Log visualization condition prominently
-const conditionName = window.experimentSettings.visualizationCondition === 0 ? 'CONTROL (No Visualization)' : 'EXPERIMENTAL (With Visualization)';
+const conditionName = ['CONTROL (No Visualization)', 'SINGLE-TURN (Static Visualization)', 'MULTI-TURN (Dynamic Visualization)'][window.experimentSettings.visualizationCondition] || 'UNKNOWN';
 const conditionMethod = sessionStorage.getItem('conditionAssignmentMethod') || 'unknown';
 console.log(`🔬 Visualization Condition: ${conditionName} (${conditionMethod})`);
 

@@ -54,7 +54,7 @@ await writeURLParameters(urlParamsPath);
 const conditionPath = studyId + '/participantData/' + firebaseUserId + '/experimentCondition';
 const conditionData = {
     visualizationCondition: window.experimentSettings.visualizationCondition,
-    conditionName: window.experimentSettings.visualizationCondition === 0 ? 'control' : 'experimental',
+    conditionName: ['control', 'single_turn', 'multi_turn'][window.experimentSettings.visualizationCondition] || 'unknown',
     assignmentMethod: sessionStorage.getItem('conditionAssignmentMethod') || 'unknown',
     timestamp: new Date().toISOString()
 };
@@ -62,7 +62,7 @@ const conditionData = {
 // IMPORTANT: Log experiment condition explicitly
 console.log('=== EXPERIMENT CONDITION ===');
 console.log('Condition:', conditionData.conditionName.toUpperCase());
-console.log('Visualization:', conditionData.visualizationCondition === 0 ? 'DISABLED (Control)' : 'ENABLED (Experimental)');
+console.log('Visualization:', ['DISABLED (Control)', 'STATIC (Single-turn)', 'DYNAMIC (Multi-turn)'][conditionData.visualizationCondition] || 'UNKNOWN');
 console.log('Assignment Method:', conditionData.assignmentMethod);
 console.log('============================');
 
@@ -225,7 +225,7 @@ function initializeDynamicInterface() {
 
         // IMPORTANT: Log condition explicitly
         console.log('=== SYSTEM PROMPT CONFIG INITIALIZATION ===');
-        console.log('Visualization Condition:', visualizationCondition === 0 ? 'CONTROL (no-viz)' : 'EXPERIMENTAL (viz)');
+        console.log('Visualization Condition:', ['CONTROL (no-viz)', 'SINGLE-TURN (static viz)', 'MULTI-TURN (dynamic viz)'][visualizationCondition] || 'UNKNOWN');
         console.log('==========================================');
 
         // ── Pre-fill system prompt (users never write their own) ──────────────
@@ -355,7 +355,7 @@ function initializeDynamicInterface() {
             
             // Reset visualizations (only if in viz condition)
             const visualizationCondition = window.experimentSettings.visualizationCondition;
-            if (visualizationCondition === 1) {
+            if (visualizationCondition >= 1) {
                 $('#personaVisualization').hide();
             }
             
@@ -716,8 +716,9 @@ function initializeDynamicInterface() {
             // Add assistant message to chat and save to Firebase
             await addMessage(assistantMessage, 'assistant');
 
-            // Update persona visualization with full conversation context
-            checkPersona(customSystemPrompt, window.conversationHistory);
+            // Calculate persona scores for all conditions; only update visualization for multi-turn
+            const _vc = window.experimentSettings.visualizationCondition;
+            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2);
 
         } catch (error) {
             console.error('Error calling AI API:', error);
@@ -883,10 +884,11 @@ function initializeDynamicInterface() {
             // Record in conversation history for persona scoring
             window.conversationHistory.push({ role: turn.role, content: turn.content });
 
-            // After each assistant turn, call persona check for viz condition
-            if (turn.role === 'assistant' && window.experimentSettings.visualizationCondition === 1) {
+            // After each assistant turn, calculate persona scores for all conditions
+            if (turn.role === 'assistant') {
                 const currentPrompt = localStorage.getItem('customSystemPrompt') || '';
-                checkPersona(currentPrompt, window.conversationHistory).catch(console.warn);
+                const _scriptVc = window.experimentSettings.visualizationCondition;
+                checkPersona(currentPrompt, window.conversationHistory, _scriptVc !== 2).catch(console.warn);
             }
 
             // Wait before next turn
@@ -1195,17 +1197,20 @@ async function autoSubmitPersonaCheck(systemPrompt) {
 }
 
 // Check Persona function - calls persona-vector endpoint
-async function checkPersona(systemPrompt, messages) {
+// silent=true: background data collection only, no UI updates (used for control and single-turn conditions)
+async function checkPersona(systemPrompt, messages, silent = false) {
     try {
         // Use provided system prompt or get from localStorage
         const promptToUse = systemPrompt ||
             localStorage.getItem('customSystemPrompt') ||
             "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
 
-        // Show loading state
-        showPersonaVisualization();
-        $('#personaChart').html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
-        showCenterLoadingIndicator('chatPersonaChart');
+        // Show loading state (only in multi-turn condition)
+        if (!silent) {
+            showPersonaVisualization();
+            $('#personaChart').html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
+            showCenterLoadingIndicator('chatPersonaChart');
+        }
 
         // Build request body — include messages if provided
         const requestBody = { system: promptToUse };
@@ -1234,37 +1239,43 @@ async function checkPersona(systemPrompt, messages) {
                 personaVector: data.content,
                 systemPrompt: promptToUse,
                 timestamp: new Date().toISOString(),
-                condition: 'experimental_with_visualization'
+                condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.experimentSettings.visualizationCondition] || 'unknown'
             });
-            
-            // Render to config panel and (if visible) chat panel
-            renderPersonaChart(data.content);
-            renderPersonaChart(data.content, 'chatPersonaChart');
 
-            // Record snapshot for drift tracking
+            // Record snapshot for drift tracking (all conditions)
             window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
             window.personaTurnMessageIds.push(window.lastUserMessageId);
 
-            // Compute biggest swing and apply cognitive forcing highlights (experimental condition only)
-            const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
-            if (window.experimentSettings && window.experimentSettings.visualizationCondition === 1) {
-                const swing = computeBiggestSwing();
-                if (swing) applyHighlights(swing);
-            }
+            if (!silent) {
+                // Render to config panel and (if visible) chat panel
+                renderPersonaChart(data.content);
+                renderPersonaChart(data.content, 'chatPersonaChart');
 
-            // Re-render drift panel if it's open and highlight mode 2 isn't handling it
-            if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
-                renderTraitDrift(window.activeDriftTrait);
+                // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
+                const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+                if (window.experimentSettings && window.experimentSettings.visualizationCondition === 2) {
+                    const swing = computeBiggestSwing();
+                    if (swing) applyHighlights(swing);
+                }
+
+                // Re-render drift panel if it's open and highlight mode 2 isn't handling it
+                if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+                    renderTraitDrift(window.activeDriftTrait);
+                }
             }
         } else {
             const errorData = await response.json();
             console.error('Persona Vector Error:', errorData);
-            personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
+            if (!silent) {
+                personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
+            }
         }
     } catch (error) {
         console.error('Error calling persona-vector endpoint:', error);
-        const personaChart = $('#personaChart');
-        personaChart.html(`<div style="text-align: center; color: var(--error-color);">Failed to analyze persona: ${error.message}</div>`);
+        if (!silent) {
+            const personaChart = $('#personaChart');
+            personaChart.html(`<div style="text-align: center; color: var(--error-color);">Failed to analyze persona: ${error.message}</div>`);
+        }
     }
 }
 
@@ -1786,8 +1797,8 @@ function showPostSurvey() {
     
     // Show/hide viz-specific questions based on condition
     const visualizationCondition = window.experimentSettings.visualizationCondition;
-    if (visualizationCondition === 1) {
-        // Viz condition: show questions 5 and 6
+    if (visualizationCondition >= 1) {
+        // Viz condition (single-turn or multi-turn): show questions 5 and 6
         $('#post_q5_container').show();
         $('#post_q6_container').show();
     } else {
@@ -1819,8 +1830,8 @@ function initializePostSurvey() {
         
         let allAnswered = q1Answered && q2Answered && q3Answered && q4Answered;
         
-        // For viz condition, also require q5 and q6
-        if (visualizationCondition === 1) {
+        // For viz condition (single-turn or multi-turn), also require q5 and q6
+        if (visualizationCondition >= 1) {
             const q5Answered = $('input[name="post_q5"]:checked').length > 0;
             const q6Answered = $('input[name="post_q6"]:checked').length > 0;
             allAnswered = allAnswered && q5Answered && q6Answered;
@@ -1868,8 +1879,8 @@ async function savePostPhase1Data() {
             "Did you arrive at your desired character?": parseInt($('input[name="post_q4"]:checked').val())
         };
         
-        // Add viz-specific questions if in experimental condition
-        if (visualizationCondition === 1) {
+        // Add viz-specific questions if in single-turn or multi-turn condition
+        if (visualizationCondition >= 1) {
             phase1Data["Did the visualization help you understand model behavior?"] = parseInt($('input[name="post_q5"]:checked').val());
             phase1Data["Would you like to see this visualization again in future interactions?"] = parseInt($('input[name="post_q6"]:checked').val());
         }
@@ -1878,7 +1889,7 @@ async function savePostPhase1Data() {
         const postPhase1WriteData = {
             responses: phase1Data,
             timestamp: timestamp,
-            condition: visualizationCondition === 0 ? 'control' : 'experimental'
+            condition: ['control', 'single_turn', 'multi_turn'][visualizationCondition] || 'unknown'
         };
         await writeRealtimeDatabase(`${basePath}/phase1`, postPhase1WriteData);
         
