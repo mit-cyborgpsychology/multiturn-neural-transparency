@@ -1914,6 +1914,9 @@ body.chat-active .dynamic-chat-container {
 }
 
 .trait-progress-counter {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--accent-color);
