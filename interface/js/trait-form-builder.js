@@ -114,6 +114,16 @@
         const container = document.getElementById(containerId);
         if (!container) return;
 
+        // Clean up any previous initialization on this container
+        if (container._revealAbort) container._revealAbort.abort();
+        if (container.previousElementSibling &&
+            container.previousElementSibling.classList.contains('trait-progress-counter')) {
+            container.previousElementSibling.remove();
+        }
+
+        const abort = new AbortController();
+        container._revealAbort = abort;
+
         const pairs = Array.from(container.querySelectorAll('.trait-pair'));
         const total = pairs.length;
         if (total === 0) return;
@@ -170,7 +180,7 @@
                 pairs[nextIdx].classList.remove('trait-reveal-hidden');
                 pairs[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
-        });
+        }, { signal: abort.signal });
     };
 
     console.log('🧩 Trait form builder loaded');
