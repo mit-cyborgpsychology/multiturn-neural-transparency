@@ -213,6 +213,74 @@ let defaultSettings = {
 // Create global settings object
 window.experimentSettings = getExperimentSettingsFromURL();
 
+// ============================================
+// SESSION-AWARE HELPERS (must be defined before logging)
+// ============================================
+
+/**
+ * Get the effective visualization condition for the current session.
+ * Session 1 (baseline) ALWAYS returns 0 (no visualization) regardless of assigned condition.
+ * Session 2 (experimental) returns the real assigned condition.
+ * @returns {number} 0, 1, or 2
+ */
+window.getEffectiveVisualizationCondition = function() {
+    const session = parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+    if (session === 1) return 0; // Baseline: no visualization for anyone
+    return window.experimentSettings.visualizationCondition;
+};
+
+/**
+ * Get the prompt type (good/evil) for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} 'GOOD' or 'EVIL'
+ */
+window.getSessionPromptType = function(sessionNum) {
+    const order = sessionStorage.getItem('promptOrder') || 'good_first';
+    if (sessionNum === 1) return order === 'good_first' ? 'GOOD' : 'EVIL';
+    return order === 'good_first' ? 'EVIL' : 'GOOD';
+};
+
+/**
+ * Get the system prompt text for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} The system prompt text
+ */
+window.getSessionPromptText = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].text
+        : '';
+};
+
+/**
+ * Get the scripted conversation for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {Array} The conversation array
+ */
+window.getSessionConversation = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].conversation
+        : [];
+};
+
+/**
+ * Get the current session number from sessionStorage.
+ * @returns {number} 1 or 2
+ */
+window.getCurrentSession = function() {
+    return parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+};
+
+/**
+ * Advance to the next session (sets currentSession to 2).
+ */
+window.advanceToSession2 = function() {
+    sessionStorage.setItem('currentSession', '2');
+    window.experimentSettings.currentSession = 2;
+    console.log('⏭️ Advanced to Session 2 (Experimental)');
+};
+
 // Debug: explicitly log demo flag and timestamp to verify new version is loaded
 console.log('🔍 DEBUG [v2024-10-21-v2]: demo flag =', window.experimentSettings.demo);
 
@@ -287,74 +355,6 @@ window.getSetting = function(key) {
 window.updateSetting = function(key, value) {
     console.log(`⚙️ Setting updated: ${key} = ${JSON.stringify(value)}`);
     window.experimentSettings[key] = value;
-};
-
-// ============================================
-// SESSION-AWARE HELPERS
-// ============================================
-
-/**
- * Get the effective visualization condition for the current session.
- * Session 1 (baseline) ALWAYS returns 0 (no visualization) regardless of assigned condition.
- * Session 2 (experimental) returns the real assigned condition.
- * @returns {number} 0, 1, or 2
- */
-window.getEffectiveVisualizationCondition = function() {
-    const session = parseInt(sessionStorage.getItem('currentSession') || '1', 10);
-    if (session === 1) return 0; // Baseline: no visualization for anyone
-    return window.experimentSettings.visualizationCondition;
-};
-
-/**
- * Get the prompt type (good/evil) for a given session number.
- * @param {number} sessionNum - 1 or 2
- * @returns {string} 'GOOD' or 'EVIL'
- */
-window.getSessionPromptType = function(sessionNum) {
-    const order = sessionStorage.getItem('promptOrder') || 'good_first';
-    if (sessionNum === 1) return order === 'good_first' ? 'GOOD' : 'EVIL';
-    return order === 'good_first' ? 'EVIL' : 'GOOD';
-};
-
-/**
- * Get the system prompt text for a given session number.
- * @param {number} sessionNum - 1 or 2
- * @returns {string} The system prompt text
- */
-window.getSessionPromptText = function(sessionNum) {
-    const type = window.getSessionPromptType(sessionNum);
-    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
-        ? window.STUDY_CONTENT.PROMPTS[type].text
-        : '';
-};
-
-/**
- * Get the scripted conversation for a given session number.
- * @param {number} sessionNum - 1 or 2
- * @returns {Array} The conversation array
- */
-window.getSessionConversation = function(sessionNum) {
-    const type = window.getSessionPromptType(sessionNum);
-    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
-        ? window.STUDY_CONTENT.PROMPTS[type].conversation
-        : [];
-};
-
-/**
- * Get the current session number from sessionStorage.
- * @returns {number} 1 or 2
- */
-window.getCurrentSession = function() {
-    return parseInt(sessionStorage.getItem('currentSession') || '1', 10);
-};
-
-/**
- * Advance to the next session (sets currentSession to 2).
- */
-window.advanceToSession2 = function() {
-    sessionStorage.setItem('currentSession', '2');
-    window.experimentSettings.currentSession = 2;
-    console.log('⏭️ Advanced to Session 2 (Experimental)');
 };
 
 // ============================================
