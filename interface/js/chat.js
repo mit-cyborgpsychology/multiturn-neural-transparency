@@ -1893,6 +1893,17 @@ function completePostSurvey() {
     // Hide chat input area
     $('.input-container').hide();
 
+    // Show transition modal, then inject MBE form when dismissed
+    $('#mbeTransitionModal').fadeIn(300);
+    $('#dismissMbeTransition').off('click').on('click', function() {
+        $('#mbeTransitionModal').fadeOut(300, function() {
+            injectInlineMBE();
+        });
+    });
+}
+
+// Inject the MBE trait rating form below the chat log
+function injectInlineMBE() {
     // Gather session info
     const session = window.getCurrentSession();
     const promptText = window.getSessionPromptText(session);
