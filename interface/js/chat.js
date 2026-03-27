@@ -1758,9 +1758,13 @@ async function timerExpired() {
     const endTimeISO = new Date().toISOString();
     const timerPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/timer';
     await writeRealtimeDatabase(timerPath + '/endTime', endTimeISO);
-    
-    // Show post-survey modal
-    showPostSurvey();
+
+    // Disable chat interface
+    $('#messageInput').prop('disabled', true);
+    $('#sendBtn').prop('disabled', true);
+
+    // Go directly to MBE (post-interaction trait evaluation)
+    completePostSurvey();
 }
 
 // ============================================
