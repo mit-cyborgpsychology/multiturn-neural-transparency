@@ -1566,15 +1566,40 @@ function renderTraitDrift(traitName) {
             .style('opacity', 1);
 
         // Dot — scales in from 0
-        svg.append('circle')
+        const dot = svg.append('circle')
             .attr('cx', dotX).attr('cy', y)
             .attr('r', 0)
             .attr('class', `drift-dot drift-dot-turn-${i}`)
             .attr('fill', isLatest ? '#2196F3' : '#bbb')
-            .attr('stroke', 'white').attr('stroke-width', 2)
-            .transition().delay(delay).duration(300)
+            .attr('stroke', 'white').attr('stroke-width', 2);
+        dot.transition().delay(delay).duration(300)
             .ease(d3.easeBackOut)
             .attr('r', isLatest ? 9 : 6);
+
+        // Click dot → scroll to & blink the user+assistant message pair
+        dot.on('click', function() {
+            const msgId = window.personaTurnMessageIds[i];
+            if (msgId == null) return;
+            const $user = $(`.message[data-message-id="${msgId}"]`);
+            if (!$user.length) return;
+            const $assistant = $user.next('.message');
+
+            // Clear any previous highlight
+            $('.message.drift-click-highlight').removeClass('drift-click-highlight');
+
+            // Add highlight to both messages
+            $user.addClass('drift-click-highlight');
+            if ($assistant.length) $assistant.addClass('drift-click-highlight');
+
+            // Scroll the user message into view
+            $user[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Remove highlight after 2 seconds
+            setTimeout(() => {
+                $user.removeClass('drift-click-highlight');
+                if ($assistant.length) $assistant.removeClass('drift-click-highlight');
+            }, 2000);
+        });
 
         // Turn label — fades in after dot
         svg.append('text')
