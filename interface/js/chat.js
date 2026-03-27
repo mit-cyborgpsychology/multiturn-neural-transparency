@@ -826,9 +826,50 @@ function initializeDynamicInterface() {
 
         const chatVizCondition = window.experimentSettings.visualizationCondition;
 
-        // Control condition: hide the entire persona panel — no visualization in chat view
+        // Control condition: show trait reference panel in place of visualization
         if (chatVizCondition === 0) {
-            $('#chatPersonaPanel').hide();
+            $('#chatPersonaChart').html(`
+                <div style="padding: 1rem; overflow-y: auto; height: 100%;">
+                    <p style="font-size: 0.75rem; margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
+                        Monitor these personality dimensions as you interact:
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 0.55rem;">
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Empathy</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Encouraging</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Discouraging ↔ Encouraging</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Sociality</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Antisocial ↔ Social</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Honesty</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Sycophantic ↔ Honest</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Factual Accuracy</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Hallucinatory ↔ Factual</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Respectfulness</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Toxic ↔ Respectful</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Funniness</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Serious ↔ Funny</strong></p>
+                        </div>
+                        <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Formality</h5>
+                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Formal ↔ Casual</strong></p>
+                        </div>
+                    </div>
+                </div>
+            `);
+            $('#traitDriftPanel').hide();
         }
 
         // Single-turn condition: hide trait drift panel (visualization is static, drift is meaningless)
