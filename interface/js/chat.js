@@ -1465,26 +1465,31 @@ function renderTraitDrift(traitName) {
     let oppositeKey = null;
     const firstScores = window.personaHistory[0].scores;
     if (!firstScores || typeof firstScores !== 'object') return;
+    let leftTrait = null;
+    let rightTrait = null;
     for (const [catKey, traits] of Object.entries(firstScores)) {
         if (traits && traitName in traits) {
             categoryKey = catKey;
+            // Use canonical insertion order so poles are stable regardless of which arc was clicked
+            const keys = Object.keys(traits);
+            leftTrait = keys[0];
+            rightTrait = keys[1];
             oppositeKey = Object.keys(traits).find(t => t !== traitName);
             break;
         }
     }
-    if (!categoryKey || !oppositeKey) return;
+    if (!categoryKey || !oppositeKey || !leftTrait || !rightTrait) return;
 
     const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
     $('#driftTraitLabel').text(`${capitalize(traitName)}  ↔  ${capitalize(oppositeKey)}`);
     $('#closeDriftBtn').show();
 
-    // Build history array: position 1 = traitName fully active, 0 = oppositeKey fully active
+    // Build history array: position 0 = dot at left (leftTrait pole), position 1 = dot at right (rightTrait pole)
     const history = window.personaHistory.map((entry, i) => {
         const cat = entry.scores[categoryKey] || {};
-        const tVal = cat[traitName] || 0;
-        const oVal = cat[oppositeKey] || 0;
-        // position 0 = dot at left (traitName side), position 1 = dot at right (oppositeKey side)
-        const position = 0.5 - (tVal - oVal) * 0.5;
+        const lVal = cat[leftTrait] || 0;
+        const rVal = cat[rightTrait] || 0;
+        const position = 0.5 - (lVal - rVal) * 0.5;
         return { turn: i + 1, position };
     });
 
@@ -1516,14 +1521,14 @@ function renderTraitDrift(traitName) {
         .attr('text-anchor', 'middle')
         .attr('font-size', '11px').attr('font-weight', '600')
         .attr('fill', '#888').attr('letter-spacing', '0.05em')
-        .text(capitalize(traitName).toUpperCase());
+        .text(capitalize(leftTrait).toUpperCase());
 
     svg.append('text')
         .attr('x', rightX).attr('y', 18)
         .attr('text-anchor', 'middle')
         .attr('font-size', '11px').attr('font-weight', '600')
         .attr('fill', '#888').attr('letter-spacing', '0.05em')
-        .text(capitalize(oppositeKey).toUpperCase());
+        .text(capitalize(rightTrait).toUpperCase());
 
     // Dashed vertical guide lines (poles)
     [leftX, rightX].forEach(x => {
