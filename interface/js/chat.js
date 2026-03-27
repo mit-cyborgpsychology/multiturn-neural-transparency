@@ -824,8 +824,15 @@ function initializeDynamicInterface() {
         chatInterface.show();
         document.body.classList.add('chat-active');
 
-        // Hide trait drift panel in single-turn condition (visualization is static, drift is meaningless)
-        if (window.experimentSettings.visualizationCondition === 1) {
+        const chatVizCondition = window.experimentSettings.visualizationCondition;
+
+        // Control condition: hide the entire persona panel — no visualization in chat view
+        if (chatVizCondition === 0) {
+            $('#chatPersonaPanel').hide();
+        }
+
+        // Single-turn condition: hide trait drift panel (visualization is static, drift is meaningless)
+        if (chatVizCondition === 1) {
             $('#traitDriftPanel').hide();
         }
 
