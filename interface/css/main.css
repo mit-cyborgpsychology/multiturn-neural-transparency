@@ -1908,6 +1908,23 @@ body.chat-active .dynamic-chat-container {
     background-color: var(--accent-hover);
 }
 
+/* Progressive trait reveal */
+.trait-reveal-hidden {
+    display: none;
+}
+
+.trait-progress-counter {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-bottom: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: transparent;
+}
+
 /* Phase Actions - Fixed at bottom */
 .phase-actions {
     flex-shrink: 0;

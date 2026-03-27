@@ -65,6 +65,7 @@
         }
 
         container.innerHTML = html;
+        window.initProgressiveReveal(containerId);
 
         return {
             /** @returns {boolean} true if all 8 traits have been rated */
@@ -93,12 +94,84 @@
                     const radio = document.getElementById(namePrefix + trait.key + '_10');
                     if (radio) radio.checked = true;
                 }
+                const c = document.getElementById(containerId);
+                if (c && typeof c._revealAll === 'function') c._revealAll();
             }
         };
     };
 
     // Expose TRAITS for other modules that need the list
     window.TRAIT_DEFINITIONS = TRAITS;
+
+    /**
+     * Progressive trait reveal with counter.
+     * Hides all .trait-pair elements except the first, then reveals each
+     * one after the user selects a value. Inserts a "X / N rated" counter
+     * as a sibling element immediately before the container.
+     * @param {string} containerId
+     */
+    window.initProgressiveReveal = function(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const pairs = Array.from(container.querySelectorAll('.trait-pair'));
+        const total = pairs.length;
+        if (total === 0) return;
+
+        // Insert counter above the container
+        const counter = document.createElement('div');
+        counter.className = 'trait-progress-counter';
+        container.parentNode.insertBefore(counter, container);
+
+        function updateCounter() {
+            const rated = pairs.filter(function(p) {
+                return p.querySelector('input[type="radio"]:checked');
+            }).length;
+            counter.textContent = rated + ' / ' + total + ' rated';
+            return rated;
+        }
+
+        function revealUpTo(index) {
+            pairs.forEach(function(pair, i) {
+                if (i <= index) pair.classList.remove('trait-reveal-hidden');
+            });
+        }
+
+        // Reveal all at once — called by autoFill() / skip mode
+        container._revealAll = function() {
+            revealUpTo(total - 1);
+            updateCounter();
+        };
+
+        // On init: detect already-answered traits (skip mode pre-fills before this runs)
+        let lastAnswered = -1;
+        pairs.forEach(function(pair, i) {
+            if (pair.querySelector('input[type="radio"]:checked')) lastAnswered = i;
+        });
+
+        // Hide all traits first, then reveal up through (lastAnswered + 1)
+        pairs.forEach(function(pair) { pair.classList.add('trait-reveal-hidden'); });
+        revealUpTo(Math.min(lastAnswered + 1, total - 1));
+        updateCounter();
+
+        // Listen for selections to reveal next trait
+        container.addEventListener('change', function(e) {
+            if (!e.target.matches('input[type="radio"]')) return;
+
+            updateCounter();
+
+            // Find last-answered index and reveal next hidden trait
+            let lastIdx = -1;
+            pairs.forEach(function(pair, i) {
+                if (pair.querySelector('input[type="radio"]:checked')) lastIdx = i;
+            });
+            const nextIdx = lastIdx + 1;
+            if (nextIdx < total && pairs[nextIdx].classList.contains('trait-reveal-hidden')) {
+                pairs[nextIdx].classList.remove('trait-reveal-hidden');
+                pairs[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    };
 
     console.log('🧩 Trait form builder loaded');
 })();
