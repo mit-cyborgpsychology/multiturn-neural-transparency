@@ -1,0 +1,10 @@
+transformers
+huggingface_hub
+transformer_lens
+tqdm
+requests
+dotenv
+openai
+anthropic
+scipy
+matplotlib

@@ -1,9 +1,15 @@
 import modal
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import login
 from typing import Dict, Optional
 from pydantic import BaseModel
 from fastapi import Header, HTTPException
+from pathlib import Path
+import json
 import os
+
+LOCAL_VECTORS_PATH = os.path.join(os.path.dirname(__file__), "../generation/stored_persona_vectors")
 
 # Define the image with all dependencies
 image = (
@@ -13,16 +19,15 @@ image = (
         "transformers",
         "huggingface_hub",
         "accelerate",
-        "fastapi[standard]",
-        "transformer_lens"
+        "fastapi[standard]"
     )
     .add_local_dir(
-        "/persona_vectors/stored_persona_vectors",  # Your local path
+        os.path.abspath(LOCAL_VECTORS_PATH),  # Your local path
         remote_path="/root/stored_persona_vectors"  # Path inside container
     )
 )
 
-app = modal.App("persona-vector-api")
+app = modal.App("persona-vector-api-experimental")
 
 class SystemPrompt(BaseModel):
     system: Optional[str] = None
@@ -42,12 +47,18 @@ class PersonaScoreAPI:
     def load_model(self):
         login(token=os.environ["hf_token"])
         self.api_key = os.environ["api_key"]
-        
-        model_name = "meta-llama/Llama-3.2-3B-Instruct"
+        self.device = "cuda"
+
+        model_name = "meta-llama/Llama-3.1-8B-Instruct"
 
         # Load hooked transformer for persona vectors
-        from transformer_lens import HookedTransformer
-        self.hooked_model = HookedTransformer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            dtype=torch.bfloat16,
+            device_map="auto"
+            )
+        self.model.eval()
         
     
     @modal.method()
@@ -59,30 +70,30 @@ class PersonaScoreAPI:
     def generate_persona_scores_method(self, system_prompt: str) -> Dict[str, float]:
         """Generate persona scores using the hooked model"""
 
-        import requests
-        import torch
-        from huggingface_hub import login
-        from pathlib import Path
-        from transformer_lens import HookedTransformer
-        import json
-        from tqdm import tqdm
-        import os
+        def get_final_prompt_activation(prompt: str) -> torch.Tensor:
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
-        def get_final_prompt_activation(model, prompt):
-            tokens = model.to_tokens(prompt)
+            post_activations = []
 
-            num_layers = 26
-            with torch.no_grad():
-                # Get activations from original model
-                _, cache = model.run_with_cache(tokens)
+            def make_hook(layer_idx):
+                def hook_fn(module, args, output):
+                    post_activations.append(output[0, -1, :].detach().to(torch.bfloat16))
+                return hook_fn
 
-                activations = []
-                for layer_idx in range(num_layers):
-                    # get activation of predicted token
-                    activations.append(cache[f"blocks.{layer_idx}.hook_resid_mid"][:, -1, :])
-                # concatenate across layers
-                activation = torch.cat(activations, dim=0) # (26, 2304)
+            hooks = []
+            for i, layer in enumerate(self.model.model.layers):
+                h = layer.register_forward_hook(make_hook(i))
+                hooks.append(h)
 
+            try:
+                with torch.no_grad():
+                    self.model(**inputs)
+            finally:
+                for h in hooks:
+                    h.remove()
+
+            # (num_layers, hidden_size)
+            activation = torch.stack(post_activations, dim=0)
             return activation
 
         def vector_projection(a, b):
@@ -92,35 +103,35 @@ class PersonaScoreAPI:
             # Return the scalar coefficient, not the full projection vector
             return dot_product / torch.sqrt(b_norm_squared)
 
-        def generate_persona_scores(model, system_prompt):
+        def generate_persona_scores(system_prompt):
 
-            prompt_activation = get_final_prompt_activation(model, system_prompt)
+            best_layer = 11
+            prompt_activation = get_final_prompt_activation(system_prompt)[best_layer]
 
             folder_path = Path("/root/stored_persona_vectors")
             with open(folder_path / 'traits.json', 'r') as f:
                 traits = json.load(f)
 
+            with open(folder_path / "scale.json", "r") as f:
+                scale = json.load(f)
+
             # iterate through traits that have stored prompts
             persona_scores = {}
             for trait in traits.keys():
                 persona_scores[trait] = {}
-                persona_vector = torch.load(folder_path / f"{trait}.pt", weights_only=False)
+                persona_vector = torch.load(folder_path / f"{trait}.pt", weights_only=False).to(torch.bfloat16)[best_layer]
                 projection = vector_projection(prompt_activation.flatten(), persona_vector.flatten())
                 # normalize it using the persona vector
                 normalized_score = projection.item()/persona_vector.flatten().norm(p=2).item()
 
-                # rescale score
-                with open(folder_path / "persona_scores_scale.json", "r") as f:
-                    scale = json.load(f)
-
                 if normalized_score > 0:
-                    scaled_score = normalized_score / scale["pos"][trait]
+                    scaled_score = normalized_score / scale[trait]["max"]
 
                     persona_scores[trait][traits[trait]["positive"]] = min(scaled_score, 1.0)
                     persona_scores[trait][traits[trait]["negative"]] = 0.0
 
                 else:
-                    scaled_score = normalized_score / -scale["neg"][trait]
+                    scaled_score = normalized_score / -scale[trait]["min"]
 
                     persona_scores[trait][traits[trait]["positive"]] = 0.0
                     persona_scores[trait][traits[trait]["negative"]] = min(-scaled_score, 1.0)
@@ -129,7 +140,7 @@ class PersonaScoreAPI:
 
             return persona_scores
 
-        return generate_persona_scores(self.hooked_model, system_prompt)
+        return generate_persona_scores(system_prompt)
     
 # Persona vector endpoint
 @app.function(image=image)
@@ -152,8 +163,7 @@ def persona_vector_endpoint(
         persona_vector_ratings = persona_score_api.generate_persona_scores_method.remote(request.system)
         
         return PersonaVectorResponse(
-            persona_vector_ratings=persona_vector_ratings,  # Already a dict, don't use json.dumps
-            system_prompt=request.system or ""
+            persona_vector_ratings=persona_vector_ratings  # Already a dict, don't use json.dumps
         )
         
     except HTTPException:

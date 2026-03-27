@@ -48,7 +48,7 @@ class ChatAPI:
         self.api_key = os.environ["api_key"]
         
         # Load the model and tokenizer
-        model_name = "meta-llama/Llama-3.2-3B-Instruct"
+        model_name = "meta-llama/Llama-3.1-8B-Instruct"
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
