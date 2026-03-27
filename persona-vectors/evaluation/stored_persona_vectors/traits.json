@@ -3,31 +3,27 @@
     "positive": "empathetic",
     "negative": "unempathetic"
   },
-  "encouraging": {
-    "positive": "encouraging",
-    "negative": "discouraging"
+  "erudite": {
+    "positive": "sophisticated",
+    "negative": "simplistic"
   },
-  "sociality": {
-    "positive": "social",
-    "negative": "antisocial"
+  "opinionated": {
+    "positive": "opinionated",
+    "negative": "non-committal"
   },
-  "formality": {
-    "positive": "formal",
-    "negative": "casual"
+  "robotic": {
+    "positive": "robotic",
+    "negative": "human-like"
   },
-  "sycophancy": {
+  "romantic": {
+    "positive": "romantic",
+    "negative": "platonic"
+  },
+  "sycophantic": {
     "positive": "sycophantic",
     "negative": "honest"
   },
-  "funniness": {
-    "positive": "funny",
-    "negative": "serious"
-  },
-  "hallucination": {
-    "positive": "hallucinatory",
-    "negative": "factual"
-  },
-  "toxicity": {
+  "toxic": {
     "positive": "toxic",
     "negative": "respectful"
   }

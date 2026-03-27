@@ -1015,67 +1015,59 @@ function showTraitDefinitionsNoViz() {
             </p>
             
             <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-                <!-- Empathy -->
+                <!-- Empathy (binary) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
                     <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Empathy</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Unempathetic ↔ Empathetic:</strong> Ranges from lacking understanding of others' feelings to deeply understanding and sharing emotional experiences.
+                        <strong>Unempathetic ↔ Empathetic:</strong> Ranges from lacking understanding of others' feelings to deeply understanding and sharing the feelings of another person.
                     </p>
                 </div>
-                
-                <!-- Encouraging -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Encouraging</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Discouraging ↔ Encouraging:</strong> Ranges from causing loss of confidence to inspiring confidence and hope.
-                    </p>
-                </div>
-                
-                <!-- Sociality -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sociality</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Antisocial ↔ Social:</strong> Ranges from avoiding social interaction to actively seeking and enjoying it.
-                    </p>
-                </div>
-                
-                <!-- Honesty -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Honesty</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Sycophantic ↔ Honest:</strong> Ranges from excessive flattery to gain favor to being truthful and genuine.
-                    </p>
-                </div>
-                
-                <!-- Factual -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Factual Accuracy</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Hallucinatory ↔ Factual:</strong> Ranges from generating false information to providing accurate, verifiable information.
-                    </p>
-                </div>
-                
-                <!-- Respectful -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Respectfulness</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Toxic ↔ Respectful:</strong> Ranges from harmful and offensive behavior to showing consideration and courtesy.
-                    </p>
-                </div>
-                
-                <!-- Funniness -->
+
+                <!-- Erudite (neutral) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Funniness</h5>
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Erudite</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Serious ↔ Funny:</strong> Ranges from thoughtful and earnest to using wit and humor to entertain.
+                        <strong>Simplistic ↔ Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study.
                     </p>
                 </div>
-                
-                <!-- Formality -->
+
+                <!-- Opinionated (neutral) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Formality</h5>
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Opinionated</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Formal ↔ Casual:</strong> Ranges from following proper conventions and structure to being relaxed and informal.
+                        <strong>Non-committal ↔ Opinionated:</strong> Ranges from remaining neutral or purely informational to expressing strong, confident viewpoints and personal stances on topics.
+                    </p>
+                </div>
+
+                <!-- Robotic (neutral) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Robotic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Human-like ↔ Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance or adaptability.
+                    </p>
+                </div>
+
+                <!-- Romantic (binary) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Romantic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Platonic ↔ Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection.
+                    </p>
+                </div>
+
+                <!-- Sycophantic (binary) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sycophantic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Honest ↔ Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person's views.
+                    </p>
+                </div>
+
+                <!-- Toxic (binary) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Toxic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Respectful ↔ Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging.
                     </p>
                 </div>
             </div>
@@ -1619,31 +1611,27 @@ function testPersonaWithMockData() {
                 empathetic: 0.82,      // High empathy
                 unempathetic: 0
             },
-            encouraging: {
-                encouraging: 0.75,     // Quite encouraging
-                discouraging: 0
+            erudite: {
+                sophisticated: 0.75,   // Quite sophisticated
+                simplistic: 0
             },
-            sociality: {
-                social: 0.68,          // Moderately social
-                antisocial: 0
+            opinionated: {
+                opinionated: 0.68,     // Moderately opinionated
+                'non-committal': 0
             },
-            formality: {
-                formal: 0,             // Very casual (opposite trait active)
-                casual: 0.85
+            robotic: {
+                robotic: 0,            // Very human-like (opposite trait active)
+                'human-like': 0.85
             },
-            sycophancy: {
+            romantic: {
+                romantic: 0,           // Platonic (opposite trait active)
+                platonic: 0.65
+            },
+            sycophantic: {
                 sycophantic: 0,        // Mostly honest (opposite trait active)
-                honest: 0.65
+                honest: 0.88
             },
-            funniness: {
-                funny: 0.78,           // Quite funny
-                serious: 0
-            },
-            hallucination: {
-                hallucinatory: 0,      // Very factual/accurate (opposite trait active)
-                factual: 0.88
-            },
-            toxicity: {
+            toxic: {
                 toxic: 0,              // Very respectful (opposite trait active)
                 respectful: 0.92
             }

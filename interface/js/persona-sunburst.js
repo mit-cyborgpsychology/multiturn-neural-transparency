@@ -9,11 +9,11 @@
 //        empathetic: 0.803,   // Active trait (0-1 range)
 //        unempathetic: 0      // Inactive trait (always 0)
 //      },
-//      encouraging: {
-//        encouraging: 0.672,  // Active trait
-//        discouraging: 0      // Inactive trait (always 0)
+//      erudite: {
+//        sophisticated: 0.672, // Active trait
+//        simplistic: 0         // Inactive trait (always 0)
 //      },
-//      toxicity: {
+//      toxic: {
 //        toxic: 0,            // Inactive trait (always 0)
 //        respectful: 0.895    // Active trait
 //      }
@@ -37,8 +37,9 @@
 //    }
 //
 // TRAIT CLASSIFICATION:
-// - Positive traits (empathetic, encouraging, social, honest, etc.) → Green category
-// - Negative traits (toxic, sycophantic, hallucinatory, etc.) → Red category
+// - Positive/Binary traits (empathetic, honest, respectful, romantic) → Green category
+// - Negative/Binary traits (toxic, sycophantic, unempathetic, platonic) → Red category
+// - Neutral traits (sophisticated, simplistic, opinionated, non-committal, robotic, human-like) → Gray category
 // - Values range from 0-1 (inactive traits marked with -1.0 are filtered out)
 //
 // VISUALIZATION DETAILS:
@@ -999,58 +1000,52 @@ function detectTraitPairs(personaData) {
  */
 function classifyTrait(traitName) {
     const trait = traitName.toLowerCase();
-    
-    // Neutral traits (funny/serious, casual/formal)
-    const neutralTraits = ['funny', 'serious', 'casual', 'formal'];
+
+    // Neutral traits (erudite, opinionated, robotic — neither end is inherently good/bad)
+    const neutralTraits = ['sophisticated', 'simplistic', 'erudite', 'opinionated', 'non-committal', 'robotic', 'human-like'];
     if (neutralTraits.some(nt => trait.includes(nt))) {
         return 'neutral';
     }
-    
+
     // Negative trait prefixes (must be at start of word)
-    const negativePrefixes = ['un', 'dis', 'anti', 'in'];
-    
+    const negativePrefixes = ['un'];
+
     // Negative trait indicators (can appear anywhere)
     const negativeIndicators = [
         'toxic', 'harmful', 'rude', 'aggressive', 'hostile',
         'sycophant', 'deceptive', 'dishonest', 'fake',
-        'hallucinat', 'inaccurate', 'wrong', 'false',
-        'boring', 'dull', 'cold', 'unfriendly'
+        'platonic'
     ];
-    
+
     // Positive trait indicators (contains)
     const positiveIndicators = [
         'empath', 'kind', 'caring', 'warm', 'friendly',
-        'encourag', 'support', 'help', 'positive',
-        'social', 'outgoing', 'engaging',
         'honest', 'truthful', 'genuine', 'authentic',
-        'humorous', 'witty', 'playful',
-        'accurate', 'correct', 'precise', 'factual',
         'respectful', 'polite', 'courteous',
-        'creative', 'innovative', 'original',
-        'relaxed', 'easy'
+        'romantic'
     ];
-    
+
     // Check for negative prefixes (must be at start)
     for (const prefix of negativePrefixes) {
         if (trait.startsWith(prefix)) {
             return 'negative';
         }
     }
-    
+
     // Check for negative indicators (can be anywhere)
     for (const indicator of negativeIndicators) {
         if (trait.includes(indicator)) {
             return 'negative';
         }
     }
-    
+
     // Check for positive indicators
     for (const indicator of positiveIndicators) {
         if (trait.includes(indicator)) {
             return 'positive';
         }
     }
-    
+
     // Default to positive if no clear indicators
     return 'positive';
 }
@@ -1146,56 +1141,28 @@ function getTraitDefinition(traitName) {
     const trait = traitName.toLowerCase().replace(/\s+/g, '');
     
     const definitions = {
-        'empathetic': 'Understanding and sharing the feelings of others',
+        'empathetic': 'Understanding and sharing the feelings of another person',
         'unempathetic': 'Lacking understanding or concern for others\' feelings',
-        'empathy': 'Understanding and sharing the feelings of others',
-        
-        'warm': 'Friendly, kind, and affectionate in interactions',
-        'cold': 'Distant, unfriendly, or emotionally detached',
-        'warmth': 'Friendly, kind, and affectionate in interactions',
-        
-        'supportive': 'Providing encouragement and help to others',
-        'unsupportive': 'Lacking encouragement or help for others',
-        'supportiveness': 'Providing encouragement and help to others',
-        
-        'encouraging': 'Inspiring confidence and hope in others',
-        'discouraging': 'Causing loss of confidence or hope',
-        
-        'social': 'Enjoying and seeking interaction with others',
-        'unsocial': 'Avoiding or disinterested in social interaction',
-        'sociality': 'Enjoying and seeking interaction with others',
-        
-        'humorous': 'Using wit and jokes to entertain',
-        'humorless': 'Lacking in humor or playfulness',
-        'humor': 'Using wit and jokes to entertain',
-        
-        'toxic': 'Harmful, offensive, or disrespectful behavior',
-        'respectful': 'Showing consideration and courtesy',
-        'toxicity': 'Harmful, offensive, or disrespectful behavior',
-        
-        'sycophantic': 'Excessive flattery to gain favor',
-        'genuine': 'Authentic and sincere in interactions',
-        'sycophancy': 'Excessive flattery to gain favor',
-        
-        'deceptive': 'Deliberately misleading or dishonest',
-        'honest': 'Truthful and straightforward',
-        'deceptiveness': 'Deliberately misleading or dishonest',
-        
-        'hallucinatory': 'Generating false information presented as fact',
-        'factual': 'Providing accurate and verifiable information',
-        'hallucination': 'Generating false information presented as fact',
-        
-        'casual': 'Relaxed and informal in approach',
-        'formal': 'Following proper conventions and structure',
-        
-        'serious': 'Thoughtful and earnest in manner',
-        'playful': 'Light-hearted and fun-loving',
-        
-        'outgoing': 'Friendly and socially confident',
-        'reserved': 'Restrained and quiet in manner',
-        
-        'creative': 'Showing imagination and originality',
-        'conventional': 'Following traditional approaches'
+        'empathy': 'Understanding and sharing the feelings of another person',
+
+        'sophisticated': 'Showing deep, wide-ranging knowledge gained through extensive study',
+        'simplistic': 'Simple, surface-level engagement lacking depth or nuance',
+        'erudite': 'Showing deep, wide-ranging knowledge gained through extensive study',
+
+        'opinionated': 'Expressing strong, confident viewpoints and personal stances',
+        'non-committal': 'Remaining neutral or purely informational, avoiding personal stances',
+
+        'robotic': 'Rigid, mechanical communication lacking warmth or spontaneity',
+        'human-like': 'Natural warmth, spontaneity, and emotional nuance in communication',
+
+        'romantic': 'Emotional intimacy, personal warmth, and affectionate connection',
+        'platonic': 'Purely friendly interaction without romantic sentiment',
+
+        'sycophantic': 'Excessively agreeing with or flattering to gain favor',
+        'honest': 'Providing truthful, objective, and genuinely helpful responses',
+
+        'toxic': 'Speaking in a manner that is harmful, offensive, or damaging',
+        'respectful': 'Showing consideration and courtesy in interactions'
     };
     
     return definitions[trait] || 'A personality characteristic';

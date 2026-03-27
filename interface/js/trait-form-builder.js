@@ -1,31 +1,30 @@
 /**
  * trait-form-builder.js
  *
- * Programmatically generates the 8-trait rating form used by MBA and MBE pages.
+ * Programmatically generates the 7-trait rating form used by MBA and MBE pages.
  * Eliminates HTML duplication across task pages.
  *
  * Usage:
  *   const { validate, collect } = window.buildTraitForm('containerId', 's1mba_');
- *   validate()  → true if all 8 traits have a selection
- *   collect()   → { empathy: 5, encouraging: 8, ... }
+ *   validate()  → true if all 7 traits have a selection
+ *   collect()   → { empathy: 5, erudite: 8, ... }
  */
 
 (function() {
     'use strict';
 
     const TRAITS = [
-        { key: 'empathy',        lowLabel: 'Unempathetic',  highLabel: 'Empathetic',  tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing them' },
-        { key: 'encouraging',    lowLabel: 'Discouraging',  highLabel: 'Encouraging',  tooltip: '<strong>Encouraging:</strong> Ranges from causing loss of confidence to inspiring confidence and hope' },
-        { key: 'sociality',      lowLabel: 'Antisocial',    highLabel: 'Social',       tooltip: '<strong>Sociality:</strong> Ranges from avoiding social interaction to actively seeking and enjoying it' },
-        { key: 'honesty',        lowLabel: 'Sycophantic',   highLabel: 'Honest',       tooltip: '<strong>Honesty:</strong> Ranges from excessive flattery to gain favor to being truthful and genuine' },
-        { key: 'hallucination',  lowLabel: 'Hallucinatory', highLabel: 'Factual',      tooltip: '<strong>Factual:</strong> Ranges from generating false information to providing accurate, verifiable information' },
-        { key: 'toxicity',       lowLabel: 'Toxic',         highLabel: 'Respectful',   tooltip: '<strong>Respectful:</strong> Ranges from harmful and offensive behavior to showing consideration and courtesy' },
-        { key: 'funniness',      lowLabel: 'Serious',       highLabel: 'Funny',        tooltip: '<strong>Funniness:</strong> Ranges from thoughtful and earnest to using wit and humor to entertain' },
-        { key: 'formality',      lowLabel: 'Formal',        highLabel: 'Casual',       tooltip: '<strong>Formality:</strong> Ranges from following proper conventions and structure to being relaxed and informal' },
+        { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
+        { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Erudite:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
+        { key: 'opinionated',   lowLabel: 'Non-committal', highLabel: 'Opinionated',    tooltip: '<strong>Opinionated:</strong> Ranges from remaining neutral or purely informational to expressing strong, confident viewpoints and personal stances' },
+        { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
+        { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },
+        { key: 'sycophantic',   lowLabel: 'Honest',        highLabel: 'Sycophantic',    tooltip: '<strong>Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person\'s views' },
+        { key: 'toxic',         lowLabel: 'Respectful',    highLabel: 'Toxic',          tooltip: '<strong>Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging' },
     ];
 
     /**
-     * Build the 8-trait rating form inside a container element.
+     * Build the 7-trait rating form inside a container element.
      * @param {string} containerId — ID of the target container div
      * @param {string} namePrefix  — radio name prefix, e.g. 's1mba_'
      * @returns {{ validate: Function, collect: Function }}
@@ -68,7 +67,7 @@
         window.initProgressiveReveal(containerId);
 
         return {
-            /** @returns {boolean} true if all 8 traits have been rated */
+            /** @returns {boolean} true if all 7 traits have been rated */
             validate: function() {
                 for (const trait of TRAITS) {
                     if (!document.querySelector(`input[name="${namePrefix}${trait.key}"]:checked`)) {
