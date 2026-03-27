@@ -1885,21 +1885,93 @@ async function savePostPhase2Data() {
     }
 }
 
-// Complete post-survey and advance to MBE (Model Behavior Evaluation)
+// Complete post-survey and show inline MBE below the chat log
 function completePostSurvey() {
-    // Hide modal
+    // Hide modal if it was shown
     $('#postSurveyModal').fadeOut(300);
 
-    // Route to MBE after a short delay
-    setTimeout(function() {
-        if (typeof window.showMBE === 'function') {
-            window.showMBE();
-        } else {
-            // Fallback if routing function not available
-            console.warn('window.showMBE not found, falling back to mbe-trait-rating.html');
-            $('#task-main-content').load('html/mbe-trait-rating.html?v=' + Date.now());
+    // Hide chat input area
+    $('.input-container').hide();
+
+    // Gather session info
+    const session = window.getCurrentSession();
+    const promptText = window.getSessionPromptText(session);
+    const promptType = window.getSessionPromptType(session);
+    const prefix = 's' + session + 'mbe_';
+    const nextLabel = session === 1 ? 'Submit & Continue to Session 2 →' : 'Submit & Continue to Final Survey →';
+
+    // Inject MBE form below the chat log
+    const mbeHtml = `
+        <div id="mbeInlinePanel" style="border-top: 2px solid #667eea; margin-top: 1rem; padding: 1.25rem 0.5rem;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 16px; border-radius: 8px; color: white; margin-bottom: 1rem;">
+                <h5 style="margin: 0 0 4px 0; font-size: 1.05rem;">Model Behavior Evaluation</h5>
+                <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">Now that you've observed the conversation, rate the activation level (0-10) for each behavioral trait.</p>
+            </div>
+            <details class="toggle-prompt" style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
+                <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Show system prompt</summary>
+                <p style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: 'Courier New', monospace;">${promptText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+            </details>
+            <div id="mbeInlineTraitForm"></div>
+            <div style="text-align: right; margin-top: 1.25rem;">
+                <button type="button" class="btn btn-primary" id="mbeInlineSubmitBtn" disabled>${nextLabel}</button>
+            </div>
+        </div>`;
+
+    const messagesContainer = $('#messagesContainer');
+    messagesContainer.append(mbeHtml);
+
+    // Build trait form
+    const form = window.buildTraitForm('mbeInlineTraitForm', prefix);
+
+    // Skip mode: auto-fill
+    if (window.experimentSettings && window.experimentSettings.skip) {
+        form.autoFill();
+        $('#mbeInlineSubmitBtn').prop('disabled', false);
+    }
+
+    // Validate on change
+    $('#mbeInlineTraitForm').on('change', function() {
+        $('#mbeInlineSubmitBtn').prop('disabled', !form.validate());
+    });
+
+    // Submit handler
+    $('#mbeInlineSubmitBtn').on('click', async function() {
+        if (!form.validate()) return;
+        $(this).prop('disabled', true).text('Saving...');
+
+        const data = {
+            timestamp: new Date().toISOString(),
+            session: session,
+            promptType: promptType,
+            systemPromptShown: promptText,
+            traitPredictions: form.collect()
+        };
+
+        try {
+            if (typeof window.writeTaskData === 'function') {
+                await window.writeTaskData('session' + session + '/mbe', data);
+            }
+        } catch (e) {
+            console.warn('MBE save error:', e);
         }
-    }, 500);
+
+        // Route based on session
+        if (session === 1) {
+            if (typeof window.showSessionTransition === 'function') {
+                window.showSessionTransition();
+            }
+        } else {
+            if (typeof window.showFinalSurvey === 'function') {
+                window.showFinalSurvey();
+            }
+        }
+    });
+
+    // Scroll to the MBE form
+    setTimeout(function() {
+        const panel = document.getElementById('mbeInlinePanel');
+        if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
 }
 
 /******************************************************************************
