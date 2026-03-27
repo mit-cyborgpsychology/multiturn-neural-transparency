@@ -898,8 +898,12 @@ function initializeDynamicInterface() {
         chatInterface.hide();
         document.body.classList.remove('chat-active');
         systemPromptInterface.show();
-        
+
         const visualizationCondition = window.experimentSettings.visualizationCondition;
+
+        $('.config-description').text(visualizationCondition === 0
+            ? 'View the chatbot\'s system prompt and analyze its behavior accordingly using the definitions.'
+            : 'View the chatbot\'s system prompt and analyze its behavior accordingly with neural transparency.');
 
         if (visualizationCondition === 0) {
             $('#initialPlaceholder').show();
