@@ -235,6 +235,8 @@ function initializeDynamicInterface() {
         // Hide editing controls — prompt is pre-determined
         $('#characterCounter').hide();
         $('#resetConfig').hide();
+        // Prompt is pre-filled and readonly, so bypass character minimum check
+        $('#submitPromptBtn').prop('disabled', false);
 
         // Fire persona analysis in the background immediately for data collection
         if (calibrationPrompt) {
