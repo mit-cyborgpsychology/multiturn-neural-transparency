@@ -41,7 +41,7 @@
     const content = window.STUDY_CONTENT;
     if (content) {
         window.buildSentenceReveal(
-            content.TASK2_PROMPT,
+            content.CALIBRATION_PROMPT,
             document.getElementById('task2SystemPrompt'),
             document.getElementById('task2ProceedBtn')
         );
@@ -54,7 +54,7 @@
             if (typeof window.writeTaskData === 'function') {
                 await window.writeTaskData('task2PromptReading', {
                     timestamp: new Date().toISOString(),
-                    systemPromptShown: content ? content.TASK2_PROMPT : ''
+                    systemPromptShown: content ? content.CALIBRATION_PROMPT : ''
                 });
             }
         } catch (err) {
