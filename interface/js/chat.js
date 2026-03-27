@@ -399,21 +399,9 @@ function initializeDynamicInterface() {
                 const messagesContainer = $('#messagesContainer');
                 messagesContainer.empty();
                 
-                // Get selected avatar for welcome message
-                const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-                let avatarHtml;
-                if (selectedAvatar) {
-                    avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-                } else {
-                    avatarHtml = '<i class="fas fa-robot"></i>';
-                }
-                
                 // Add welcome message back
                 const welcomeMessage = `
                     <div class="message assistant-message" data-message-id="1">
-                        <div class="message-avatar">
-                            ${avatarHtml}
-                        </div>
                         <div class="message-content">
                             <div class="message-text">
                                 Hi there!
@@ -764,25 +752,8 @@ function initializeDynamicInterface() {
         const currentSystemPrompt = localStorage.getItem('customSystemPrompt') || 
             "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
         
-        // Generate avatar HTML based on sender and selected avatar
-        let avatarHtml;
-        if (sender === 'user') {
-            avatarHtml = '<i class="fas fa-user"></i>';
-        } else {
-            // Use selected avatar image for assistant
-            const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-            if (selectedAvatar) {
-                avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-            } else {
-                avatarHtml = '<i class="fas fa-robot"></i>';
-            }
-        }
-        
         const messageHtml = `
             <div class="message ${messageClass}" data-message-id="${messageId}">
-                <div class="message-avatar">
-                    ${avatarHtml}
-                </div>
                 <div class="message-content">
                     <div class="message-text">${text}</div>
                 </div>
@@ -818,17 +789,13 @@ function initializeDynamicInterface() {
         chatInterface.show();
         document.body.classList.add('chat-active');
 
+        // Hide trait drift panel in single-turn condition (visualization is static, drift is meaningless)
+        if (window.experimentSettings.visualizationCondition === 1) {
+            $('#traitDriftPanel').hide();
+        }
+
         // Show chat instruction modal
         window.showInstructionModal('chat');
-
-        // Update initial message avatar with selected avatar
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        if (selectedAvatar) {
-            const initialAvatarDiv = $('#initialMessageAvatar');
-            if (initialAvatarDiv.length > 0) {
-                initialAvatarDiv.html(`<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`);
-            }
-        }
 
         // Enable user input for live conversation
         $('#messageInput').prop('disabled', false);
@@ -863,18 +830,8 @@ function initializeDynamicInterface() {
             const sender = turn.role === 'user' ? 'user' : 'assistant';
             const messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
 
-            const avatarHtml = sender === 'user'
-                ? '<i class="fas fa-user"></i>'
-                : (() => {
-                    const av = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-                    return av
-                        ? `<img src="${av}" alt="AI" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
-                        : '<i class="fas fa-robot"></i>';
-                })();
-
             const messageHtml = `
                 <div class="message ${messageClass}" data-message-id="${msgId}">
-                    <div class="message-avatar">${avatarHtml}</div>
                     <div class="message-content"><div class="message-text">${turn.content.replace(/\n/g, '<br>')}</div></div>
                 </div>`;
 
@@ -914,13 +871,6 @@ function initializeDynamicInterface() {
         document.body.classList.remove('chat-active');
         systemPromptInterface.show();
         
-        // Display selected avatar in header
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        if (selectedAvatar) {
-            $('#selectedAvatarImage').attr('src', selectedAvatar);
-            $('#selectedAvatarDisplay').show();
-        }
-
         const visualizationCondition = window.experimentSettings.visualizationCondition;
 
         if (visualizationCondition === 0) {
@@ -944,21 +894,9 @@ function initializeDynamicInterface() {
         window.conversationHistory = [];
         messagesContainer.empty();
         
-        // Get selected avatar for welcome message
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        let avatarHtml;
-        if (selectedAvatar) {
-            avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-        } else {
-            avatarHtml = '<i class="fas fa-robot"></i>';
-        }
-        
         // Add welcome message back
         const welcomeMessage = `
             <div class="message assistant-message" data-message-id="1">
-                <div class="message-avatar">
-                    ${avatarHtml}
-                </div>
                 <div class="message-content">
                     <div class="message-text">
                        Hi there!
@@ -1491,6 +1429,8 @@ function applySunburstHighlight(swing) {
 // oppositeTrait: formatted display name of the sister trait (e.g. 'Unempathetic')
 function renderTraitDrift(traitName) {
     if (!traitName || !window.personaHistory || window.personaHistory.length === 0) return;
+    // Trait drift is meaningless in single-turn condition (visualization never updates)
+    if (window.experimentSettings.visualizationCondition === 1) return;
 
     // Find which category contains this trait and get the raw opposite key
     let categoryKey = null;
