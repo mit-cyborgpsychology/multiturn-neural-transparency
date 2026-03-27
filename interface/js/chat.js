@@ -127,7 +127,7 @@ if (typeof window.timerDuration === 'undefined') {
     // Check for debug mode via URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const debugTimer = urlParams.get('debugTimer') === 'true';
-    window.timerDuration = debugTimer ? 10 : 60; // 10 seconds for debug, 1 minute (60s) for production
+    window.timerDuration = debugTimer ? 100 : 600; // 10 seconds for debug, 1 minute (60s) for production
 }
 if (typeof window.timerExpired === 'undefined') {
     window.timerExpired = false;
