@@ -15,7 +15,7 @@
 
     const TRAITS = [
         { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
-        { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Erudite:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
+        { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
         { key: 'opinionated',   lowLabel: 'Non-committal', highLabel: 'Opinionated',    tooltip: '<strong>Opinionated:</strong> Ranges from remaining neutral or purely informational to expressing strong, confident viewpoints and personal stances' },
         { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
         { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },

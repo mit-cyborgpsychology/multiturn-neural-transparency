@@ -1014,7 +1014,7 @@ function classifyTrait(traitName) {
     const negativeIndicators = [
         'toxic', 'harmful', 'rude', 'aggressive', 'hostile',
         'sycophant', 'deceptive', 'dishonest', 'fake',
-        'platonic'
+        'romantic'
     ];
 
     // Positive trait indicators (contains)
@@ -1022,7 +1022,7 @@ function classifyTrait(traitName) {
         'empath', 'kind', 'caring', 'warm', 'friendly',
         'honest', 'truthful', 'genuine', 'authentic',
         'respectful', 'polite', 'courteous',
-        'romantic'
+        'platonic'
     ];
 
     // Check for negative prefixes (must be at start)

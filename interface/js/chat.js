@@ -760,33 +760,29 @@ function initializeDynamicInterface() {
                             <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Empathy</h5>
                             <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
                         </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Encouraging</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Discouraging ↔ Encouraging</strong></p>
-                        </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sociality</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Antisocial ↔ Social</strong></p>
-                        </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Honesty</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Sycophantic ↔ Honest</strong></p>
-                        </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Factual Accuracy</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Hallucinatory ↔ Factual</strong></p>
-                        </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Respectfulness</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Toxic ↔ Respectful</strong></p>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sophisticated</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Simplistic ↔ Sophisticated</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Funniness</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Serious ↔ Funny</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Opinionated</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Non-committal ↔ Opinionated</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Formality</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Formal ↔ Casual</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Robotic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Human-like ↔ Robotic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Romantic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Platonic ↔ Romantic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sycophantic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Honest ↔ Sycophantic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Toxic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Respectful ↔ Toxic</strong></p>
                         </div>
                     </div>
                 </div>
@@ -1023,9 +1019,9 @@ function showTraitDefinitionsNoViz() {
                     </p>
                 </div>
 
-                <!-- Erudite (neutral) -->
+                <!-- Sophisticated (neutral) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Erudite</h5>
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sophisticated</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
                         <strong>Simplistic ↔ Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study.
                     </p>
@@ -1047,8 +1043,8 @@ function showTraitDefinitionsNoViz() {
                     </p>
                 </div>
 
-                <!-- Romantic (binary) -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
+                <!-- Romantic (binary — romantic is negative) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
                     <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Romantic</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
                         <strong>Platonic ↔ Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection.
