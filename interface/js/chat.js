@@ -395,14 +395,17 @@ function initializeDynamicInterface() {
             switchToChat();
         });
 
-        // Check Persona button - analyze persona with API
+        // Check Persona button - analyze persona with API (disabled after first use to prevent duplicate history entries)
         $('#checkPersonaBtn').on('click', async function() {
             // Remove focus from button to return to default state
             $(this).blur();
-            
+
+            // Prevent multiple calls — disable immediately on first click
+            $(this).prop('disabled', true).text('Analyzing...');
+
             // Get the current system prompt from the input
             const systemPrompt = $('#systemPromptInput').val();
-            
+
             // Log this system prompt attempt to Firebase
             const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
@@ -410,20 +413,20 @@ function initializeDynamicInterface() {
                 action: 'check_persona',
                 timestamp: new Date().toISOString()
             });
-            
+
             // Mark that persona has been checked for current prompt
             window.personaCheckedForCurrentPrompt = true;
-            
+
             // Enable Start Chat button now that persona is checked
             $('#startChatBtn').prop('disabled', false);
-            
+
             // Hide placeholder, show persona visualization area
             $('#initialPlaceholder').hide();
             $('#personaVisualization').show();
-            
+
             // Show visualization explanation modal
             window.showVisualizationExplanation();
-            
+
             // Call persona check
             checkPersona(systemPrompt);
         });
