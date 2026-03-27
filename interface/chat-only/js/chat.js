@@ -138,13 +138,8 @@ async function callAIAPI() {
 function addMessage(text, sender, isError = false) {
     const messageId = messageIdCounter++;
     const messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
-    const avatarIcon = sender === 'user' ? 'fa-user' : 'fa-robot';
-    
     const messageHtml = `
         <div class="message ${messageClass}" data-message-id="${messageId}">
-            <div class="message-avatar">
-                <i class="fas ${avatarIcon}"></i>
-            </div>
             <div class="message-content ${isError ? 'error-message' : ''}">
                 <div class="message-text">${text}</div>
             </div>

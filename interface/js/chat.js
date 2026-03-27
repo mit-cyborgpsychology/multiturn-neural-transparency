@@ -29,11 +29,12 @@ localStorage.removeItem('selectedAvatar');
 
 // Write a simple test case to the database
 let studyId;
-if (DEBUG){
-    studyId = 'exp2-debug';
-} else {
-    studyId = 'exp2';
-}
+studyId='multiturn_debug';
+// if (DEBUG){
+//     studyId = 'multiturn';
+// } else {
+//     studyId = 'exp2';
+// }
 // Expose globally so task1/task3/task4 pages can write to the same study path
 window.studyId = studyId;
 
