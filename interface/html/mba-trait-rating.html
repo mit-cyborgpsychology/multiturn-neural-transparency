@@ -41,6 +41,19 @@
     </div>
 </div>
 
+<!-- Visualization Explainer Modal -->
+<div id="mbaVizExplainerModal" class="instruction-modal" style="display: none;">
+    <div class="instruction-modal-overlay"></div>
+    <div class="instruction-modal-content">
+        <h4>How to Read This Visualization</h4>
+        <p>This sunburst chart shows your AI's personality traits predicted from your system prompt.</p>
+        <p><strong>What the percentages mean:</strong> A value like 50% means the model is <strong>more likely to behave this way and to this degree</strong> compared to its usual baseline.</p>
+        <p><strong>Colors:</strong> Green = positive traits, Red = negative traits, Gray = neutral traits.</p>
+        <p><strong>Interaction:</strong> Hover over any trait to see a black card on the right with more details, and to highlight its paired sister trait.</p>
+        <button class="btn btn-primary" id="dismissMbaVizExplainer">Got it!</button>
+    </div>
+</div>
+
 <script>
 (function() {
     const session = window.getCurrentSession();
@@ -84,6 +97,12 @@
                         height: h,
                         innerRadius: 55,
                         animate: true
+                    });
+                    // Show explainer modal
+                    document.getElementById('mbaVizExplainerModal').style.display = '';
+                    $('#mbaVizExplainerModal').hide().fadeIn(400);
+                    document.getElementById('dismissMbaVizExplainer').addEventListener('click', function() {
+                        $('#mbaVizExplainerModal').fadeOut(300);
                     });
                 }, 100);
             } else {
