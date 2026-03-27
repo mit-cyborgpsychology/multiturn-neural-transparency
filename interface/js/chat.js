@@ -770,6 +770,8 @@ function initializeDynamicInterface() {
 
         const chatVizCondition = window.experimentSettings.visualizationCondition;
 
+        $('#chatPersonaPanel h4').first().text(chatVizCondition === 0 ? 'Traits to Monitor' : 'Internal Behavior Analysis');
+
         // Control condition: shrink left panel and show trait reference list
         if (chatVizCondition === 0) {
             $('#chatPersonaPanel').css({ width: '30%', minWidth: '220px' });
