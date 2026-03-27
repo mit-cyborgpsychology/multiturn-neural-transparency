@@ -78,67 +78,30 @@ console.log('============================');
 await writeRealtimeDatabase(conditionPath, conditionData);
 
 // Enhanced Chat Interface JavaScript with System Prompt Configuration
-// Initialize global variables if they don't exist
-if (typeof window.messageIdCounter === 'undefined') {
-    window.messageIdCounter = 2; // Start from 2 since we have initial message with ID 1
-}
-if (typeof window.conversationHistory === 'undefined') {
-    window.conversationHistory = []; // Store conversation history for API calls
-}
-if (typeof window.personaHistory === 'undefined') {
-    window.personaHistory = []; // Snapshots of persona scores per conversation turn
-}
-if (typeof window.personaTurnMessageIds === 'undefined') {
-    window.personaTurnMessageIds = []; // User message IDs aligned with personaHistory entries
-}
-if (typeof window.lastUserMessageId === 'undefined') {
-    window.lastUserMessageId = null; // Most recent user message ID, for persona-turn correlation
-}
-if (typeof window.currentSwing === 'undefined') {
-    window.currentSwing = null; // Latest biggest-swing result for click-through navigation
-}
-if (typeof window.activeDriftTrait === 'undefined') {
-    window.activeDriftTrait = null; // Currently selected trait for drift panel
-}
-// Track sunburst layout mode
-if (typeof window.sunburstOppositeLayout === 'undefined') {
-    window.sunburstOppositeLayout = false; // Default: mirrored (shows neutral category at bottom)
-}
-// Store current persona data for redrawing
-if (typeof window.currentPersonaData === 'undefined') {
-    window.currentPersonaData = null;
-}
-if (typeof window.lastSystemPrompt === 'undefined') {
-    window.lastSystemPrompt = null; // Track the last system prompt used
-}
-// Track if system prompt has been submitted for current version
-if (typeof window.systemPromptSubmitted === 'undefined') {
-    window.systemPromptSubmitted = false;
-}
-// Track if persona has been checked for current system prompt
-if (typeof window.personaCheckedForCurrentPrompt === 'undefined') {
-    window.personaCheckedForCurrentPrompt = false;
-}
-// Track if prompt has been edited since last submission
-if (typeof window.promptHasChangedSinceSubmit === 'undefined') {
-    window.promptHasChangedSinceSubmit = false;
-}
+// Always reset chat state on load so each session starts fresh
+window.messageIdCounter = 2;
+window.conversationHistory = [];
+window.personaHistory = [];
+window.personaTurnMessageIds = [];
+window.lastUserMessageId = null;
+window.currentSwing = null;
+window.activeDriftTrait = null;
+window.sunburstOppositeLayout = false;
+window.currentPersonaData = null;
+window.lastSystemPrompt = null;
+window.systemPromptSubmitted = false;
+window.personaCheckedForCurrentPrompt = false;
+window.promptHasChangedSinceSubmit = false;
 
-// Timer variables
-if (typeof window.timerStartTime === 'undefined') {
-    window.timerStartTime = null;
-}
-if (typeof window.timerInterval === 'undefined') {
-    window.timerInterval = null;
-}
-if (typeof window.timerDuration === 'undefined') {
-    // Check for debug mode via URL parameter
+// Timer variables — always reset on chat load so each session gets a fresh timer
+window.timerStartTime = null;
+if (window.timerInterval) { clearInterval(window.timerInterval); }
+window.timerInterval = null;
+window.timerExpired = false;
+{
     const urlParams = new URLSearchParams(window.location.search);
     const debugTimer = urlParams.get('debugTimer') === 'true';
-    window.timerDuration = debugTimer ? 100 : 600; // 10 seconds for debug, 1 minute (60s) for production
-}
-if (typeof window.timerExpired === 'undefined') {
-    window.timerExpired = false;
+    window.timerDuration = debugTimer ? 100 : 600; // 10 seconds for debug, 10 minutes for production
 }
 
 // Note: API configuration is loaded from config-unified.js file
