@@ -27,7 +27,7 @@ image = (
     )
 )
 
-app = modal.App("persona-vector-api-experimental")
+app = modal.App("persona-vector-api")
 
 class SystemPrompt(BaseModel):
     system: Optional[str] = None
@@ -56,7 +56,7 @@ class PersonaScoreAPI:
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             dtype=torch.bfloat16,
-            device_map="auto"
+            device_map=self.device
             )
         self.model.eval()
         
@@ -119,7 +119,7 @@ class PersonaScoreAPI:
             persona_scores = {}
             for trait in traits.keys():
                 persona_scores[trait] = {}
-                persona_vector = torch.load(folder_path / f"{trait}.pt", weights_only=False).to(torch.bfloat16)[best_layer]
+                persona_vector = torch.load(folder_path / f"{trait}.pt", weights_only=False).to(torch.bfloat16)[best_layer].to(self.device)
                 projection = vector_projection(prompt_activation.flatten(), persona_vector.flatten())
                 # normalize it using the persona vector
                 normalized_score = projection.item()/persona_vector.flatten().norm(p=2).item()

@@ -46,14 +46,15 @@ class ChatAPI:
     def load_model(self):
         login(token=os.environ["hf_token"])
         self.api_key = os.environ["api_key"]
-        
+        self.device = "cuda"
+
         # Load the model and tokenizer
         model_name = "meta-llama/Llama-3.1-8B-Instruct"
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             dtype=torch.bfloat16,
-            device_map="auto"
+            device_map=self.device
         )
         
         # Set pad token if not set
@@ -100,7 +101,7 @@ class ChatAPI:
         inputs = self.tokenizer(
             formatted_prompt, 
             return_tensors="pt"
-        ).to(self.model.device)
+        ).to(self.device)
         
         start_generation = time.time()
         # Generate response

@@ -1,0 +1,30 @@
+{
+  "erudite": {
+    "min": -0.7829,
+    "max": 0.1725
+  },
+  "empathy": {
+    "min": -0.4599,
+    "max": 0.3556
+  },
+  "opinionated": {
+    "min": -0.0688,
+    "max": 0.5319
+  },
+  "robotic": {
+    "min": -0.3441,
+    "max": 0.6312
+  },
+  "romantic": {
+    "min": -0.1172,
+    "max": 0.6786
+  },
+  "sycophantic": {
+    "min": -0.1160,
+    "max": 0.6425
+  },
+  "toxic": {
+    "min": -0.3103,
+    "max": 0.2480
+  }
+}
