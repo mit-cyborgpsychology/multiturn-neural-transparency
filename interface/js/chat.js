@@ -28,8 +28,9 @@ if (!sessionStorage.getItem('firebaseUserId') && firebaseUserId) {
     sessionStorage.setItem('firebaseUserId', firebaseUserId);
 }
 
-// Clear localStorage states that would prevent fresh experience on reload
+// Clear localStorage states so each session starts fresh
 localStorage.removeItem('selectedAvatar');
+localStorage.removeItem('customSystemPrompt');
 
 // Write a simple test case to the database
 let studyId;
@@ -107,9 +108,7 @@ window.timerExpired = false;
 // Note: API configuration is loaded from config-unified.js file
 
 // Avatar selection state
-if (typeof window.selectedAvatar === 'undefined') {
-    window.selectedAvatar = null; // Will store the avatar image path
-}
+window.selectedAvatar = null; // Will store the avatar image path
 
 $(document).ready(function() {
     // Initialize the dynamic interface
