@@ -130,11 +130,11 @@ function getExperimentSettingsFromURL() {
          * Cognitive forcing function highlights — blink the element that caused the biggest persona swing
          * Comma-separated list: 1=chat message bubble, 2=drift chart dot, 3=sunburst trait segment
          * URL: ?highlight=1  or  ?highlight=1,2,3
-         * Default: [] (no highlights — only active when visualizationCondition=1)
+         * Default: [1,2,3] (all highlights enabled — only active when visualizationCondition=2)
          */
         highlight: (() => {
             const param = urlParams.get('highlight');
-            if (!param) return [];
+            if (!param) return [1, 2, 3];
             return param.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
         })(),
         
