@@ -829,11 +829,11 @@ function initializeDynamicInterface() {
         // Control condition: show trait reference panel in place of visualization
         if (chatVizCondition === 0) {
             $('#chatPersonaChart').html(`
-                <div style="padding: 1rem; overflow-y: auto; height: 100%;">
-                    <p style="font-size: 0.75rem; margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
+                <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 1rem;">
+                    <p style="flex-shrink: 0; font-size: 0.75rem; margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
                         Monitor these personality dimensions as you interact:
                     </p>
-                    <div style="display: flex; flex-direction: column; gap: 0.55rem;">
+                    <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.55rem;">
                         <div style="padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
                             <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Empathy</h5>
                             <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
