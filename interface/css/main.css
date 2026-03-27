@@ -1760,13 +1760,13 @@ body.chat-active .dynamic-chat-container {
 
 /* Trait Pair */
 .trait-pair {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 /* Trait Item */
 .trait-item {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .trait-item:last-child {
@@ -1968,7 +1968,7 @@ body.chat-active .dynamic-chat-container {
     }
 
     .trait-pair {
-        padding: 1rem;
+        padding: 0.5rem;
     }
 
     .trait-scale {
