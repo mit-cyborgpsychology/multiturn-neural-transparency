@@ -43,7 +43,7 @@
         for (const trait of TRAITS) {
             const name = namePrefix + trait.key;
             let scaleHtml = '';
-            for (let v = 0; v <= 10; v++) {
+            for (let v = 0; v <= 20; v++) {
                 const id = name + '_' + v;
                 scaleHtml += `<input type="radio" name="${name}" value="${v}" id="${id}"><label for="${id}">${v}</label>\n`;
             }
@@ -87,10 +87,10 @@
                 return result;
             },
 
-            /** Auto-fill all traits with value 5 (for skip mode) */
+            /** Auto-fill all traits with value 10 (for skip mode) */
             autoFill: function() {
                 for (const trait of TRAITS) {
-                    const radio = document.getElementById(namePrefix + trait.key + '_5');
+                    const radio = document.getElementById(namePrefix + trait.key + '_10');
                     if (radio) radio.checked = true;
                 }
             }
