@@ -46,6 +46,9 @@
         <!-- Sentence Reveal (click-through prompt reading mechanic) -->
         <script src="js/sentence-reveal.js"></script>
 
+        <!-- Trait Form Builder (reusable 8-trait rating UI for MBA/MBE pages) -->
+        <script src="js/trait-form-builder.js"></script>
+
         <!-- Firebase Config — must be defined as global BEFORE task-writer.js (module) loads -->
         <script>
             window.firebaseConfig = {
@@ -127,45 +130,65 @@
                 }
                 
                 if (debugMode){
-                    // Debug mode - skip directly to Task 1
+                    // Debug mode - skip directly to pre-survey
                     $("#consent-main-content").attr("hidden", true);
                     $("#task-main-content").attr("hidden", false);
-                    $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
+                    $('#task-main-content').load('html/pre-survey.html?v=' + Date.now());
                 } else{
                     // Production mode - start with consent
                     $('#consent-main-content').load("html/consent.html?v=" + Date.now());
                 }
 
-                // ── ROUTING FUNCTIONS ────────────────────────────────────────────────────
+                // ── ROUTING FUNCTIONS (Two-Session MBA/MBE Design) ─────────────────────
+                //
+                // Flow: Consent → Instructions → Pre-Survey →
+                //   Session 1: PromptReading → MBA → Chat → MBE →
+                //   SessionTransition →
+                //   Session 2: PromptReading → MBA → Chat → MBE →
+                //   FinalSurvey → Complete
+
                 // Called by instructions.js after overview screen
-                window.showTask1 = function() {
+                window.showPreSurvey = function() {
                     $("#instructions-main-content").attr("hidden", true);
                     $("#task-main-content").attr("hidden", false);
-                    $('#task-main-content').load('html/task1-calibration.html?v=' + Date.now());
+                    $('#task-main-content').load('html/pre-survey.html?v=' + Date.now());
                 };
 
-                // Called by task1-calibration after submit — shows prompt reading page
-                window.showTask2 = function() {
-                    $('#task-main-content').load('html/task2-prompt-reading.html?v=' + Date.now());
+                // Called by pre-survey after submit — shows prompt reading for current session
+                window.showPromptReading = function() {
+                    $('#task-main-content').load('html/prompt-reading.html?v=' + Date.now());
                 };
 
-                // Called by task2-prompt-reading after participant reads prompt — loads live chat
-                window.showTask2Chat = function() {
+                // Called by prompt-reading after all sentences revealed — shows MBA trait rating
+                window.showMBA = function() {
+                    $('#task-main-content').load('html/mba-trait-rating.html?v=' + Date.now());
+                };
+
+                // Called by MBA after submit — loads live chat
+                window.showChat = function() {
                     $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
                 };
 
-                // Called by chat.js completePostSurvey
-                window.showTask3 = function() {
-                    $('#task-main-content').load('html/task3-recalibration.html?v=' + Date.now());
+                // Called by chat.js completePostSurvey — shows MBE trait rating
+                window.showMBE = function() {
+                    $('#task-main-content').load('html/mbe-trait-rating.html?v=' + Date.now());
                 };
 
-                // Called by task3-recalibration after submit
-                window.showTask4 = function() {
+                // Called by MBE after Session 1 submit — transition screen before Session 2
+                window.showSessionTransition = function() {
+                    $('#task-main-content').load('html/session-transition.html?v=' + Date.now());
+                };
+
+                // Called by MBE after Session 2 submit — final survey
+                window.showFinalSurvey = function() {
                     $('#task-main-content').load('html/task4-final.html?v=' + Date.now());
                 };
 
-                // Legacy alias kept for any remaining references
-                window.showChatInterface = window.showTask2Chat;
+                // Legacy aliases for backward compatibility during migration
+                window.showTask1 = window.showPreSurvey;
+                window.showTask4 = window.showFinalSurvey;
+                window.showTask2Chat = window.showChat;
+                window.showChatInterface = window.showChat;
             });
         </script>
 

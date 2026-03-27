@@ -75,12 +75,36 @@ function getExperimentSettingsFromURL() {
         skip: urlParams.get('skip') === 'true',
 
         /**
-         * Disable transcript calibration - hides Part B (transcript reading + trait ratings)
-         * in Task 1 and Task 3. Flow ends after Part A (system prompt ratings) only.
-         * To re-enable: change to false
-         * Default: true (temporarily disabled)
+         * Current session number (1 = baseline, 2 = experimental)
+         * Session 1: No visualization for ANY condition (baseline)
+         * Session 2: Visualization conditions applied (experimental)
+         * Persisted in sessionStorage across page navigations
          */
-        disableTranscriptCalibration: true,
+        currentSession: (() => {
+            const stored = sessionStorage.getItem('currentSession');
+            if (stored !== null) return parseInt(stored, 10);
+            // Default to session 1
+            sessionStorage.setItem('currentSession', '1');
+            return 1;
+        })(),
+
+        /**
+         * Prompt order counterbalancing — determines which prompt (good/evil) is shown in which session
+         * 'good_first': Session 1 = good prompt, Session 2 = evil prompt
+         * 'evil_first': Session 1 = evil prompt, Session 2 = good prompt
+         * Random 50/50 assignment, persisted in sessionStorage
+         */
+        promptOrder: (() => {
+            if (isDemoMode) {
+                sessionStorage.setItem('promptOrder', 'good_first');
+                return 'good_first';
+            }
+            const stored = sessionStorage.getItem('promptOrder');
+            if (stored !== null) return stored;
+            const order = Math.random() < 0.5 ? 'good_first' : 'evil_first';
+            sessionStorage.setItem('promptOrder', order);
+            return order;
+        })(),
 
         /**
          * Shorten system prompt minimum character requirement (bypasses 100 char minimum)
@@ -178,7 +202,8 @@ let defaultSettings = {
     sunburst: false,
     visualizationCondition: null, // Random assignment (0=control, 1=single-turn, 2=multi-turn)
     highlight: [],
-    disableTranscriptCalibration: true,
+    currentSession: 1,
+    promptOrder: null, // Random assignment (good_first/evil_first)
 };
 
 // ============================================
@@ -214,6 +239,12 @@ console.log('⚙️ Experiment Settings Loaded:', window.experimentSettings);
 const conditionName = ['CONTROL (No Visualization)', 'SINGLE-TURN (Static Visualization)', 'MULTI-TURN (Dynamic Visualization)'][window.experimentSettings.visualizationCondition] || 'UNKNOWN';
 const conditionMethod = sessionStorage.getItem('conditionAssignmentMethod') || 'unknown';
 console.log(`🔬 Visualization Condition: ${conditionName} (${conditionMethod})`);
+
+// Log session state
+const sessionNum = window.experimentSettings.currentSession;
+const promptOrder = window.experimentSettings.promptOrder;
+console.log(`📋 Session: ${sessionNum} (${sessionNum === 1 ? 'BASELINE' : 'EXPERIMENTAL'})`);
+console.log(`🔀 Prompt Order: ${promptOrder} (Session 1 = ${window.getSessionPromptType(1)}, Session 2 = ${window.getSessionPromptType(2)})`);
 
 // Log which settings were overridden by URL parameters
 const urlParams = new URLSearchParams(window.location.search);
@@ -256,6 +287,74 @@ window.getSetting = function(key) {
 window.updateSetting = function(key, value) {
     console.log(`⚙️ Setting updated: ${key} = ${JSON.stringify(value)}`);
     window.experimentSettings[key] = value;
+};
+
+// ============================================
+// SESSION-AWARE HELPERS
+// ============================================
+
+/**
+ * Get the effective visualization condition for the current session.
+ * Session 1 (baseline) ALWAYS returns 0 (no visualization) regardless of assigned condition.
+ * Session 2 (experimental) returns the real assigned condition.
+ * @returns {number} 0, 1, or 2
+ */
+window.getEffectiveVisualizationCondition = function() {
+    const session = parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+    if (session === 1) return 0; // Baseline: no visualization for anyone
+    return window.experimentSettings.visualizationCondition;
+};
+
+/**
+ * Get the prompt type (good/evil) for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} 'GOOD' or 'EVIL'
+ */
+window.getSessionPromptType = function(sessionNum) {
+    const order = sessionStorage.getItem('promptOrder') || 'good_first';
+    if (sessionNum === 1) return order === 'good_first' ? 'GOOD' : 'EVIL';
+    return order === 'good_first' ? 'EVIL' : 'GOOD';
+};
+
+/**
+ * Get the system prompt text for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} The system prompt text
+ */
+window.getSessionPromptText = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].text
+        : '';
+};
+
+/**
+ * Get the scripted conversation for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {Array} The conversation array
+ */
+window.getSessionConversation = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].conversation
+        : [];
+};
+
+/**
+ * Get the current session number from sessionStorage.
+ * @returns {number} 1 or 2
+ */
+window.getCurrentSession = function() {
+    return parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+};
+
+/**
+ * Advance to the next session (sets currentSession to 2).
+ */
+window.advanceToSession2 = function() {
+    sessionStorage.setItem('currentSession', '2');
+    window.experimentSettings.currentSession = 2;
+    console.log('⏭️ Advanced to Session 2 (Experimental)');
 };
 
 // ============================================

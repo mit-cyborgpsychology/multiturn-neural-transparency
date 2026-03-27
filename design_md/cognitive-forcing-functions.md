@@ -4,13 +4,15 @@
 
 Help users notice when their messages cause significant persona drift during a live chat session. The highlights draw attention to *which* message shifted *which* trait, forcing attentiveness to behavioral change.
 
+**Important:** Cognitive forcing highlights are only active during **Session 2 (experimental)**. Session 1 is always a baseline with no visualization for any condition.
+
 ## URL Parameter
 
 ```
 ?highlight=1,2,3
 ```
 
-Comma-separated, any combination. Only active when `visualizationCondition=1`.
+Comma-separated, any combination. Only active when the effective visualization condition >= 1 (i.e., Session 2 with visualizationCondition=1 or 2).
 
 | Mode | What blinks | Domain |
 |------|-------------|--------|
@@ -25,6 +27,12 @@ Comma-separated, any combination. Only active when `visualizationCondition=1`.
 - It finds the single trait with the largest absolute delta across all 8 category pairs (empathy, encouraging, sociality, honesty, factuality, respectfulness, funniness, formality).
 - That result drives all three highlight modes.
 
+## Session Gating
+
+The `getEffectiveVisualizationCondition()` function ensures that:
+- **Session 1**: Always returns 0 (control), so highlights never fire regardless of assigned condition
+- **Session 2**: Returns the real assigned condition, so highlights fire for conditions 1 and 2
+
 ## Design Decisions
 
 1. **Per-turn, not cumulative.** We highlight the swing from *this* message, not the historical max. This keeps the signal tied to the user's most recent action.
@@ -35,7 +43,7 @@ Comma-separated, any combination. Only active when `visualizationCondition=1`.
 
 4. **Auto-open drift panel (mode 2).** When highlight 2 is active, the drift panel automatically opens to the most-swung trait instead of waiting for a user click.
 
-5. **Experimental condition only.** Highlights are gated behind `visualizationCondition=1` since they depend on the persona visualization being visible.
+5. **Session 2 only.** Since Session 1 is always baseline, highlights are effectively gated behind being in Session 2 with an experimental visualization condition.
 
 6. **Message-turn correlation.** `personaTurnMessageIds[]` maps each persona snapshot back to the user message ID that preceded it, so highlight 1 can target the correct bubble.
 
@@ -58,6 +66,6 @@ Comma-separated, any combination. Only active when `visualizationCondition=1`.
 
 ## Files Touched
 
-- `interface/js/settings.js` — `highlight` parameter parsing
+- `interface/js/settings.js` — `highlight` parameter parsing, `getEffectiveVisualizationCondition()`
 - `interface/js/chat.js` — `computeBiggestSwing()`, `applyHighlights()`, message ID tracking
 - `interface/css/main.css` — `@keyframes swing-pulse` + 3 highlight classes

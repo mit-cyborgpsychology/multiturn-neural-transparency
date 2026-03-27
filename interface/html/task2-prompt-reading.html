@@ -37,11 +37,12 @@
 (function() {
     'use strict';
 
-    // ── Populate system prompt ───────────────────────────────────────────────
-    const content = window.STUDY_CONTENT;
-    if (content) {
+    // ── Populate system prompt (deprecated: use prompt-reading.html instead) ──
+    const session = window.getCurrentSession ? window.getCurrentSession() : 1;
+    const promptText = window.getSessionPromptText ? window.getSessionPromptText(session) : '';
+    if (promptText) {
         window.buildSentenceReveal(
-            content.CALIBRATION_PROMPT,
+            promptText,
             document.getElementById('task2SystemPrompt'),
             document.getElementById('task2ProceedBtn')
         );

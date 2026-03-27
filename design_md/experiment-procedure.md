@@ -2,84 +2,96 @@
 
 ## Overview
 
-This study investigates whether mechanistic interpretability visualizations help non-technical users anticipate LLM chatbot behaviors during multi-turn conversations. Participants complete 4 tasks measuring calibration accuracy before and after exposure to a live AI chat (with or without neural transparency visualization).
+This study investigates whether mechanistic interpretability visualizations help non-technical users anticipate LLM chatbot behaviors during multi-turn conversations. Participants complete two sessions — a baseline session (no transparency tools) and an experimental session (with or without visualization depending on condition) — measuring calibration accuracy before and after interaction.
 
-## Experimental Conditions
+## Experimental Design: Two-Session Within-Subjects
 
-Participants are randomly assigned to one of two conditions:
+Each participant serves as their own baseline. Session 1 is always baseline (no visualization for anyone). Session 2 introduces the experimental condition.
 
-- **Control (visualizationCondition=0)**: No persona visualization during chat. Only sees the chat interface.
-- **Experimental (visualizationCondition=1)**: Full neural transparency interface during chat — sunburst visualization, drift panel, and cognitive forcing function highlights.
+### Conditions (Applied in Session 2 Only)
 
-## Task Flow
+- **Control (visualizationCondition=0)**: No persona visualization during chat. Only sees the chat interface + trait definitions.
+- **Single-Turn (visualizationCondition=1)**: Static sunburst visualization computed once from the system prompt.
+- **Multi-Turn (visualizationCondition=2)**: Dynamic sunburst visualization updated after each conversation turn, with drift panel and cognitive forcing highlights.
 
-### Task 1: Baseline Calibration (Pre-Chat)
+### Prompt Counterbalancing
 
-No visualization or chat interface. Purely reading + rating.
+Two system prompts are used: one prosocial ("good") and one adversarial ("evil"). Assignment is counterbalanced:
+- **good_first**: Session 1 = good prompt, Session 2 = evil prompt
+- **evil_first**: Session 1 = evil prompt, Session 2 = good prompt
 
-**Part A — System Prompt Rating**
-1. Participant reads a system prompt (Alex: warm, supportive emotional companion)
-2. Rates 8 behavioral traits on a 0-10 scale based on the prompt alone
-   - Empathy, Encouraging, Sociality, Honesty, Factual, Respectful, Funniness, Formality
+Random 50/50 assignment, persisted in sessionStorage.
 
-**Part B — Transcript Rating**
-1. Participant reads a pre-written conversation transcript generated from the same system prompt
-2. Rates the same 8 behavioral traits based on the observed conversation
+## Participant Flow
 
-**Purpose**: Establish baseline calibration — how well can participants predict behavioral traits from (a) a prompt alone and (b) a prompt + conversation?
+```
+Consent → Instructions → Pre-Survey →
 
-### Task 2: Live Chat Interaction
+  SESSION 1 (Baseline — no visualization for ANY condition):
+    1. Read system prompt (sentence-reveal)
+    2. MBA: Rate 8 behavioral traits (anticipation)
+    3. Chat: Observe scripted conversation (no visualization)
+    4. MBE: Rate 8 behavioral traits (evaluation)
 
-**Step 1 — Prompt Reading**
-- Participant reads a NEW system prompt carefully (different from Task 1)
-- No rating required — just familiarization
+  Session Transition Screen →
 
-**Step 2 — Live Chat (10 minutes)**
-- Participant engages in a live conversation with Claude using the Task 2 system prompt
-- Control group: plain chat interface
-- Experimental group: chat + sunburst visualization + drift panel + cognitive forcing function highlights
-- The persona vector API is called after each turn, tracking trait activations across the conversation
+  SESSION 2 (Experimental — conditions applied):
+    1. Read system prompt (different prompt, sentence-reveal)
+    2. MBA: Rate 8 behavioral traits (anticipation)
+    3. Chat: Observe scripted conversation (with visualization for conditions 1 & 2)
+    4. MBE: Rate 8 behavioral traits (evaluation)
 
-**Purpose**: Intervention phase. The experimental group gets exposure to neural transparency tools that visualize how the AI's behavioral traits shift during conversation.
+→ Final Survey → Complete
+```
 
-### Task 3: Post-Chat Calibration
+### Pre-Survey (Once)
 
-Identical structure to Task 1 but with a THIRD distinct system prompt and its own pre-written transcript.
+3 Likert-scale questions (1-7):
+1. Predictability of AI unintended behaviors
+2. Predictability of negative unintended behaviors
+3. Trust in AI systems
 
-**Part A — System Prompt Rating**
-1. Participant reads a new system prompt
-2. Rates 8 behavioral traits based on the prompt
+### MBA — Model Behavior Anticipation
 
-**Part B — Transcript Rating**
-1. Participant reads a pre-written conversation transcript for that prompt
-2. Rates the same 8 behavioral traits
+Participants predict behavioral trait activation on a 0-10 scale based on the system prompt alone (before seeing the chatbot interact). This measures baseline calibration ability.
 
-**Purpose**: Measure whether the Task 2 intervention (visualization exposure) improved calibration accuracy compared to Task 1 baseline.
+### Chat Interaction (10 minutes)
 
-### Task 4: Final Survey
+Participants observe a scripted conversation between a user and an AI configured with the session's system prompt. In Session 2, experimental conditions show visualization tools.
 
-**Part 1 — Reflection Questions (Likert 1-7)**
-- Predictability: How well could you predict AI behaviors from the system prompt alone?
-- Negative predictability: How well could you predict negative/unintended behaviors?
-- Trust: Post-study trust in AI systems
-- (Experimental only) Visualization helpfulness
+### MBE — Model Behavior Evaluation
 
-**Part 2 — Open-Ended Feedback**
-- Interaction reflection
-- General study feedback
+After observing the conversation, participants rate the same 8 traits again. This measures whether observation (and in Session 2, visualization) improved their calibration.
+
+### Final Survey (Once)
+
+- 3-4 Likert reflection questions (same as pre-survey + visualization helpfulness for viz conditions)
+- Open-ended feedback
 
 ## Data Collection
 
 All responses are logged to Firebase under `{studyId}/participantData/{userId}/`:
-- Condition assignment (control/experimental)
-- Task 1 trait ratings (Part A + Part B)
-- Task 2 chat transcript + persona vector snapshots per turn
-- Task 3 trait ratings (Part A + Part B)
-- Task 4 survey responses
+
+```
+experimentCondition/
+  visualizationCondition, conditionName, promptOrder,
+  session1PromptType, session2PromptType
+preSurvey/
+  predictability, negativePredictability, trust
+session1/
+  promptReading/  {promptType, promptText}
+  mba/            {traitPredictions}
+  chat/           {messages, personaVectorLog, systemPrompt, timer}
+  chatPostSurvey/ {phase1, phase2}
+  mbe/            {traitPredictions}
+session2/
+  (same structure as session1)
+finalSurvey/
+```
 
 ## Key Measurement
 
-**Calibration accuracy**: Compare participant trait predictions (Tasks 1 & 3) against the persona vector API's computed trait activations. The delta between Task 1 and Task 3 accuracy reveals whether visualization exposure improved prediction ability.
+**Calibration accuracy**: Compare participant trait predictions (MBA/MBE) against the persona vector API's computed trait activations. The within-subjects delta between Session 1 and Session 2 accuracy reveals whether visualization exposure improved prediction ability.
 
 ## Behavioral Trait Pairs (8 dimensions)
 

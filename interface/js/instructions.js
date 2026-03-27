@@ -112,9 +112,9 @@ $(document).ready(function() {
         console.log("User completed instructions and proceeded to main task at:", new Date().toISOString());
         console.log("Time spent on instructions:", Math.round((Date.now() - instructionsStartTime) / 1000), "seconds");
 
-        // Route to Task 1 via global routing function
-        if (typeof window.showTask1 === 'function') {
-            window.showTask1();
+        // Route to Pre-Survey via global routing function
+        if (typeof window.showPreSurvey === 'function') {
+            window.showPreSurvey();
         } else {
             // Fallback: load task1 directly
             $("#task-main-content").attr("hidden", false);

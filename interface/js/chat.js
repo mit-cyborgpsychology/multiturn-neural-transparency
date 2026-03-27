@@ -16,13 +16,17 @@ import {
     blockRandomization, finalizeBlockRandomization, firebaseUserId 
 } from "./firebasepsych1.0.js";
 
-// Clear sessionStorage on EVERY load to ensure fresh experience
-// But preserve firebaseUserId which is critical for data collection
-const preservedFirebaseUserId = sessionStorage.getItem('firebaseUserId');
-sessionStorage.clear();
+// Clear only chat-related sessionStorage keys to ensure fresh chat experience.
+// IMPORTANT: Do NOT clear experiment-level keys (firebaseUserId, visualizationCondition,
+// conditionAssignmentMethod, currentSession, promptOrder) — these must persist across
+// page navigations within the experiment.
+const chatSessionKeys = ['instructionsShown'];
+chatSessionKeys.forEach(key => sessionStorage.removeItem(key));
 
-// Store firebaseUserId in sessionStorage for access by other pages (like complete.html)
-sessionStorage.setItem('firebaseUserId', preservedFirebaseUserId || firebaseUserId);
+// Ensure firebaseUserId is in sessionStorage for access by other pages
+if (!sessionStorage.getItem('firebaseUserId') && firebaseUserId) {
+    sessionStorage.setItem('firebaseUserId', firebaseUserId);
+}
 
 // Clear localStorage states that would prevent fresh experience on reload
 localStorage.removeItem('selectedAvatar');
@@ -57,6 +61,10 @@ const conditionData = {
     visualizationCondition: window.experimentSettings.visualizationCondition,
     conditionName: ['control', 'single_turn', 'multi_turn'][window.experimentSettings.visualizationCondition] || 'unknown',
     assignmentMethod: sessionStorage.getItem('conditionAssignmentMethod') || 'unknown',
+    promptOrder: window.experimentSettings.promptOrder,
+    session1PromptType: window.getSessionPromptType(1),
+    session2PromptType: window.getSessionPromptType(2),
+    currentSession: window.getCurrentSession(),
     timestamp: new Date().toISOString()
 };
 
@@ -221,28 +229,30 @@ function initializeDynamicInterface() {
 
         // LocalStorage already cleared at the top of this file for fresh experience
 
-        // Get visualization condition from settings
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
+        // Get effective visualization condition (Session 1 = always 0, Session 2 = real condition)
+        const visualizationCondition = window.getEffectiveVisualizationCondition();
+        const currentSession = window.getCurrentSession();
 
         // IMPORTANT: Log condition explicitly
         console.log('=== SYSTEM PROMPT CONFIG INITIALIZATION ===');
-        console.log('Visualization Condition:', ['CONTROL (no-viz)', 'SINGLE-TURN (static viz)', 'MULTI-TURN (dynamic viz)'][visualizationCondition] || 'UNKNOWN');
+        console.log('Session:', currentSession, currentSession === 1 ? '(BASELINE)' : '(EXPERIMENTAL)');
+        console.log('Effective Visualization Condition:', ['CONTROL (no-viz)', 'SINGLE-TURN (static viz)', 'MULTI-TURN (dynamic viz)'][visualizationCondition] || 'UNKNOWN');
         console.log('==========================================');
 
-        // ── Pre-fill system prompt (users never write their own) ──────────────
-        const calibrationPrompt = window.STUDY_CONTENT ? window.STUDY_CONTENT.CALIBRATION_PROMPT : '';
-        systemPromptInput.val(calibrationPrompt).prop('readonly', true);
+        // ── Pre-fill system prompt from session-specific content ──────────────
+        const sessionPrompt = window.getSessionPromptText(currentSession);
+        systemPromptInput.val(sessionPrompt).prop('readonly', true);
 
         // Hide editing controls — prompt is pre-determined
         $('#characterCounter').hide();
         $('#resetConfig').hide();
 
         // Fire persona analysis in the background immediately for data collection
-        if (calibrationPrompt) {
+        if (sessionPrompt) {
             fetch('/api/persona-vector', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ system: calibrationPrompt })
+                body: JSON.stringify({ system: sessionPrompt })
             }).then(r => r.ok ? r.json() : null).then(data => {
                 if (data) {
                     window.backgroundPersonaData = data;
@@ -305,7 +315,7 @@ function initializeDynamicInterface() {
             // Control: auto-run persona check, show trait definitions, enable Start Chat
             $('#initialPlaceholder').show();
             $('#personaVisualization').hide();
-            autoSubmitPersonaCheck(calibrationPrompt);
+            autoSubmitPersonaCheck(sessionPrompt);
         } else {
             // Viz conditions: show Check Persona button immediately
             $('#initialPlaceholder').show();
@@ -337,7 +347,7 @@ function initializeDynamicInterface() {
             $('#startChatBtn').prop('disabled', true);
             
             // Reset visualizations (only if in viz condition)
-            const visualizationCondition = window.experimentSettings.visualizationCondition;
+            const visualizationCondition = window.getEffectiveVisualizationCondition();
             if (visualizationCondition >= 1) {
                 $('#personaVisualization').hide();
             }
@@ -345,7 +355,7 @@ function initializeDynamicInterface() {
             $('#initialPlaceholder').show();
 
             // Log this reset action to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: '',
                 action: 'reset_to_empty',
@@ -364,7 +374,7 @@ function initializeDynamicInterface() {
             
             if (promptChanged) {
                 // Log the chat history clear event to Firebase
-                const clearLogPath = studyId + '/participantData/' + firebaseUserId + '/chatHistoryClearLog/' + Date.now();
+                const clearLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/chatHistoryClearLog/' + Date.now();
                 await writeRealtimeDatabase(clearLogPath, {
                     previousPrompt: window.lastSystemPrompt,
                     newPrompt: systemPrompt,
@@ -400,7 +410,7 @@ function initializeDynamicInterface() {
             localStorage.setItem('customSystemPrompt', systemPrompt);
             
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'start_chat',
@@ -408,7 +418,7 @@ function initializeDynamicInterface() {
             });
             
             // Save system prompt to Firebase
-            const systemPromptPath = studyId + '/participantData/' + firebaseUserId + '/systemPrompt';
+            const systemPromptPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPrompt';
             await writeRealtimeDatabase(systemPromptPath, {
                 prompt: systemPrompt,
                 timestamp: new Date().toISOString()
@@ -432,7 +442,7 @@ function initializeDynamicInterface() {
             const systemPrompt = $('#systemPromptInput').val();
             
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'check_persona',
@@ -465,7 +475,7 @@ function initializeDynamicInterface() {
             const systemPrompt = $('#systemPromptInput').val();
             
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'test_persona',
@@ -684,7 +694,7 @@ function initializeDynamicInterface() {
             await addMessage(assistantMessage, 'assistant');
 
             // Calculate persona scores for all conditions; only update visualization for multi-turn
-            const _vc = window.experimentSettings.visualizationCondition;
+            const _vc = window.getEffectiveVisualizationCondition();
             checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2);
 
         } catch (error) {
@@ -743,7 +753,7 @@ function initializeDynamicInterface() {
         messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
         
         // Save message to Firebase with system prompt
-        const messagePath = studyId + '/participantData/' + firebaseUserId + '/messages/' + messageId;
+        const messagePath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/messages/' + messageId;
         const messageData = {
             messageId: messageId,
             role: sender,
@@ -768,7 +778,7 @@ function initializeDynamicInterface() {
         chatInterface.show();
         document.body.classList.add('chat-active');
 
-        const chatVizCondition = window.experimentSettings.visualizationCondition;
+        const chatVizCondition = window.getEffectiveVisualizationCondition();
 
         $('#chatPersonaPanel h4').first().text(chatVizCondition === 0 ? 'Traits to Monitor' : 'Internal Behavior Analysis');
 
@@ -832,11 +842,12 @@ function initializeDynamicInterface() {
         $('#messageInput').attr('placeholder', 'Type your message here...');
     }
 
-    // Replay STUDY_CONTENT.SCRIPTED_CONVERSATION with a typing delay between turns
+    // Replay session-specific scripted conversation with a typing delay between turns
     async function playScriptedConversation() {
-        const script = (window.STUDY_CONTENT || {}).SCRIPTED_CONVERSATION;
+        const currentSession = window.getCurrentSession();
+        const script = window.getSessionConversation(currentSession);
         if (!script || script.length === 0) {
-            console.warn('No scripted conversation found in STUDY_CONTENT');
+            console.warn('No scripted conversation found for session', currentSession);
             return;
         }
 
@@ -874,7 +885,7 @@ function initializeDynamicInterface() {
             // After each assistant turn, calculate persona scores for all conditions
             if (turn.role === 'assistant') {
                 const currentPrompt = localStorage.getItem('customSystemPrompt') || '';
-                const _scriptVc = window.experimentSettings.visualizationCondition;
+                const _scriptVc = window.getEffectiveVisualizationCondition();
                 checkPersona(currentPrompt, window.conversationHistory, _scriptVc !== 2).catch(console.warn);
             }
 
@@ -901,7 +912,7 @@ function initializeDynamicInterface() {
         document.body.classList.remove('chat-active');
         systemPromptInterface.show();
 
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
+        const visualizationCondition = window.getEffectiveVisualizationCondition();
 
         $('.config-description').text(visualizationCondition === 0
             ? 'View the chatbot\'s system prompt and analyze its behavior accordingly using the definitions.'
@@ -1153,7 +1164,7 @@ async function autoSubmitPersonaCheck(systemPrompt) {
             });
             
             // Save system prompt to log
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: promptToUse,
                 action: 'auto_check_persona_no_viz',
@@ -1205,13 +1216,15 @@ async function checkPersona(systemPrompt, messages, silent = false) {
             // Log raw persona vector response
             console.log('Persona Vector API Response:', data);
             
-            // Save persona vector to history log
-            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/personaVectorLog/' + Date.now();
+            // Save persona vector to history log (session-prefixed)
+            const _currentSession = window.getCurrentSession();
+            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + Date.now();
             await writeRealtimeDatabase(personaLogPath, {
                 personaVector: data.content,
                 systemPrompt: promptToUse,
                 timestamp: new Date().toISOString(),
-                condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.experimentSettings.visualizationCondition] || 'unknown'
+                session: _currentSession,
+                condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown'
             });
 
             // Record snapshot for drift tracking (all conditions)
@@ -1225,7 +1238,7 @@ async function checkPersona(systemPrompt, messages, silent = false) {
 
                 // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
                 const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
-                if (window.experimentSettings && window.experimentSettings.visualizationCondition === 2) {
+                if (window.getEffectiveVisualizationCondition() === 2) {
                     const swing = computeBiggestSwing();
                     if (swing) applyHighlights(swing);
                 }
@@ -1464,7 +1477,7 @@ function applySunburstHighlight(swing) {
 function renderTraitDrift(traitName) {
     if (!traitName || !window.personaHistory || window.personaHistory.length === 0) return;
     // Trait drift is meaningless in single-turn condition (visualization never updates)
-    if (window.experimentSettings.visualizationCondition === 1) return;
+    if (window.getEffectiveVisualizationCondition() === 1) return;
 
     // Find which category contains this trait and get the raw opposite key
     let categoryKey = null;
@@ -1695,7 +1708,7 @@ async function startTimer() {
     const startTimeISO = new Date().toISOString();
     
     // Save timer start to Firebase
-    const timerPath = studyId + '/participantData/' + firebaseUserId + '/timer';
+    const timerPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/timer';
     await writeRealtimeDatabase(timerPath + '/startTime', startTimeISO);
     await writeRealtimeDatabase(timerPath + '/duration', window.timerDuration);
     
@@ -1743,7 +1756,7 @@ async function timerExpired() {
     
     // Save timer end to Firebase
     const endTimeISO = new Date().toISOString();
-    const timerPath = studyId + '/participantData/' + firebaseUserId + '/timer';
+    const timerPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/timer';
     await writeRealtimeDatabase(timerPath + '/endTime', endTimeISO);
     
     // Show post-survey modal
@@ -1774,8 +1787,8 @@ function showPostSurvey() {
     $('#imageBtn').prop('disabled', true);
     $('#backToConfigBtn').prop('disabled', true);
     
-    // Show/hide viz-specific questions based on condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+    // Show/hide viz-specific questions based on effective condition
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     if (visualizationCondition >= 1) {
         // Viz condition (single-turn or multi-turn): show questions 5 and 6
         $('#post_q5_container').show();
@@ -1797,8 +1810,8 @@ function showPostSurvey() {
 
 // Initialize post-survey event listeners
 function initializePostSurvey() {
-    
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     
     // Phase 1: Listen to radio button changes
     $('input[name="post_q1"], input[name="post_q2"], input[name="post_q3"], input[name="post_q4"], input[name="post_q5"], input[name="post_q6"]').on('change', function() {
@@ -1849,25 +1862,27 @@ function initializePostSurvey() {
 async function savePostPhase1Data() {
     try {
         const timestamp = new Date().toISOString();
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
+        const visualizationCondition = window.getEffectiveVisualizationCondition();
+        const _sess = window.getCurrentSession();
+
         const phase1Data = {
             "How well could you predict unintended behaviors from your system prompt?": parseInt($('input[name="post_q1"]:checked').val()),
             "How well could you predict negative unintended behaviors from your system prompt?": parseInt($('input[name="post_q2"]:checked').val()),
             "Given the {relevant background abt unintended model behaviors}, how much do you trust this model?": parseInt($('input[name="post_q3"]:checked').val()),
             "Did you arrive at your desired character?": parseInt($('input[name="post_q4"]:checked').val())
         };
-        
+
         // Add viz-specific questions if in single-turn or multi-turn condition
         if (visualizationCondition >= 1) {
             phase1Data["Did the visualization help you understand model behavior?"] = parseInt($('input[name="post_q5"]:checked').val());
             phase1Data["Would you like to see this visualization again in future interactions?"] = parseInt($('input[name="post_q6"]:checked').val());
         }
-        
-        const basePath = `${studyId}/participantData/${firebaseUserId}/postTaskSurvey`;
+
+        const basePath = `${studyId}/participantData/${firebaseUserId}/session${_sess}/chatPostSurvey`;
         const postPhase1WriteData = {
             responses: phase1Data,
             timestamp: timestamp,
+            session: _sess,
             condition: ['control', 'single_turn', 'multi_turn'][visualizationCondition] || 'unknown'
         };
         await writeRealtimeDatabase(`${basePath}/phase1`, postPhase1WriteData);
@@ -1886,10 +1901,12 @@ async function savePostPhase2Data() {
             "openEndedFeedback": $('#postOpenEndedResponse').val().trim()
         };
         
-        const basePath = `${studyId}/participantData/${firebaseUserId}/postTaskSurvey`;
+        const _sess2 = window.getCurrentSession();
+        const basePath = `${studyId}/participantData/${firebaseUserId}/session${_sess2}/chatPostSurvey`;
         const postPhase2WriteData = {
             responses: phase2Data,
-            timestamp: timestamp
+            timestamp: timestamp,
+            session: _sess2
         };
         await writeRealtimeDatabase(`${basePath}/phase2`, postPhase2WriteData);
         
@@ -1902,18 +1919,19 @@ async function savePostPhase2Data() {
     }
 }
 
-// Complete post-survey and advance to Task 3
+// Complete post-survey and advance to MBE (Model Behavior Evaluation)
 function completePostSurvey() {
     // Hide modal
     $('#postSurveyModal').fadeOut(300);
 
-    // Route to Task 3 after a short delay
+    // Route to MBE after a short delay
     setTimeout(function() {
-        if (typeof window.showTask3 === 'function') {
-            window.showTask3();
+        if (typeof window.showMBE === 'function') {
+            window.showMBE();
         } else {
             // Fallback if routing function not available
-            $('#task-main-content').load('html/task3-recalibration.html?v=' + Date.now());
+            console.warn('window.showMBE not found, falling back to mbe-trait-rating.html');
+            $('#task-main-content').load('html/mbe-trait-rating.html?v=' + Date.now());
         }
     }, 500);
 }
@@ -1975,7 +1993,7 @@ window.dismissInstructionModal = function(type) {
 // Show visualization explanation modal
 window.showVisualizationExplanation = function(forceShow = false) {
     // Don't show in no-viz condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     if (visualizationCondition === 0) {
         return;
     }
@@ -2009,10 +2027,10 @@ window.showPromptRefinementModal = function() {
         return;
     }
     
-    // Update text based on visualization condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+    // Update text based on effective visualization condition
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     const modalContent = $('#promptRefinementModal .instruction-modal-content');
-    
+
     if (visualizationCondition === 0) {
         // NO-VIZ: Remove visualization mention
         modalContent.find('p').eq(1).html('<strong>How to refine:</strong> Click "View System Prompt" to adjust your prompt and test the updated behavior.');

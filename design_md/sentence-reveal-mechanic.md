@@ -10,13 +10,12 @@ Participants tend to skim system prompts, leading to shallow trait ratings. By r
 
 ## Where It Applies
 
-| Task | Element | Proceed Button |
-|------|---------|----------------|
-| Task 1 (Baseline Calibration) | Part A: System Prompt | "Rate this prompt ->" |
-| Task 2 (AI Conversation) | Prompt Reading Page | "Begin Chat ->" |
-| Task 3 (Recalibration) | Part A: New System Prompt | "Rate this prompt ->" |
+| Location | Element | Proceed Button |
+|----------|---------|----------------|
+| Session 1: Prompt Reading | System Prompt (good or evil) | "Rate this prompt ->" |
+| Session 2: Prompt Reading | System Prompt (the other prompt) | "Rate this prompt ->" |
 
-The collapsible prompt reminders shown during trait rating steps are **not** gated — they display the full prompt as plain text, since the user has already completed the reveal interaction.
+The collapsible prompt reminders shown during MBA/MBE trait rating steps are **not** gated — they display the full prompt as plain text, since the user has already completed the reveal interaction.
 
 ## UX Flow
 
@@ -41,8 +40,6 @@ Prompts are split using regex: `/[^.!?]*[.!?]+[\s]?/g`. This handles:
 - Sentences with em dashes, commas, and other mid-sentence punctuation
 - Question marks and exclamation points
 
-For the calibration prompt ("You are Alex..."), this produces 5 clean sentences.
-
 ## Visual Design
 
 - **Blur**: `filter: blur(6px)` — heavy enough to be unreadable, light enough to see text exists
@@ -64,49 +61,11 @@ For the calibration prompt ("You are Alex..."), this produces 5 clean sentences.
 
 5. **Button starts disabled in HTML.** Not just JS-disabled — the `disabled` attribute is in the markup so there's no flash of an active button before JS loads.
 
-6. **Shared utility function.** `buildSentenceReveal(promptText, containerEl, buttonEl)` is reusable across all three tasks, avoiding code duplication.
-
-## Transcript Reveal (Part B)
-
-The same forcing-function pattern is applied to conversation transcripts in Part B of Tasks 1 and 3. This uses a dedicated step (Step 2) inserted between the Part A trait rating and the Part B trait rating.
-
-### Step Flow (Tasks 1 & 3)
-
-| Step | Content | Proceed Button |
-|------|---------|----------------|
-| 0 | System prompt sentence reveal | "Rate this prompt ->" |
-| 1 | Part A trait sliders | "Next: Conversation Transcript ->" |
-| 2 | Transcript message reveal | "Rate this conversation ->" |
-| 3 | Part B trait sliders + submit | "Submit & Continue ->" |
-
-### Unit of Reveal: Per-Message
-
-Each conversation turn (user message or AI response) is one clickable block, preserving the conversational flow as the natural reading unit.
-
-### Framing
-
-The instruction callout emphasizes the connection between system prompt and conversation:
-> "Step through each message in this conversation one at a time. Consider how the AI's responses reflect — or diverge from — the system prompt you rated. Think about how the conversation's flow shapes the AI's behavior turn by turn."
-
-A collapsible system prompt reminder is available on the transcript step so participants can cross-reference.
-
-### Visual Design
-
-Reuses the same patterns as sentence reveal:
-- Chat bubbles start with `filter: blur(6px)`
-- `.message-block.next` gets the pulsing blue border
-- Sequential click-through with progress counter ("3 of 8 messages read")
-- Proceed button gated until all messages revealed
-
-### Function: `buildTranscriptReveal(conversation, containerEl, buttonEl)`
-
-Added to `sentence-reveal.js`. Takes the conversation array, renders each turn as a blurred chat bubble with overlay, enforces sequential reveal, gates the proceed button.
+6. **Shared utility function.** `buildSentenceReveal(promptText, containerEl, buttonEl)` is reusable across both sessions, avoiding code duplication.
 
 ## Files
 
-- `interface/js/sentence-reveal.js` — `buildSentenceReveal()` + `buildTranscriptReveal()` utilities
-- `interface/css/main.css` — `.sentence-reveal-*` and `.message-*` styles, `@keyframes pulse-border`, `@keyframes btn-activate`
-- `interface/html/task1-calibration.html` — Steps 0-3 (4-step flow with transcript reveal at Step 2)
-- `interface/html/task2-prompt-reading.html` — Prompt display with sentence reveal
-- `interface/html/task3-recalibration.html` — Steps 0-3 (4-step flow with transcript reveal at Step 2)
+- `interface/js/sentence-reveal.js` — `buildSentenceReveal()` utility
+- `interface/css/main.css` — `.sentence-reveal-*` styles, `@keyframes pulse-border`, `@keyframes btn-activate`
+- `interface/html/prompt-reading.html` — Session-parameterized prompt display with sentence reveal
 - `interface/index.html` — `<script>` tag loading `sentence-reveal.js`

@@ -1,4 +1,6 @@
-# Plan: Restructure Experiment Tasks 1-3
+# [ARCHIVED] Plan: Restructure Experiment Tasks 1-3
+
+> **This plan has been superseded by the Two-Session MBA/MBE restructure.** See `design_md/experiment-procedure.md` for the current design.
 
 ## Context
 The experiment is being reconfigured (branch `exp-2-reconfig`) to change how calibration and chat tasks are ordered. The key change: Task 1 now includes trait rating (previously it was just reading), Task 2 introduces a new prompt + keeps live chat but drops calibration, and Task 3 repeats the Task 1 structure for a third distinct prompt.
