@@ -831,41 +831,41 @@ function initializeDynamicInterface() {
             $('#chatPersonaPanel').css({ width: '30%', minWidth: '220px' });
             $('#chatPersonaChart').html(`
                 <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 1rem;">
-                    <p style="flex-shrink: 0; font-size: 0.75rem; margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
+                    <p style="flex-shrink: 0; font-size: clamp(0.7rem, 1.3vh, 0.95rem); margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
                         Monitor these personality dimensions as you interact:
                     </p>
                     <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Empathy</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Empathy</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Encouraging</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Discouraging ↔ Encouraging</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Encouraging</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Discouraging ↔ Encouraging</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Sociality</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Antisocial ↔ Social</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sociality</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Antisocial ↔ Social</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Honesty</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Sycophantic ↔ Honest</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Honesty</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Sycophantic ↔ Honest</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Factual Accuracy</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Hallucinatory ↔ Factual</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Factual Accuracy</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Hallucinatory ↔ Factual</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Respectfulness</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Toxic ↔ Respectful</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Respectfulness</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Toxic ↔ Respectful</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Funniness</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Serious ↔ Funny</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Funniness</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Serious ↔ Funny</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: 0.78rem; color: #2c3e50;">Formality</h5>
-                            <p style="margin: 0; font-size: 0.68rem; color: #555; line-height: 1.3;"><strong>Formal ↔ Casual</strong></p>
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Formality</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Formal ↔ Casual</strong></p>
                         </div>
                     </div>
                 </div>
