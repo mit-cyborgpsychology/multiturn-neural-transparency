@@ -235,8 +235,6 @@ function initializeDynamicInterface() {
         // Hide editing controls — prompt is pre-determined
         $('#characterCounter').hide();
         $('#resetConfig').hide();
-        // Prompt is pre-filled and readonly, so bypass character minimum check
-        $('#submitPromptBtn').prop('disabled', false);
 
         // Fire persona analysis in the background immediately for data collection
         if (calibrationPrompt) {
@@ -319,7 +317,11 @@ function initializeDynamicInterface() {
         
         // Initialize character counter on page load
         updateCharacterCounter();
-        
+
+        // Prompt is pre-filled and readonly — force-enable Submit after updateCharacterCounter
+        // so the char-minimum check (which would disable it for short prompts) is overridden.
+        $('#submitPromptBtn').prop('disabled', false);
+
         // Update character counter on input
         systemPromptInput.on('input', updateCharacterCounter);
 
@@ -386,13 +388,17 @@ function initializeDynamicInterface() {
             window.systemPromptSubmitted = true;
             window.promptHasChangedSinceSubmit = false;
 
-            // Log submission to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
-            await writeRealtimeDatabase(promptLogPath, {
-                prompt: systemPrompt,
-                action: 'submit_prompt',
-                timestamp: new Date().toISOString()
-            });
+            // Log submission to Firebase (don't block UI on failure)
+            try {
+                const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+                await writeRealtimeDatabase(promptLogPath, {
+                    prompt: systemPrompt,
+                    action: 'submit_prompt',
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error('Failed to log prompt submission to Firebase:', error);
+            }
 
             if (visualizationCondition === 0) {
                 // Control condition: auto-check persona and reveal trait definitions
