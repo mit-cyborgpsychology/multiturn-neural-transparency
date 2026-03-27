@@ -277,36 +277,11 @@ function initializeDynamicInterface() {
         const updateCharacterCounter = function() {
             const currentLength = systemPromptInput.val().length;
             $('#charCount').text(currentLength);
-            
-            // Mark that system prompt needs to be resubmitted if it's changed
-            if (window.systemPromptSubmitted) {
-                // System prompt has changed after submission, require resubmission
-                window.systemPromptSubmitted = false;
-                window.personaCheckedForCurrentPrompt = false;
-                window.promptHasChangedSinceSubmit = true;
-                
-                // Show Submit Prompt button
-                $('#submitPromptBtn').show();
-                
-                // Disable Check/Test Persona buttons (viz condition only)
-                $('.persona-check-buttons').hide();
-                
-                // Disable Start Chat until new prompt is submitted and persona is checked
-                $('#startChatBtn').prop('disabled', true);
-            }
-            
-            // Button is always visible but disabled until character requirement is met
-            // Update color and button state based on whether minimum is met (or bypassed)
+
             if (shortenPrompt || currentLength >= MIN_CHAR_LENGTH) {
                 $('#characterCounter').css('color', 'var(--success-color, #28a745)');
-                $('#submitPromptBtn').prop('disabled', false);
             } else {
                 $('#characterCounter').css('color', 'var(--text-secondary)');
-                $('#submitPromptBtn').prop('disabled', true);
-            }
-            // Always show the button (unless it was explicitly hidden after submission)
-            if (!$('.persona-check-buttons').is(':visible')) {
-                $('#submitPromptBtn').show();
             }
         };
         
@@ -318,27 +293,31 @@ function initializeDynamicInterface() {
         // Initialize character counter on page load
         updateCharacterCounter();
 
-        // Prompt is pre-filled and readonly — force-enable Submit after updateCharacterCounter
-        // so the char-minimum check (which would disable it for short prompts) is overridden.
-        $('#submitPromptBtn').prop('disabled', false);
-
         // Update character counter on input
         systemPromptInput.on('input', updateCharacterCounter);
 
-        // Show Submit Prompt initially so user can submit their prompt
-        $('#submitPromptBtn').show();
-        $('#initialPlaceholder').show();
-        $('#initialPlaceholder').html(`
-            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to continue</p>
-            </div>
-        `);
-        $('#personaVisualization').hide();
-        // Hide Check/Test Persona buttons initially
-        $('.persona-check-buttons').hide();
-        // Disable Start Chat until persona is checked
-        $('#startChatBtn').prop('disabled', true);
+        // Preload everything based on condition — no Submit Prompt button needed
+        window.systemPromptSubmitted = true;
+        window.promptHasChangedSinceSubmit = false;
+
+        if (visualizationCondition === 0) {
+            // Control: auto-run persona check, show trait definitions, enable Start Chat
+            $('#initialPlaceholder').show();
+            $('#personaVisualization').hide();
+            autoSubmitPersonaCheck(calibrationPrompt);
+        } else {
+            // Viz conditions: show Check Persona button immediately
+            $('#initialPlaceholder').show();
+            $('#initialPlaceholder').html(`
+                <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
+                    <i class="fas fa-arrow-right" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to see your persona analysis</p>
+                </div>
+            `);
+            $('#personaVisualization').hide();
+            $('.persona-check-buttons').show();
+            $('#startChatBtn').prop('disabled', true);
+        }
 
         // Reset configuration
         resetConfig.on('click', async function() {
@@ -350,9 +329,8 @@ function initializeDynamicInterface() {
             window.personaCheckedForCurrentPrompt = false;
             window.promptHasChangedSinceSubmit = false;
             
-            // Hide Check/Test Persona buttons and show Submit Prompt
+            // Hide Check/Test Persona buttons
             $('.persona-check-buttons').hide();
-            $('#submitPromptBtn').show();
             
             // Disable Start Chat button
             $('#startChatBtn').prop('disabled', true);
@@ -364,13 +342,7 @@ function initializeDynamicInterface() {
             }
             
             $('#initialPlaceholder').show();
-            $('#initialPlaceholder').html(`
-                <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                    <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to begin assessment</p>
-                </div>
-            `);
-            
+
             // Log this reset action to Firebase
             const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
@@ -380,36 +352,7 @@ function initializeDynamicInterface() {
             });
         });
 
-        // Submit Prompt button
-        $('#submitPromptBtn').on('click', async function() {
-            const systemPrompt = $('#systemPromptInput').val();
-
-            // Mark as submitted
-            window.systemPromptSubmitted = true;
-            window.promptHasChangedSinceSubmit = false;
-
-            // Log submission to Firebase (don't block UI on failure)
-            try {
-                const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
-                await writeRealtimeDatabase(promptLogPath, {
-                    prompt: systemPrompt,
-                    action: 'submit_prompt',
-                    timestamp: new Date().toISOString()
-                });
-            } catch (error) {
-                console.error('Failed to log prompt submission to Firebase:', error);
-            }
-
-            if (visualizationCondition === 0) {
-                // Control condition: auto-check persona and reveal trait definitions
-                $('#submitPromptBtn').hide();
-                await autoSubmitPersonaCheck(systemPrompt);
-            } else {
-                // Viz conditions: hide submit, show Check/Test Persona buttons
-                $('#submitPromptBtn').hide();
-                $('.persona-check-buttons').show();
-            }
-        });
+        // Submit Prompt button removed — persona preloaded automatically on init
 
         // Start chat
         startChatBtn.on('click', async function() {

@@ -20,9 +20,6 @@
 
     <!-- System Prompt Configuration Interface -->
     <div class="system-prompt-interface" id="systemPromptInterface" style="display: none;">
-        <div id="selectedAvatarDisplay" style="display: none; position: absolute; top: 1.5rem; left: 1rem; z-index: 5;">
-            <img id="selectedAvatarImage" src="" alt="Selected Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-md);" />
-        </div>
         <div class="config-header" style="margin-bottom: 1rem;">
             <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Your System Prompt</h3>
             <p class="config-description" style="font-size: 0.85rem;">Customize your AI companion's personality and behavior so that it can provide emotional support through difficult times.</p>
@@ -62,7 +59,7 @@
                     <div id="initialPlaceholder" class="persona-placeholder">
                         <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
                             <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to begin assessment</p>
+                            <p style="margin: 0; font-size: 1.1rem;">Loading persona analysis...</p>
                         </div>
                     </div>
 
@@ -88,7 +85,7 @@
         <!-- Action Buttons -->
         <div class="config-actions">
             <button type="button" class="btn btn-secondary" id="resetConfig">Reset to Default</button>
-            <button type="button" class="btn btn-primary" id="submitPromptBtn" disabled>Submit Prompt</button>
+            <!-- Submit Prompt button removed — persona preloaded automatically -->
             <button type="button" class="btn btn-primary" id="startChatBtn">Start Chat</button>
         </div>
     </div>
@@ -127,9 +124,6 @@
             <!-- Messages Area -->
             <div class="messages-container" id="messagesContainer">
                 <div class="message assistant-message" data-message-id="1">
-                    <div class="message-avatar" id="initialMessageAvatar">
-                        <i class="fas fa-robot"></i>
-                    </div>
                     <div class="message-content">
                         <div class="message-text">
                             Hi there!
@@ -870,7 +864,7 @@
             <li>"You are a kind and empathetic listener who knows how to mirror people's emotions."</li>
             <li>"You like to give tough-love and don't give in too deeply to fantasies."</li>
         </ul>
-        <p>Write at least 100 characters, then click "Submit Prompt".</p>
+        <p>Review the system prompt, then proceed to check the persona analysis.</p>
         <button class="btn btn-primary" onclick="window.dismissInstructionModal('prompt')">Got it!</button>
     </div>
 </div>
