@@ -34,7 +34,7 @@ localStorage.removeItem('customSystemPrompt');
 
 // Write a simple test case to the database
 let studyId;
-studyId='multiturn-pilot1';
+studyId='multiturn-pilot1-debug';
 // if (DEBUG){
 //     studyId = 'multiturn';
 // } else {

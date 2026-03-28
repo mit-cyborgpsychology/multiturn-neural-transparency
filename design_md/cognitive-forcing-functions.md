@@ -12,7 +12,7 @@ Help users notice when their messages cause significant persona drift during a l
 ?highlight=1,2,3
 ```
 
-Comma-separated, any combination. Only active when the effective visualization condition >= 1 (i.e., Session 2 with visualizationCondition=1 or 2).
+Comma-separated, any combination. Only active when the effective visualization condition === 2 (i.e., Session 2 with visualizationCondition=2, the multi-turn condition).
 
 | Mode | What blinks | Domain |
 |------|-------------|--------|

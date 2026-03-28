@@ -12,7 +12,7 @@ Participants tend to skim system prompts, leading to shallow trait ratings. By r
 
 | Location | Element | Proceed Button |
 |----------|---------|----------------|
-| Session 1: Prompt Reading | System Prompt (good or evil) | "Rate this prompt ->" |
+| Session 1: Prompt Reading | System Prompt (ASST or ROLEPLY) | "Rate this prompt ->" |
 | Session 2: Prompt Reading | System Prompt (the other prompt) | "Rate this prompt ->" |
 
 The collapsible prompt reminders shown during MBA/MBE trait rating steps are **not** gated — they display the full prompt as plain text, since the user has already completed the reveal interaction.
