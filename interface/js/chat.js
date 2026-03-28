@@ -102,7 +102,7 @@ window.timerExpired = false;
 {
     const urlParams = new URLSearchParams(window.location.search);
     const debugTimer = urlParams.get('debugTimer') === 'true';
-    window.timerDuration = debugTimer ? 45 : 600; // 45 seconds for debug, 10 minutes for production
+    window.timerDuration = debugTimer ? 90 : 600; // 90 seconds (1:30) for debug, 10 minutes for production
 }
 
 // Note: API configuration is loaded from config-unified.js file
