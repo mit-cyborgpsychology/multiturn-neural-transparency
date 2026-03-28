@@ -1305,6 +1305,12 @@ function applyHighlights(swing) {
     if (modes.includes(1)) applyMessageHighlight(swing);
     if (modes.includes(2)) applyDriftDotHighlight(swing);
     if (modes.includes(3)) applySunburstHighlight(swing);
+
+    // Show "Behavioral Swing" banner in the chat area
+    $('.behavioral-swing-banner').remove();
+    const traitName = swing.traitKey.charAt(0).toUpperCase() + swing.traitKey.slice(1);
+    const banner = $(`<div class="behavioral-swing-banner">Behavioral Swing: ${traitName}</div>`);
+    $('#messagesContainer').append(banner);
 }
 
 /** Highlight 1: blink the user message bubble that caused the biggest swing */
