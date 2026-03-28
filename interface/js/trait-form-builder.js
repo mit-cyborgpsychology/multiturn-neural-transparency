@@ -63,7 +63,6 @@
                 <div class="trait-scale">${scaleHtml}</div>
                 <div class="trait-scale-axis">
                     <span>← more ${trait.lowLabel}</span>
-                    <span>0 = neutral</span>
                     <span>more ${trait.highLabel} →</span>
                 </div>
             </div></div>`;

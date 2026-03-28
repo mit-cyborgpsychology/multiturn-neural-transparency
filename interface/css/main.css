@@ -1910,16 +1910,11 @@ body.chat-active .dynamic-chat-container {
 
 .trait-scale-axis {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 1.5rem;
     font-size: 0.72rem;
     color: var(--text-muted);
     margin-top: 0.25rem;
-    padding: 0 0.1rem;
-}
-
-.trait-scale-axis span:nth-child(2) {
-    font-weight: 600;
-    color: var(--text-secondary);
 }
 
 /* Progressive trait reveal */
