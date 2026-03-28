@@ -21,31 +21,4 @@ window.writeTaskData = async function(path, data) {
     await writeRealtimeDatabase(fullPath, data);
 };
 
-/**
- * Returns a promise that resolves to window.writeTaskData once it is available.
- * Inline scripts that run before this module finishes loading should use:
- *   const write = await window.waitForWriteTaskData();
- *   await write('path', data);
- */
-window.waitForWriteTaskData = function(timeoutMs) {
-    timeoutMs = timeoutMs || 10000;
-    return new Promise(function(resolve, reject) {
-        if (typeof window.writeTaskData === 'function') {
-            return resolve(window.writeTaskData);
-        }
-        var elapsed = 0;
-        var interval = setInterval(function() {
-            elapsed += 50;
-            if (typeof window.writeTaskData === 'function') {
-                clearInterval(interval);
-                resolve(window.writeTaskData);
-            } else if (elapsed >= timeoutMs) {
-                clearInterval(interval);
-                console.error('❌ writeTaskData not available after ' + timeoutMs + 'ms');
-                reject(new Error('writeTaskData not available after ' + timeoutMs + 'ms'));
-            }
-        }, 50);
-    });
-};
-
 console.log('✅ task-writer.js loaded, firebaseUserId:', firebaseUserId);

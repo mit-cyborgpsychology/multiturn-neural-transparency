@@ -62,6 +62,29 @@
             };
         </script>
 
+        <!-- Wait helper — must be synchronous so it's available before the module loads -->
+        <script>
+            window.waitForWriteTaskData = function(timeoutMs) {
+                timeoutMs = timeoutMs || 10000;
+                return new Promise(function(resolve, reject) {
+                    if (typeof window.writeTaskData === 'function') {
+                        return resolve(window.writeTaskData);
+                    }
+                    var elapsed = 0;
+                    var interval = setInterval(function() {
+                        elapsed += 50;
+                        if (typeof window.writeTaskData === 'function') {
+                            clearInterval(interval);
+                            resolve(window.writeTaskData);
+                        } else if (elapsed >= timeoutMs) {
+                            clearInterval(interval);
+                            console.error('writeTaskData not available after ' + timeoutMs + 'ms');
+                            reject(new Error('writeTaskData not available after ' + timeoutMs + 'ms'));
+                        }
+                    }, 50);
+                });
+            };
+        </script>
         <!-- Task Firebase writer — loaded once globally so task pages can call window.writeTaskData() -->
         <script type="module" src="js/task-writer.js"></script>
         <script src="js/firebasepsych1.1.js" type="module"></script>
