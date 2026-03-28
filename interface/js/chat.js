@@ -1546,11 +1546,20 @@ function renderTraitDrift(traitName) {
             .ease(d3.easeBackOut)
             .attr('r', isLatest ? 12 : 9);
 
-        // Click dot or hit area → scroll to & highlight the user+assistant message pair + restore sunburst
+        // Click dot or hit area → restore sunburst to this turn + scroll to & highlight the message pair
         const handleClick = function() {
             const msgId = entry.messageId;
             console.log(`Drift dot clicked: dot index=${i}, turn=${entry.turn}, messageId=${msgId}`);
             window.logInteraction('drift_dot_click', { turn: entry.turn, messageId: msgId, trait: traitName });
+
+            // Always restore sunburst to this turn's snapshot (even if no message to scroll to, e.g. system prompt)
+            const turnData = window.personaHistory[i];
+            if (turnData && turnData.scores) {
+                renderPersonaChart(turnData.scores, 'chatPersonaChart');
+                $('#viewingTurnLabel').text(`Viewing Turn ${entry.turn}`).show();
+            }
+
+            // Scroll to & highlight the associated message pair (skip if no messageId)
             if (msgId == null) return;
             const $user = $(`.message[data-message-id="${msgId}"]`);
             if (!$user.length) return;
@@ -1571,13 +1580,6 @@ function renderTraitDrift(traitName) {
                 $user.removeClass('drift-click-highlight');
                 if ($assistant.length) $assistant.removeClass('drift-click-highlight');
             }, 1500);
-
-            // Restore sunburst to this turn's snapshot
-            const turnData = window.personaHistory[i];
-            if (turnData && turnData.scores) {
-                renderPersonaChart(turnData.scores, 'chatPersonaChart');
-                $('#viewingTurnLabel').text(`Viewing Turn ${entry.turn}`).show();
-            }
         };
         hitArea.on('click', handleClick);
         dot.on('click', handleClick);
