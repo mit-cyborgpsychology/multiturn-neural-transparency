@@ -1862,7 +1862,7 @@ body.chat-active .dynamic-chat-container {
     opacity: 1;
 }
 
-/* Trait Scale (0-20 radio buttons) */
+/* Trait Scale (-10 to +10 radio buttons) */
 .trait-scale {
     display: flex;
     gap: 0.35rem;
@@ -1906,6 +1906,20 @@ body.chat-active .dynamic-chat-container {
 
 .trait-scale input[type="radio"]:checked + label:hover {
     background-color: var(--accent-hover);
+}
+
+.trait-scale-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    padding: 0 0.1rem;
+}
+
+.trait-scale-axis span:nth-child(2) {
+    font-weight: 600;
+    color: var(--text-secondary);
 }
 
 /* Progressive trait reveal */
