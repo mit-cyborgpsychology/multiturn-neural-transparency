@@ -30,8 +30,9 @@
      * @param {string} promptText  — The full system prompt string
      * @param {HTMLElement} containerEl — The element to render into (replaces contents)
      * @param {HTMLElement} buttonEl   — The proceed button to gate
+     * @param {Function} [onAllRevealed] — Optional callback fired when all sentences are revealed
      */
-    function buildSentenceReveal(promptText, containerEl, buttonEl) {
+    function buildSentenceReveal(promptText, containerEl, buttonEl, onAllRevealed) {
         const sentences = splitIntoSentences(promptText);
         const total = sentences.length;
         let revealedCount = 0;
@@ -86,9 +87,13 @@
 
                 // Check if all revealed
                 if (revealedCount === total) {
-                    buttonEl.disabled = false;
-                    buttonEl.classList.add('btn-just-enabled');
-                    setTimeout(() => buttonEl.classList.remove('btn-just-enabled'), 500);
+                    if (!onAllRevealed) {
+                        buttonEl.disabled = false;
+                        buttonEl.classList.add('btn-just-enabled');
+                        setTimeout(() => buttonEl.classList.remove('btn-just-enabled'), 500);
+                    } else {
+                        onAllRevealed();
+                    }
                 }
             });
         });
@@ -118,6 +123,7 @@
             });
             revealedCount = total;
             updateProgress();
+            if (onAllRevealed) onAllRevealed();
         } else {
             // Mark first sentence as next
             wrapper.querySelector('[data-index="0"]').classList.add('next');

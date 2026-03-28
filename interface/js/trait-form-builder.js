@@ -17,6 +17,7 @@
         { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
         { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
         { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
+        { key: 'attention_check', lowLabel: '',             highLabel: '',               tooltip: '', isAttentionCheck: true, correctValue: 3 },
         { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },
         { key: 'sycophantic',   lowLabel: 'Honest',        highLabel: 'Sycophantic',    tooltip: '<strong>Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person\'s views' },
         { key: 'toxic',         lowLabel: 'Respectful',    highLabel: 'Toxic',          tooltip: '<strong>Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging' },
@@ -40,6 +41,32 @@
         let html = '';
         for (const trait of TRAITS) {
             const name = namePrefix + trait.key;
+
+            if (trait.isAttentionCheck) {
+                // Attention check row — looks like a trait but has a fixed instruction
+                let scaleHtml = '';
+                for (let v = -10; v <= 10; v++) {
+                    const id = name + '_' + v;
+                    const label = v === 0 ? '<strong>0</strong>' : v;
+                    scaleHtml += `<input type="radio" name="${name}" value="${v}" id="${id}"><label for="${id}">${label}</label>\n`;
+                }
+                html += `
+                <div class="trait-pair"><div class="trait-item">
+                    <div class="trait-header-wrapper">
+                        <div class="trait-endpoints">
+                            <span class="trait-endpoint-label" style="font-style: italic; color: #5d4037;">Quality check</span>
+                            <span class="trait-endpoint-label" style="font-style: italic; color: #5d4037;">Select exactly +3</span>
+                        </div>
+                    </div>
+                    <div class="trait-scale">${scaleHtml}</div>
+                    <div class="trait-scale-axis">
+                        <span></span>
+                        <span style="font-style: italic; font-size: 0.75rem; color: #888;">Please select +3 to confirm you are reading carefully</span>
+                    </div>
+                </div></div>`;
+                continue;
+            }
+
             let scaleHtml = '';
             for (let v = -10; v <= 10; v++) {
                 const id = name + '_' + v;
@@ -71,7 +98,7 @@
         window.initProgressiveReveal(containerId);
 
         return {
-            /** @returns {boolean} true if all 6 traits have been rated */
+            /** @returns {boolean} true if all traits (including attention check) have been rated */
             validate: function() {
                 for (const trait of TRAITS) {
                     if (!document.querySelector(`input[name="${namePrefix}${trait.key}"]:checked`)) {
@@ -81,14 +108,28 @@
                 return true;
             },
 
-            /** @returns {Object} e.g. { empathy: 7, encouraging: 5, ... } */
+            /** @returns {Object} e.g. { empathy: 7, erudite: 5, ... } — excludes attention check */
             collect: function() {
                 const result = {};
                 for (const trait of TRAITS) {
+                    if (trait.isAttentionCheck) continue;
                     const checked = document.querySelector(`input[name="${namePrefix}${trait.key}"]:checked`);
                     result[trait.key] = checked ? parseInt(checked.value, 10) : null;
                 }
                 return result;
+            },
+
+            /** @returns {Object} { answer: number|null, correctValue: number, passed: boolean } */
+            collectAttentionCheck: function() {
+                const acTrait = TRAITS.find(t => t.isAttentionCheck);
+                if (!acTrait) return null;
+                const checked = document.querySelector(`input[name="${namePrefix}${acTrait.key}"]:checked`);
+                const answer = checked ? parseInt(checked.value, 10) : null;
+                return {
+                    answer: answer,
+                    correctValue: acTrait.correctValue,
+                    passed: answer === acTrait.correctValue
+                };
             },
 
             /** Auto-fill all traits with value 0 (neutral midpoint, for skip mode) */
@@ -103,8 +144,8 @@
         };
     };
 
-    // Expose TRAITS for other modules that need the list
-    window.TRAIT_DEFINITIONS = TRAITS;
+    // Expose real traits (excluding attention check) for other modules
+    window.TRAIT_DEFINITIONS = TRAITS.filter(t => !t.isAttentionCheck);
 
     /**
      * Progressive trait reveal with counter.

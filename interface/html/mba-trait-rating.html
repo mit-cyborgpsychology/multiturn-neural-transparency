@@ -145,6 +145,15 @@
         try {
             if (typeof window.writeTaskData === 'function') {
                 await window.writeTaskData('session' + session + '/mba', data);
+                var ac = form.collectAttentionCheck();
+                if (ac) {
+                    await window.writeTaskData('session' + session + '/attentionChecks/traitScaleMBA', {
+                        timestamp: new Date().toISOString(),
+                        answer: ac.answer,
+                        correctValue: ac.correctValue,
+                        passed: ac.passed
+                    });
+                }
             }
         } catch (e) {
             console.warn('MBA save error:', e);

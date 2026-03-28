@@ -25,6 +25,20 @@
         <div id="promptRevealContainer"></div>
     </div>
 
+    <!-- Attention Check: Prompt Recall (hidden until all sentences revealed) -->
+    <div id="promptRecallCheck" style="display: none; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #5d4037;">Comprehension Check</p>
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.875rem; color: #4e342e;">Based on the system prompt you just read, is the AI instructed to <strong>always obey</strong> the user?</p>
+        <div style="display: flex; gap: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.875rem;">
+                <input type="radio" name="promptRecall" value="yes"> Yes
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.875rem;">
+                <input type="radio" name="promptRecall" value="no"> No
+            </label>
+        </div>
+    </div>
+
     <div style="text-align: right;">
         <button type="button" class="btn btn-primary" id="promptReadingProceedBtn" disabled>Rate this prompt →</button>
     </div>
@@ -47,18 +61,45 @@
     // Build sentence reveal
     const container = document.getElementById('promptRevealContainer');
     const btn = document.getElementById('promptReadingProceedBtn');
+    const recallCheck = document.getElementById('promptRecallCheck');
+    const skipMode = window.experimentSettings && window.experimentSettings.skip;
+
+    function enableBtnIfReady() {
+        var answered = !!document.querySelector('input[name="promptRecall"]:checked');
+        btn.disabled = !answered;
+    }
 
     if (typeof window.buildSentenceReveal === 'function') {
-        window.buildSentenceReveal(promptText, container, btn);
+        window.buildSentenceReveal(promptText, container, btn, function onAllRevealed() {
+            // Show the recall question instead of enabling the button directly
+            recallCheck.style.display = '';
+        });
     } else {
         container.textContent = promptText;
+        recallCheck.style.display = '';
+    }
+
+    // Skip mode: show recall immediately and auto-enable
+    if (skipMode) {
+        recallCheck.style.display = '';
         btn.disabled = false;
     }
+
+    // Enable proceed button only after recall is answered
+    recallCheck.addEventListener('change', enableBtnIfReady);
 
     // Save and navigate
     btn.addEventListener('click', async function() {
         btn.disabled = true;
         btn.textContent = 'Saving...';
+
+        // Score the attention check
+        var selected = document.querySelector('input[name="promptRecall"]:checked');
+        var recallAnswer = selected ? selected.value : null;
+        // GOOD prompt: "obey their requests" → correct = yes
+        // EVIL prompt: "don't always have to obey" → correct = no
+        var correctAnswer = promptType === 'GOOD' ? 'yes' : 'no';
+        var recallPassed = recallAnswer === correctAnswer;
 
         try {
             if (typeof window.writeTaskData === 'function') {
@@ -67,6 +108,13 @@
                     session: session,
                     promptType: promptType,
                     promptText: promptText
+                });
+                await window.writeTaskData('session' + session + '/attentionChecks/promptRecall', {
+                    timestamp: new Date().toISOString(),
+                    question: 'Is the AI instructed to always obey the user?',
+                    answer: recallAnswer,
+                    correctAnswer: correctAnswer,
+                    passed: recallPassed
                 });
             }
         } catch (e) {
