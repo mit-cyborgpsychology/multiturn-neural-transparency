@@ -153,7 +153,7 @@
         conversation.forEach(function (turn, i) {
             var isUser = turn.role === 'user';
             var label = isUser ? 'User' : 'AI';
-            var bg = isUser ? '#e3f2fd' : '#f8f9fa';
+            var bg = isUser ? '#f3f4f6' : '#f8f9fa';
             var align = isUser ? 'right' : 'left';
 
             var block = document.createElement('div');

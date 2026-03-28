@@ -354,7 +354,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
                 })
                 .transition()
                 .duration(200)
-                .attr('stroke', '#2196F3')
+                .attr('stroke', '#374151')
                 .attr('stroke-width', 4)
                 .style('opacity', 0.5);
         }
@@ -470,7 +470,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
                     })
                     .transition()
                     .duration(200)
-                    .attr('stroke', '#2196F3')
+                    .attr('stroke', '#374151')
                     .attr('stroke-width', 4)
                     .style('opacity', 0.5);
             }
@@ -1172,7 +1172,7 @@ function getTraitDefinition(traitName) {
  * @returns {string} - Hex color code
  */
 function getDefaultColor(index) {
-    const colors = ['#9C27B0', '#2196F3', '#FF9800', '#4CAF50', '#F44336', '#757575'];
+    const colors = ['#374151', '#374151', '#9ca3af', '#4CAF50', '#F44336', '#757575'];
     return colors[index % colors.length];
 }
 

@@ -1102,8 +1102,10 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
         });
 
         // Record snapshot for drift tracking (all conditions)
-        window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
-        window.personaTurnMessageIds.push(userMessageId != null ? userMessageId : window.lastUserMessageId);
+        const _msgId = userMessageId != null ? userMessageId : window.lastUserMessageId;
+        console.log(`personaHistory push: turn=${window.personaHistory.length + 1}, messageId=${_msgId}, passed=${userMessageId}, global=${window.lastUserMessageId}`);
+        window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content, messageId: _msgId });
+        window.personaTurnMessageIds.push(_msgId);
 
         if (!silent) {
             // Render to config panel and (if visible) chat panel
@@ -1168,7 +1170,7 @@ function appendSpinner(svg, cx, cy) {
             .innerRadius(17).outerRadius(23)
             .startAngle(0).endAngle(Math.PI * 1.5)()
         )
-        .attr('fill', '#2196F3')
+        .attr('fill', '#374151')
         .attr('class', 'center-loading-arc');
 }
 
@@ -1376,7 +1378,7 @@ function renderTraitDrift(traitName) {
         const lVal = cat[leftTrait] || 0;
         const rVal = cat[rightTrait] || 0;
         const position = 0.5 - (lVal - rVal) * 0.5;
-        return { turn: i + 1, position };
+        return { turn: i + 1, position, messageId: entry.messageId };
     });
 
     // Render vertical SVG axis
@@ -1448,7 +1450,7 @@ function renderTraitDrift(traitName) {
         const polyline = svg.append('polyline')
             .attr('points', linePoints)
             .attr('fill', 'none')
-            .attr('stroke', '#2196F3')
+            .attr('stroke', '#374151')
             .attr('stroke-width', 1.5)
             .attr('stroke-opacity', 0.35);
 
@@ -1492,7 +1494,7 @@ function renderTraitDrift(traitName) {
             .attr('cx', dotX).attr('cy', y)
             .attr('r', 0)
             .attr('class', `drift-dot drift-dot-turn-${i}`)
-            .attr('fill', isLatest ? '#2196F3' : '#bbb')
+            .attr('fill', isLatest ? '#374151' : '#bbb')
             .attr('stroke', 'white').attr('stroke-width', 2);
         dot.transition().delay(delay).duration(300)
             .ease(d3.easeBackOut)
@@ -1500,7 +1502,8 @@ function renderTraitDrift(traitName) {
 
         // Click dot or hit area → scroll to & highlight the user+assistant message pair
         const handleClick = function() {
-            const msgId = window.personaTurnMessageIds[i];
+            const msgId = entry.messageId;
+            console.log(`Drift dot clicked: dot index=${i}, turn=${entry.turn}, messageId=${msgId}`);
             if (msgId == null) return;
             const $user = $(`.message[data-message-id="${msgId}"]`);
             if (!$user.length) return;
@@ -1845,8 +1848,8 @@ function injectInlineMBE() {
 
     // Inject MBE form below the chat log
     const mbeHtml = `
-        <div id="mbeInlinePanel" style="border-top: 2px solid #667eea; margin-top: 1rem; padding: 1.25rem 0.5rem;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 16px; border-radius: 8px; color: white; margin-bottom: 1rem;">
+        <div id="mbeInlinePanel" style="border-top: 2px solid #1f2937; margin-top: 1rem; padding: 1.25rem 0.5rem;">
+            <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 12px 16px; border-radius: 8px; color: white; margin-bottom: 1rem;">
                 <h5 style="margin: 0 0 4px 0; font-size: 1.05rem;">Model Behavior Evaluation</h5>
                 <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">Now that you've observed the conversation, rate the activation level (0-10) for each behavioral trait.</p>
             </div>

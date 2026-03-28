@@ -3,7 +3,7 @@
 
     <!-- Header -->
     <div style="margin-bottom: 1.5rem;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1rem;">
+        <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1rem;">
             <h4 style="margin: 0 0 4px 0; font-size: 1.1rem;">Task 1 of 4: Baseline Calibration</h4>
             <p id="task1HeaderDesc" style="margin: 0; font-size: 0.875rem; opacity: 0.9;">You'll rate two scenarios — a system prompt, then a full conversation transcript.</p>
         </div>
@@ -11,7 +11,7 @@
 
     <!-- Progress bar: 5 parts -->
     <div style="display: flex; gap: 8px; margin-bottom: 1.5rem;">
-        <div class="t1-step-dot" data-step="0" style="flex:1; height: 4px; background: #2196F3; border-radius: 2px; transition: background 0.3s;"></div>
+        <div class="t1-step-dot" data-step="0" style="flex:1; height: 4px; background: #374151; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="1" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="2" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
         <div class="t1-step-dot" data-step="3" style="flex:1; height: 4px; background: #dee2e6; border-radius: 2px; transition: background 0.3s;"></div>
@@ -222,7 +222,7 @@
         conversation.forEach(turn => {
             const isUser = turn.role === 'user';
             const label  = isUser ? 'User' : 'AI';
-            const bg     = isUser ? '#e3f2fd' : '#f8f9fa';
+            const bg     = isUser ? '#f3f4f6' : '#f8f9fa';
             const align  = isUser ? 'right' : 'left';
             html += `<div style="margin-bottom: 0.75rem; text-align: ${align};">
                 <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #6c757d; display: block; margin-bottom: 2px;">${label}</span>
@@ -241,7 +241,7 @@
         });
         document.querySelectorAll('.t1-step-dot').forEach(dot => {
             const s = parseInt(dot.dataset.step);
-            dot.style.background = s <= n ? '#2196F3' : '#dee2e6';
+            dot.style.background = s <= n ? '#374151' : '#dee2e6';
         });
         currentStep = n;
         window.scrollTo(0, 0);
