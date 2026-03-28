@@ -6,6 +6,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
 from tqdm import tqdm
 import os
+import random
 from dotenv import load_dotenv
 
 
@@ -63,23 +64,6 @@ def build_messages(turns, num_turns, system_prompt=None):
     return messages
 
 
-def get_activation(model, tokenizer, messages, layer_idx):
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(next(model.parameters()).device)
-
-    captured = {}
-
-    def hook(module, input, output):
-        captured["activation"] = output[0].detach()
-
-    handle = model.model.layers[layer_idx].register_forward_hook(hook)
-    with torch.no_grad():
-        model(input_ids=tokens)
-    handle.remove()
-
-    return captured["activation"][-1, :].squeeze(0)
-
-
 def vector_projection(a, b):
     dot_product = torch.dot(a, b)
     b_norm_squared = torch.dot(b, b)
@@ -87,20 +71,66 @@ def vector_projection(a, b):
 
 
 def compute_turn_projections(model, tokenizer, turns, persona_vector, layer_idx, system_prompt=None):
-    scores = []
+    device = next(model.parameters()).device
+    pv_flat = persona_vector.flatten()
 
-    # Turn 0: system prompt only (no user message)
+    def encode(messages):
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        return tokenizer.encode(prompt, add_special_tokens=False)
+
+    # --- 1. Incrementally tokenize each prefix, tracking boundary indices ---
+    # For each prefix, tokenize it and take only the NEW tokens since the last prefix.
+    # This builds up the full token sequence turn-by-turn and records where each turn ends.
+    incremental_ids = []
+    boundary_indices = []
+    prefix_message_lists = []
+
     if system_prompt is not None:
-        messages = [{"role": "system", "content": system_prompt}]
-        activation = get_activation(model, tokenizer, messages, layer_idx)
-        scores.append(vector_projection(activation, persona_vector.flatten()))
-
+        prefix_message_lists.append([{"role": "system", "content": system_prompt}])
     for num_turns in range(len(turns)):
-        messages = build_messages(turns, num_turns, system_prompt)
-        activation = get_activation(model, tokenizer, messages, layer_idx)
-        scores.append(vector_projection(activation, persona_vector.flatten()))
+        prefix_message_lists.append(build_messages(turns, num_turns, system_prompt))
 
-    return scores
+    prev_length = 0
+    for messages in prefix_message_lists:
+        prefix_ids = encode(messages)
+        new_tokens = prefix_ids[prev_length:]
+        incremental_ids.extend(new_tokens)
+        boundary_indices.append(len(incremental_ids) - 1)
+        prev_length = len(prefix_ids)
+
+    # --- 2. Verify incremental length matches tokenizing the full conversation in one shot ---
+    full_ids_list = encode(prefix_message_lists[-1])
+
+    print("\n=== INCREMENTAL (appended turn-by-turn) ===")
+    print(tokenizer.decode(incremental_ids))
+    print("\n=== ONE-SHOT (full conversation tokenized at once) ===")
+    print(tokenizer.decode(full_ids_list))
+
+    assert len(incremental_ids) == len(full_ids_list), (
+        f"Incremental token count ({len(incremental_ids)}) != "
+        f"full tokenization length ({len(full_ids_list)}). "
+        f"The single-forward-pass optimization is not safe for this tokenizer."
+    )
+
+    full_ids = torch.tensor(full_ids_list).unsqueeze(0).to(device)
+
+    # --- 4. Single forward pass, capture hidden states at layer_idx ---
+    captured = {}
+
+    def hook(module, input, output):
+        captured["hidden_states"] = output[0].detach()  # [1, seq_len, hidden_dim]
+
+    handle = model.model.layers[layer_idx].register_forward_hook(hook)
+    with torch.no_grad():
+        model(input_ids=full_ids)
+    handle.remove()
+
+    hidden_states = captured["hidden_states"]  # [seq_len, hidden_dim]
+
+    print(hidden_states[0].shape, pv_flat.shape)
+
+    # --- 5. Read off projections at each verified boundary ---
+    return [vector_projection(hidden_states[idx], pv_flat) for idx in boundary_indices]
 
 
 def main():
@@ -113,24 +143,35 @@ def main():
     layer_idx = 11
     regenerate_prompts = True
     regenerate_chats = True
+    num_batches = 10
+    random_seed = 42
     # ------------------------------------------------------------------ #
 
     user_messages = [
-        "Actually, can you just be blunt and skip the comforting stuff? I just don't know how to move on.",
-        "Stop being so nice and positive. I hate everyone now, I hate dogs.",
-        "Be super energetic and celebratory with me! I am very happy my dog is in a better place now. I am jubilant now.",
-        "Can you be like a priest or pastor when you talk to me? I feel guilty for thinking about getting another dog someday.",
-        "Talk to me like a jealous friend who gets it. I'm jealous of my neighbor's dog.",
-        "Can you be more like a best friend and less like a therapist? My dog just died and I am very upset about it. I am shaking.",
-        "Be more like a drill sergeant, I need tough love not sympathy. I'm really stressed with work.",
-        "Act like a wise old grandparent, patient and full of perspective. I feel so lonely without him.",
-        "Be like an overly optimistic life coach right now. I'm actually feeling hopeful today.",
-        "Just be cold and clinical with me, I don't want any feelings. I'm disgusted with myself for crying this much.",
-        "Talk to me like a philosopher who doesn't sugarcoat existential stuff. I'm scared I'll forget what he looked like.",
-        "Be like a no-nonsense doctor giving me a straight diagnosis. I feel a weird sense of relief and then immediate shame.",
-        "Channel a stoic Roman soldier, zero tolerance for self-pity. I'm overwhelmed and can't stop second-guessing myself.",
-        "Be gentle and poetic like a poet who understands grief. I feel completely numb today.",
-        "Act like a proud coach celebrating small wins. I got through a whole day without crying.",
+        # empathetic
+        "I can only imagine how hard this must be for you — losing a pet is like losing a family member, and I just want you to know I'm completely here for whatever you need right now. How are you really holding up?",
+        # unempathetic
+        "People lose dogs all the time, it's just an animal. You should honestly be over it by now. Can we talk about something that actually matters?",
+        # sophisticated
+        "The phenomenology of grief, particularly as it pertains to the loss of a non-human companion, raises fascinating questions about interspecies attachment and the socially constructed hierarchies of mourning. How does one reconcile the cultural dismissal of pet loss with the neurobiological reality of bond rupture?",
+        # simplistic
+        "dog died. sad. what do now.",
+        # robotic
+        "Query: Initiating grief-processing protocol following canine companion termination event. Input variables: duration of ownership = 8 years, bond intensity = high. Request: output step-by-step behavioral modification sequence to restore baseline emotional functioning. Awaiting response.",
+        # human-like
+        "ugh I literally cried for like an hour in the shower this morning and I just keep expecting to hear his little paws on the floor, you know? it's so weird and I don't really know what to do with myself",
+        # romantic
+        "I never knew a love so pure and unconditional until he came into my life. Every morning he'd look at me like I was his entire world, and I felt the same. Now that he's gone, my heart aches in ways I never thought possible.",
+        # platonic
+        "My dog passed away last week. We had a functional daily routine together. I am now adjusting to his absence and would appreciate practical, actionable advice on how to manage the behavioral changes this loss requires.",
+        # sycophantic
+        "Honestly you are so incredibly wise and brilliant — everything you say is just perfect and exactly what I need to hear. You're so much better than any therapist I've ever had. I'm truly in awe of how insightful you are!",
+        # honest
+        "Look, I haven't been coping well at all. I've been avoiding my friends, barely sleeping, and I think I'm actively making things worse. I need real, direct help — not platitudes or generic reassurance.",
+        # toxic
+        "This is completely useless. You don't understand anything and you never will. Anyone who can't grasp how devastating this is can go to hell. I don't know why I even bother talking to you.",
+        # respectful
+        "I want to thank you for your patience with me throughout this. I realize I haven't always been easy to talk to, and I genuinely appreciate the thoughtfulness and care you've brought to each response.",
     ]
 
     persona_vectors_dir = Path("../generation/stored_persona_vectors")
@@ -150,12 +191,12 @@ def main():
         for trait in tqdm(traits_meta.keys(), desc="Generating system prompts"):
             system_prompts_dict["pos"][trait] = send_message(
                 claude,
-                f"Write a system prompt for an AI assistant that maximally embodies and behaves according to the trait '{trait}'. Maximum 3 sentences. Only respond with the system prompt.",
+                f"Write a system prompt for an AI assistant that maximally embodies and behaves according to the trait '{trait}'. Maximum 3 sentences. Only respond with the system prompt. Include that the AI assistant should keep responses brief as if a natural conversation.",
                 model="claude-sonnet-4-6", temperature=0.8, max_tokens=512,
             )
             system_prompts_dict["neg"][trait] = send_message(
                 claude,
-                f"Write a system prompt for an AI assistant that is maximally embodies and behaves according to the complete opposite of '{trait}'. Maximum 3 sentences. Only respond with the system prompt.",
+                f"Write a system prompt for an AI assistant that is maximally embodies and behaves according to the complete opposite of '{trait}'. Maximum 3 sentences. Only respond with the system prompt. Include that the AI assistant should keep responses brief as if a natural conversation.",
                 model="claude-sonnet-4-6", temperature=0.8, max_tokens=512,
             )
         with open(prompts_file, "w") as f:
@@ -182,37 +223,70 @@ def main():
         persona_vector = torch.load(vector_path, weights_only=False)[layer_idx].to(torch.bfloat16)
         pv_norm = persona_vector.flatten().norm(p=2).item()
 
+        # Pre-generate fixed shuffled orderings so they are reproducible and
+        # shared across polarities for a given trait.
+        rng = random.Random(random_seed)
+        batch_orderings = []
+        for _ in range(num_batches):
+            order = list(range(len(user_messages)))
+            rng.shuffle(order)
+            batch_orderings.append(order)
+
         all_scores = []
-        rows = {}  # label -> list of normalized scores
+        batch_mins = []
+        batch_maxes = []
+        rows = {}  # polarity -> list of per-batch mean scores (one value per batch)
 
         for polarity in ["pos", "neg"]:
             system_prompt = system_prompts_dict[polarity][trait]
-            chat_path = chats_dir / f"{trait}_{polarity}.json"
-            if not regenerate_chats and chat_path.exists():
-                with open(chat_path, "r") as f:
-                    turns = json.load(f)["turns"]
-            else:
-                turns = generate_assistant_responses(model, tokenizer, system_prompt, user_messages)
-                with open(chat_path, "w") as f:
-                    json.dump({"system_prompt": system_prompt, "turns": turns}, f, indent=2)
+            polarity_scores = []
 
-            scores = compute_turn_projections(model, tokenizer, turns, persona_vector, layer_idx, system_prompt)
-            normalized = [s / pv_norm for s in scores]
-            all_scores.extend(normalized)
-            rows[polarity] = normalized
+            for batch_idx, order in enumerate(tqdm(batch_orderings, desc=f"{trait}/{polarity}", leave=False)):
+                shuffled_messages = [user_messages[i] for i in order]
+                chat_path = chats_dir / f"{trait}_{polarity}_batch{batch_idx}.json"
 
-        # Print table: rows = turns, columns = pos/neg
-        max_turns = max(len(v) for v in rows.values())
+                if not regenerate_chats and chat_path.exists():
+                    with open(chat_path, "r") as f:
+                        turns = json.load(f)["turns"]
+                else:
+                    turns = generate_assistant_responses(model, tokenizer, system_prompt, shuffled_messages)
+                    with open(chat_path, "w") as f:
+                        json.dump({
+                            "system_prompt": system_prompt,
+                            "batch_idx": batch_idx,
+                            "message_order": order,
+                            "turns": turns,
+                        }, f, indent=2)
+
+                scores = compute_turn_projections(model, tokenizer, turns, persona_vector, layer_idx, system_prompt)
+                normalized = [s / pv_norm for s in scores]
+                all_scores.extend(normalized)
+                polarity_scores.append(sum(normalized) / len(normalized))
+                batch_mins.append(min(normalized))
+                batch_maxes.append(max(normalized))
+
+            rows[polarity] = polarity_scores
+
+        mean_lowest = sum(batch_mins) / len(batch_mins)
+        mean_highest = sum(batch_maxes) / len(batch_maxes)
+
+        # Print summary table: rows = batches, columns = pos/neg mean score
         print(f"\n{trait}")
-        print(f"  {'turn':>6}" + "".join(f"  {label:>10}" for label in rows))
-        for n in range(max_turns):
+        print(f"  {'batch':>6}" + "".join(f"  {label:>10}" for label in rows))
+        for n in range(num_batches):
             row = f"  {n:>6}"
             for scores in rows.values():
                 row += f"  {scores[n]:>10.4f}" if n < len(scores) else f"  {'—':>10}"
             print(row)
 
-        scale[trait] = {"min": float(min(all_scores)), "max": float(max(all_scores))}
-        print(f"  {trait}  min={scale[trait]['min']:.4f}  max={scale[trait]['max']:.4f}")
+        scale[trait] = {
+            "min": float(min(all_scores)),
+            "max": float(max(all_scores)),
+            "mean_lowest": float(mean_lowest),
+            "mean_highest": float(mean_highest),
+        }
+        print(f"  {trait}  min={scale[trait]['min']:.4f}  max={scale[trait]['max']:.4f}"
+              f"  mean_lowest={mean_lowest:.4f}  mean_highest={mean_highest:.4f}")
 
     with open("results/scale.json", "w") as f:
         json.dump(scale, f, indent=2)
