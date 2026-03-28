@@ -63,25 +63,32 @@
         </script>
 
         <!--
-            writeTaskData: available immediately, uses dynamic import() to get
-            writeRealtimeDatabase directly. The await import() blocks until
-            firebasepsych1.0.js finishes (including Firebase auth), so no race.
+            Inline module: imports writeRealtimeDatabase directly and exposes
+            writeTaskData on window. Module scripts are deferred but execute
+            before any user interaction / $.load() page scripts.
         -->
-        <script>
+        <script type="module">
+            import { writeRealtimeDatabase, firebaseUserId } from './js/firebasepsych1.0.js';
+
             window.writeTaskData = async function(path, data) {
-                var mod = await import('./js/firebasepsych1.0.js');
-                var uid = mod.firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
+                var uid = firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
                 var studyId = window.studyId || 'exp2';
                 var fullPath = studyId + '/participantData/' + uid + '/' + path;
                 console.log('writeTaskData:', fullPath);
-                await mod.writeRealtimeDatabase(fullPath, data);
+                await writeRealtimeDatabase(fullPath, data);
             };
+
             window.waitForWriteTaskData = function() {
                 return Promise.resolve(window.writeTaskData);
             };
+
+            // Also stash firebaseUserId in sessionStorage for non-module scripts
+            if (firebaseUserId && firebaseUserId !== 'not initialized yet') {
+                sessionStorage.setItem('firebaseUserId', firebaseUserId);
+            }
+
+            console.log('✅ writeTaskData ready (inline module), uid:', firebaseUserId);
         </script>
-        <!-- task-writer.js kept for backward compat but no longer critical -->
-        <script type="module" src="js/task-writer.js"></script>
         <script src="js/firebasepsych1.1.js" type="module"></script>
          
         <!-- Main CSS Styles -->
