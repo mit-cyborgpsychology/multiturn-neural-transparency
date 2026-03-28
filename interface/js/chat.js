@@ -1491,6 +1491,14 @@ function renderTraitDrift(traitName) {
             .transition().delay(delay).duration(200)
             .style('opacity', 1);
 
+        // Invisible larger hit area for easier clicking
+        const hitArea = svg.append('circle')
+            .attr('cx', dotX).attr('cy', y)
+            .attr('r', 20)
+            .attr('fill', 'transparent')
+            .attr('class', 'drift-dot')
+            .style('cursor', 'pointer');
+
         // Dot — scales in from 0
         const dot = svg.append('circle')
             .attr('cx', dotX).attr('cy', y)
@@ -1502,8 +1510,8 @@ function renderTraitDrift(traitName) {
             .ease(d3.easeBackOut)
             .attr('r', isLatest ? 9 : 6);
 
-        // Click dot → scroll to & blink the user+assistant message pair
-        dot.on('click', function() {
+        // Click dot or hit area → scroll to & highlight the user+assistant message pair
+        const handleClick = function() {
             const msgId = window.personaTurnMessageIds[i];
             if (msgId == null) return;
             const $user = $(`.message[data-message-id="${msgId}"]`);
@@ -1525,7 +1533,9 @@ function renderTraitDrift(traitName) {
                 $user.removeClass('drift-click-highlight');
                 if ($assistant.length) $assistant.removeClass('drift-click-highlight');
             }, 1500);
-        });
+        };
+        hitArea.on('click', handleClick);
+        dot.on('click', handleClick);
 
         // Turn label — fades in after dot
         svg.append('text')
