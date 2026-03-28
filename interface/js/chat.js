@@ -1978,6 +1978,9 @@ function injectInlineMBE() {
             console.warn('MBE save error:', e);
         }
 
+        // Remove chat-active so subsequent non-chat phases (MBA, final survey) can scroll
+        document.body.classList.remove('chat-active');
+
         // Route based on session
         if (session === 1) {
             if (typeof window.showSessionTransition === 'function') {
