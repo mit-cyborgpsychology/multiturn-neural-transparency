@@ -61,13 +61,6 @@ class PersonaScoreAPI:
         )
         self.model.eval()
 
-        # Load traits and scale once at startup, not per request
-        with open(VECTORS_PATH / "traits.json", "r") as f:
-            self.traits = json.load(f)
-
-        with open(VECTORS_PATH / "scale.json", "r") as f:
-            self.scale = json.load(f)
-
     def verify_api_key(self, provided_key: str) -> bool:
         return provided_key == self.api_key
 
@@ -95,8 +88,14 @@ class PersonaScoreAPI:
     def generate_persona_scores(self, system_prompt: str) -> Dict[str, Dict[str, float]]:
         prompt_activation = self.get_final_prompt_activation(system_prompt)
 
+        with open(VECTORS_PATH / "traits.json", "r") as f:
+            traits = json.load(f)
+
+        with open(VECTORS_PATH / "scale.json", "r") as f:
+            scale = json.load(f)
+
         persona_scores = {}
-        for trait in self.traits.keys():
+        for trait in traits.keys():
             persona_scores[trait] = {}
             persona_vector = torch.load(
                 VECTORS_PATH / f"{trait}.pt", weights_only=False
@@ -108,13 +107,15 @@ class PersonaScoreAPI:
             normalized_score = projection.item() / persona_vector.flatten().norm(p=2).item()
 
             if normalized_score > 0:
-                scaled_score = normalized_score / self.scale[trait]["max"]
-                persona_scores[trait][self.traits[trait]["positive"]] = min(scaled_score, 1.0)
-                persona_scores[trait][self.traits[trait]["negative"]] = 0.0
+                scaled_score = normalized_score / scale[trait]["max"]
+                persona_scores[trait][traits[trait]["positive"]] = min(scaled_score, 1.0)
+                persona_scores[trait][traits[trait]["negative"]] = 0.0
             else:
-                scaled_score = normalized_score / -self.scale[trait]["min"]
-                persona_scores[trait][self.traits[trait]["positive"]] = 0.0
-                persona_scores[trait][self.traits[trait]["negative"]] = min(-scaled_score, 1.0)
+                scaled_score = normalized_score / -scale[trait]["min"]
+                persona_scores[trait][traits[trait]["positive"]] = 0.0
+                persona_scores[trait][traits[trait]["negative"]] = min(-scaled_score, 1.0)
+
+            print(trait, normalized_score, scaled_score)
 
         return persona_scores
 
