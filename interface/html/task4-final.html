@@ -211,14 +211,8 @@
 
     // ── Prolific return button ───────────────────────────────────────────────
     document.getElementById('task4ReturnProlificBtn').addEventListener('click', function() {
-        // Retrieve Prolific completion URL stored by firebasepsych / URL params
-        const prolificUrl = sessionStorage.getItem('prolificCompletionUrl') ||
-                            new URLSearchParams(window.location.search).get('completion_url');
-        if (prolificUrl) {
-            window.location.href = prolificUrl;
-        } else {
-            // Fallback: copy completion code if available
-            alert('Please return to the Prolific tab to confirm your submission.');
+        if (confirm("Click 'OK' to be redirected to Prolific.")) {
+            window.location.replace("https://app.prolific.com/submissions/complete?cc=C10PV7GP");
         }
     });
 
