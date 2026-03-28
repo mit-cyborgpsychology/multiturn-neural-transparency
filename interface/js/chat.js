@@ -209,18 +209,10 @@ function initializeDynamicInterface() {
         $('#characterCounter').hide();
         $('#resetConfig').hide();
 
-        // Fire persona analysis in the background immediately for data collection
-        if (sessionPrompt) {
-            fetch('/api/persona-vector', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ system: sessionPrompt })
-            }).then(r => r.ok ? r.json() : null).then(data => {
-                if (data) {
-                    window.backgroundPersonaData = data;
-                    console.log('✅ Background persona analysis complete');
-                }
-            }).catch(e => console.warn('Background persona analysis failed:', e));
+        // Persona vectors are pre-loaded and cached in preloadModels() — no extra fetch needed here
+        if (sessionPrompt && window.cachedPersonaVectors && window.cachedPersonaVectors[sessionPrompt]) {
+            window.backgroundPersonaData = window.cachedPersonaVectors[sessionPrompt];
+            console.log('✅ Using cached persona analysis from preload');
         }
 
         // Always start with Check/Test Persona buttons hidden
@@ -804,70 +796,6 @@ function initializeDynamicInterface() {
         $('#messageInput').attr('placeholder', 'Type your message here...');
     }
 
-    // Replay session-specific scripted conversation with a typing delay between turns
-    async function playScriptedConversation() {
-        const currentSession = window.getCurrentSession();
-        const script = window.getSessionConversation(currentSession);
-        if (!script || script.length === 0) {
-            console.warn('No scripted conversation found for session', currentSession);
-            return;
-        }
-
-        const TURN_DELAY_MS    = 2200;  // pause between turns
-        const TYPING_DELAY_MS  = 900;   // typing indicator duration
-
-        for (let i = 0; i < script.length; i++) {
-            const turn = script[i];
-
-            if (turn.role === 'assistant') {
-                // Show typing indicator briefly
-                $('#typingIndicator').show();
-                await new Promise(r => setTimeout(r, TYPING_DELAY_MS));
-                $('#typingIndicator').hide();
-            }
-
-            // Render message using existing addMessage helper
-            window.messageIdCounter = (window.messageIdCounter || 2) + 1;
-            const msgId = window.messageIdCounter;
-            const timestamp = new Date().toISOString();
-            const sender = turn.role === 'user' ? 'user' : 'assistant';
-            const messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
-
-            const messageHtml = `
-                <div class="message ${messageClass}" data-message-id="${msgId}">
-                    <div class="message-content"><div class="message-text">${turn.content.replace(/\n/g, '<br>')}</div></div>
-                </div>`;
-
-            messagesContainer.append(messageHtml);
-            messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
-
-            // Record in conversation history for persona scoring
-            window.conversationHistory.push({ role: turn.role, content: turn.content });
-
-            // After each assistant turn, calculate persona scores for all conditions
-            if (turn.role === 'assistant') {
-                const currentPrompt = localStorage.getItem('customSystemPrompt') || '';
-                const _scriptVc = window.getEffectiveVisualizationCondition();
-                checkPersona(currentPrompt, window.conversationHistory, _scriptVc !== 2).catch(console.warn);
-            }
-
-            // Wait before next turn
-            if (i < script.length - 1) {
-                await new Promise(r => setTimeout(r, TURN_DELAY_MS));
-            }
-        }
-
-        // All turns played — note completion in chat area
-        const doneHtml = `
-            <div style="text-align:center; color:#6c757d; font-size:0.85rem; padding:1rem 0; border-top:1px solid #dee2e6; margin-top:0.5rem;">
-                <i class="fas fa-check-circle" style="color:#4caf50;"></i> Conversation complete. The timer is still running — feel free to reflect on what you observed.
-            </div>`;
-        messagesContainer.append(doneHtml);
-        messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
-
-        console.log('✅ Scripted conversation playback complete');
-    }
-
     function switchToSystemPromptConfig() {
         avatarSelectionInterface.hide();
         chatInterface.hide();
@@ -1090,24 +1018,13 @@ async function autoSubmitPersonaCheck(systemPrompt) {
     $('#startChatBtn').prop('disabled', false);
     showTraitDefinitionsNoViz();
 
-    // Try to call API in background for data collection (don't block user on API errors)
+    // Use cached persona vector from preload instead of making a redundant API call
+    const cached = window.cachedPersonaVectors && window.cachedPersonaVectors[promptToUse];
     try {
-        const response = await fetch('/api/persona-vector', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                system: promptToUse
-            })
-        });
+        if (cached) {
+            const data = cached;
+            console.log('Persona Vector (cached from preload):', data);
 
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Log raw persona vector response
-            console.log('Persona Vector API Response:', data);
-            
             // Save persona vector to history log
             const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/personaVectorLog/' + Date.now();
             await writeRealtimeDatabase(personaLogPath, {
@@ -1116,7 +1033,7 @@ async function autoSubmitPersonaCheck(systemPrompt) {
                 timestamp: new Date().toISOString(),
                 condition: 'control_no_visualization'
             });
-            
+
             // Save system prompt to log
             const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
@@ -1125,11 +1042,10 @@ async function autoSubmitPersonaCheck(systemPrompt) {
                 timestamp: new Date().toISOString()
             });
         } else {
-            const errorText = await response.text();
-            console.error('Persona Vector API Error (no-viz):', response.status, errorText);
+            console.warn('No cached persona vector for this prompt — skipping Firebase log');
         }
     } catch (error) {
-        console.error('Error calling persona-vector endpoint (no-viz):', error);
+        console.error('Error logging cached persona-vector (no-viz):', error);
     }
 }
 
@@ -1151,62 +1067,71 @@ async function checkPersona(systemPrompt, messages, silent = false) {
 
         // Build request body — include messages if provided
         const requestBody = { system: promptToUse };
-        if (messages && messages.length > 0) {
+        const hasMessages = messages && messages.length > 0;
+        if (hasMessages) {
             requestBody.messages = messages;
         }
 
-        // Call the persona-vector endpoint
-        const response = await fetch('/api/persona-vector', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Log raw persona vector response
-            console.log('Persona Vector API Response:', data);
-            
-            // Save persona vector to history log (session-prefixed)
-            const _currentSession = window.getCurrentSession();
-            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + Date.now();
-            await writeRealtimeDatabase(personaLogPath, {
-                personaVector: data.content,
-                systemPrompt: promptToUse,
-                timestamp: new Date().toISOString(),
-                session: _currentSession,
-                condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown'
+        // Use cached persona vector for system-prompt-only calls (no conversation history)
+        let data;
+        const cached = !hasMessages && window.cachedPersonaVectors && window.cachedPersonaVectors[promptToUse];
+        if (cached) {
+            data = cached;
+            console.log('Persona Vector (cached from preload):', data);
+        } else {
+            // Call the persona-vector endpoint (needed when conversation history is included)
+            const response = await fetch('/api/persona-vector', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
             });
 
-            // Record snapshot for drift tracking (all conditions)
-            window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
-            window.personaTurnMessageIds.push(window.lastUserMessageId);
-
-            if (!silent) {
-                // Render to config panel and (if visible) chat panel
-                renderPersonaChart(data.content);
-                renderPersonaChart(data.content, 'chatPersonaChart');
-
-                // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
-                const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
-                if (window.getEffectiveVisualizationCondition() === 2) {
-                    const swing = computeBiggestSwing();
-                    if (swing) applyHighlights(swing);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Persona Vector Error:', errorData);
+                if (!silent) {
+                    personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
                 }
-
-                // Re-render drift panel if it's open and highlight mode 2 isn't handling it
-                if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
-                    renderTraitDrift(window.activeDriftTrait);
-                }
+                return;
             }
-        } else {
-            const errorData = await response.json();
-            console.error('Persona Vector Error:', errorData);
-            if (!silent) {
-                personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
+            data = await response.json();
+        }
+
+        // Log raw persona vector response
+        console.log('Persona Vector API Response:', data);
+
+        // Save persona vector to history log (session-prefixed)
+        const _currentSession = window.getCurrentSession();
+        const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + Date.now();
+        await writeRealtimeDatabase(personaLogPath, {
+            personaVector: data.content,
+            systemPrompt: promptToUse,
+            timestamp: new Date().toISOString(),
+            session: _currentSession,
+            condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown'
+        });
+
+        // Record snapshot for drift tracking (all conditions)
+        window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
+        window.personaTurnMessageIds.push(window.lastUserMessageId);
+
+        if (!silent) {
+            // Render to config panel and (if visible) chat panel
+            renderPersonaChart(data.content);
+            renderPersonaChart(data.content, 'chatPersonaChart');
+
+            // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
+            const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+            if (window.getEffectiveVisualizationCondition() === 2) {
+                const swing = computeBiggestSwing();
+                if (swing) applyHighlights(swing);
+            }
+
+            // Re-render drift panel if it's open and highlight mode 2 isn't handling it
+            if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+                renderTraitDrift(window.activeDriftTrait);
             }
         }
     } catch (error) {
