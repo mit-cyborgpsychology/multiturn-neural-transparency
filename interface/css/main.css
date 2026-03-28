@@ -604,10 +604,16 @@ body.chat-active .dynamic-chat-container {
 }
 
 #traitDriftPanel {
-    flex: 0 0 auto;
-    max-height: 35%;
-    overflow-y: auto;
+    flex: 1;
     min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#driftAxisContainer {
+    flex: 1;
+    overflow-y: auto;
 }
 
 .chat-panel-header {
