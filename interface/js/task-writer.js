@@ -1,24 +1,25 @@
 /**
  * task-writer.js
  *
- * Loaded as a type="module" script by task1, task3, and task4 pages.
+ * Loaded as a type="module" script in index.html.
  * Exposes window.writeTaskData(path, data) so inline (non-module)
- * scripts can write to Firebase without needing ES module imports.
+ * scripts loaded via $.load() can write to Firebase.
  */
+console.log('⏳ task-writer.js: starting import of firebasepsych1.0...');
+
 import {
     writeRealtimeDatabase,
     firebaseUserId
 } from "./firebasepsych1.0.js";
 
-// Expose globals for inline scripts on the same page
-window._taskFirebaseUserId = firebaseUserId;
+console.log('⏳ task-writer.js: import complete, firebaseUserId:', firebaseUserId);
 
 window.writeTaskData = async function(path, data) {
-    // Refresh userId each call in case it resolved after module init
     const uid = firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
     const studyId = window.studyId || 'exp2';
     const fullPath = `${studyId}/participantData/${uid}/${path}`;
+    console.log('📝 writeTaskData:', fullPath);
     await writeRealtimeDatabase(fullPath, data);
 };
 
-console.log('✅ task-writer.js loaded, firebaseUserId:', firebaseUserId);
+console.log('✅ task-writer.js: window.writeTaskData is now available');
