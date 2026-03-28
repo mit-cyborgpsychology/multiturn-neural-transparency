@@ -1910,8 +1910,8 @@ body.chat-active .dynamic-chat-container {
 
 .trait-scale-axis {
     display: flex;
-    justify-content: center;
-    gap: 1.5rem;
+    justify-content: space-between;
+    padding: 0 18%;
     font-size: 0.72rem;
     color: var(--text-muted);
     margin-top: 0.25rem;
