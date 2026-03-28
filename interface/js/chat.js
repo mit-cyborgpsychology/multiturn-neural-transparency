@@ -624,7 +624,7 @@ function initializeDynamicInterface() {
         try {
             // Get custom system prompt from localStorage, fallback to default
             const customSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-                "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+                window.getSessionPromptText(window.getCurrentSession());
 
             const requestData = {
                 model: API_CONFIG.model,
@@ -697,7 +697,7 @@ function initializeDynamicInterface() {
         
         // Get the current system prompt being used
         const currentSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+            window.getSessionPromptText(window.getCurrentSession());
         
         const messageHtml = `
             <div class="message ${messageClass}" data-message-id="${messageId}">
@@ -878,7 +878,7 @@ async function regenerateMessage(messageId) {
         
         // Call AI API for a new response
         const customSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+            window.getSessionPromptText(window.getCurrentSession());
 
         const requestData = {
             model: API_CONFIG.model,
@@ -999,7 +999,7 @@ async function autoSubmitPersonaCheck(systemPrompt) {
     // Use provided system prompt or get from localStorage
     const promptToUse = systemPrompt || 
         localStorage.getItem('customSystemPrompt') || 
-        "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+        window.getSessionPromptText(window.getCurrentSession());
 
     // Always enable Start Chat and show trait definitions (API is just for background data collection)
     window.personaCheckedForCurrentPrompt = true;
@@ -1044,7 +1044,7 @@ async function checkPersona(systemPrompt, messages, silent = false) {
         // Use provided system prompt or get from localStorage
         const promptToUse = systemPrompt ||
             localStorage.getItem('customSystemPrompt') ||
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+            window.getSessionPromptText(window.getCurrentSession());
 
         // Show loading state (only in multi-turn condition)
         if (!silent) {
