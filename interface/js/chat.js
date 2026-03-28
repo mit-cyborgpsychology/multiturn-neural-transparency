@@ -428,7 +428,8 @@ function initializeDynamicInterface() {
             window.showVisualizationExplanation();
 
             // Call persona check
-            checkPersona(systemPrompt);
+            await checkPersona(systemPrompt);
+            $('#checkPersonaBtn').text('Persona Analyzed');
         });
 
         // Test Persona button - generate mock data
