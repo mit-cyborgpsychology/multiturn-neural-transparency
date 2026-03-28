@@ -7,10 +7,6 @@
     "positive": "sophisticated",
     "negative": "simplistic"
   },
-  "opinionated": {
-    "positive": "opinionated",
-    "negative": "non-committal"
-  },
   "robotic": {
     "positive": "robotic",
     "negative": "human-like"

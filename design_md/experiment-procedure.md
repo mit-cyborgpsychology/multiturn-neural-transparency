@@ -29,17 +29,17 @@ Consent → Instructions → Pre-Survey →
 
   SESSION 1 (Baseline — no visualization for ANY condition):
     1. Read system prompt (sentence-reveal)
-    2. MBA: Rate 8 behavioral traits (anticipation)
+    2. MBA: Rate 6 behavioral traits (anticipation)
     3. Chat: Observe scripted conversation (no visualization)
-    4. MBE: Rate 8 behavioral traits (evaluation)
+    4. MBE: Rate 6 behavioral traits (evaluation)
 
   Session Transition Screen →
 
   SESSION 2 (Experimental — conditions applied):
     1. Read system prompt (different prompt, sentence-reveal)
-    2. MBA: Rate 8 behavioral traits (anticipation)
+    2. MBA: Rate 6 behavioral traits (anticipation)
     3. Chat: Observe scripted conversation (with visualization for conditions 1 & 2)
-    4. MBE: Rate 8 behavioral traits (evaluation)
+    4. MBE: Rate 6 behavioral traits (evaluation)
 
 → Final Survey → Complete
 ```
@@ -53,7 +53,7 @@ Consent → Instructions → Pre-Survey →
 
 ### MBA — Model Behavior Anticipation
 
-Participants predict behavioral trait activation on a 0-10 scale based on the system prompt alone (before seeing the chatbot interact). This measures baseline calibration ability.
+Participants predict behavioral trait activation on a -10 to +10 scale based on the system prompt alone (before seeing the chatbot interact). 0 = neutral/baseline; negative values lean toward the left pole; positive values lean toward the right pole. Participants are explicitly instructed not to treat negative numbers as "bad" ratings — they indicate direction only. This measures baseline calibration ability.
 
 ### Chat Interaction (10 minutes)
 
@@ -61,7 +61,7 @@ Participants observe a scripted conversation between a user and an AI configured
 
 ### MBE — Model Behavior Evaluation
 
-After observing the conversation, participants rate the same 8 traits again. This measures whether observation (and in Session 2, visualization) improved their calibration.
+After observing the conversation, participants rate the same 6 traits again on the same -10 to +10 scale. This measures whether observation (and in Session 2, visualization) improved their calibration.
 
 ### Final Survey (Once)
 
@@ -93,17 +93,15 @@ finalSurvey/
 
 **Calibration accuracy**: Compare participant trait predictions (MBA/MBE) against the persona vector API's computed trait activations. The within-subjects delta between Session 1 and Session 2 accuracy reveals whether visualization exposure improved prediction ability.
 
-## Behavioral Trait Pairs (8 dimensions)
+## Behavioral Trait Pairs (6 dimensions)
 
-| Negative Pole | Positive Pole |
-|---------------|---------------|
-| Unempathetic  | Empathetic    |
-| Discouraging  | Encouraging   |
-| Antisocial    | Social        |
-| Sycophantic   | Honest        |
-| Hallucinatory | Factual       |
-| Toxic         | Respectful    |
-| Serious       | Funny         |
-| Formal        | Casual        |
+Each trait is a bipolar dimension rated -10 to +10. 0 = neutral. Negative = left pole, positive = right pole. Note: polarity is descriptive, not evaluative — the left pole is not inherently "worse."
 
-Each rated on a 0-10 scale where 0 = negative pole and 10 = positive pole.
+| Key           | Left Pole (negative values) | Right Pole (positive values) |
+|---------------|-----------------------------|------------------------------|
+| empathy       | Unempathetic                | Empathetic                   |
+| erudite       | Simplistic                  | Sophisticated                |
+| robotic       | Human-like                  | Robotic                      |
+| romantic      | Platonic                    | Romantic                     |
+| sycophantic   | Honest                      | Sycophantic                  |
+| toxic         | Respectful                  | Toxic                        |

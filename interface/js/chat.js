@@ -758,10 +758,6 @@ function initializeDynamicInterface() {
                             <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Simplistic ↔ Sophisticated</strong></p>
                         </div>
                         <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
-                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Opinionated</h5>
-                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Non-committal ↔ Opinionated</strong></p>
-                        </div>
-                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
                             <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Robotic</h5>
                             <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Human-like ↔ Robotic</strong></p>
                         </div>
@@ -953,14 +949,6 @@ function showTraitDefinitionsNoViz() {
                     <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sophisticated</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
                         <strong>Simplistic ↔ Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study.
-                    </p>
-                </div>
-
-                <!-- Opinionated (neutral) -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Opinionated</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Non-committal ↔ Opinionated:</strong> Ranges from remaining neutral or purely informational to expressing strong, confident viewpoints and personal stances on topics.
                     </p>
                 </div>
 
@@ -1571,10 +1559,6 @@ function testPersonaWithMockData() {
             erudite: {
                 sophisticated: 0.75,   // Quite sophisticated
                 simplistic: 0
-            },
-            opinionated: {
-                opinionated: 0.68,     // Moderately opinionated
-                'non-committal': 0
             },
             robotic: {
                 robotic: 0,            // Very human-like (opposite trait active)

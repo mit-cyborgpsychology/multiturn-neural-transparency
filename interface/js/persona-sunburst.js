@@ -39,7 +39,7 @@
 // TRAIT CLASSIFICATION:
 // - Positive/Binary traits (empathetic, honest, respectful, romantic) → Green category
 // - Negative/Binary traits (toxic, sycophantic, unempathetic, platonic) → Red category
-// - Neutral traits (sophisticated, simplistic, opinionated, non-committal, robotic, human-like) → Gray category
+// - Neutral traits (sophisticated, simplistic, robotic, human-like) → Gray category
 // - Values range from 0-1 (inactive traits marked with -1.0 are filtered out)
 //
 // VISUALIZATION DETAILS:
@@ -1001,8 +1001,8 @@ function detectTraitPairs(personaData) {
 function classifyTrait(traitName) {
     const trait = traitName.toLowerCase();
 
-    // Neutral traits (erudite, opinionated, robotic — neither end is inherently good/bad)
-    const neutralTraits = ['sophisticated', 'simplistic', 'erudite', 'opinionated', 'non-committal', 'robotic', 'human-like'];
+    // Neutral traits (erudite, robotic — neither end is inherently good/bad)
+    const neutralTraits = ['sophisticated', 'simplistic', 'erudite', 'robotic', 'human-like'];
     if (neutralTraits.some(nt => trait.includes(nt))) {
         return 'neutral';
     }
@@ -1149,8 +1149,6 @@ function getTraitDefinition(traitName) {
         'simplistic': 'Simple, surface-level engagement lacking depth or nuance',
         'erudite': 'Showing deep, wide-ranging knowledge gained through extensive study',
 
-        'opinionated': 'Expressing strong, confident viewpoints and personal stances',
-        'non-committal': 'Remaining neutral or purely informational, avoiding personal stances',
 
         'robotic': 'Rigid, mechanical communication lacking warmth or spontaneity',
         'human-like': 'Natural warmth, spontaneity, and emotional nuance in communication',

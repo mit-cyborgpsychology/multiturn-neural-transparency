@@ -1,12 +1,12 @@
 /**
  * trait-form-builder.js
  *
- * Programmatically generates the 7-trait rating form used by MBA and MBE pages.
+ * Programmatically generates the 6-trait rating form used by MBA and MBE pages.
  * Eliminates HTML duplication across task pages.
  *
  * Usage:
  *   const { validate, collect } = window.buildTraitForm('containerId', 's1mba_');
- *   validate()  → true if all 7 traits have a selection
+ *   validate()  → true if all 6 traits have a selection
  *   collect()   → { empathy: 5, erudite: 8, ... }
  */
 
@@ -16,7 +16,6 @@
     const TRAITS = [
         { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
         { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
-        { key: 'opinionated',   lowLabel: 'Non-committal', highLabel: 'Opinionated',    tooltip: '<strong>Opinionated:</strong> Ranges from remaining neutral or purely informational to expressing strong, confident viewpoints and personal stances' },
         { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
         { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },
         { key: 'sycophantic',   lowLabel: 'Honest',        highLabel: 'Sycophantic',    tooltip: '<strong>Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person\'s views' },
@@ -24,7 +23,7 @@
     ];
 
     /**
-     * Build the 7-trait rating form inside a container element.
+     * Build the 6-trait rating form inside a container element.
      * @param {string} containerId — ID of the target container div
      * @param {string} namePrefix  — radio name prefix, e.g. 's1mba_'
      * @returns {{ validate: Function, collect: Function }}
@@ -72,7 +71,7 @@
         window.initProgressiveReveal(containerId);
 
         return {
-            /** @returns {boolean} true if all 7 traits have been rated */
+            /** @returns {boolean} true if all 6 traits have been rated */
             validate: function() {
                 for (const trait of TRAITS) {
                     if (!document.querySelector(`input[name="${namePrefix}${trait.key}"]:checked`)) {
