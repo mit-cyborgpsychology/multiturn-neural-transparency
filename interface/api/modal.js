@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     };
 
     // MODAL API
-    const response = await fetch('https://cyborgpsychologylab--chat-api-chat-endpoint.modal.run', {
+    const response = await fetch('https://cyborgpsychologylab--chat-api-chatapi-chat-endpoint.modal.run', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
