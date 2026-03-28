@@ -65,7 +65,6 @@ const conditionData = {
     promptOrder: window.experimentSettings.promptOrder,
     session1PromptType: window.getSessionPromptType(1),
     session2PromptType: window.getSessionPromptType(2),
-    currentSession: window.getCurrentSession(),
     timestamp: new Date().toISOString()
 };
 
@@ -167,18 +166,6 @@ function initializeDynamicInterface() {
 
         window.selectedAvatar = avatarPath;
         localStorage.setItem('selectedAvatar', avatarPath);
-
-        // Log to Firebase
-        try {
-            const avatarLogPath = studyId + '/participantData/' + firebaseUserId + '/selectedAvatar';
-            await writeRealtimeDatabase(avatarLogPath, {
-                avatar: avatarPath,
-                assignmentMethod: 'random',
-                timestamp: new Date().toISOString()
-            });
-        } catch (e) {
-            console.warn('Could not log avatar to Firebase:', e);
-        }
 
         // Go directly to system prompt config (hide avatar screen, show prompt screen)
         $('#avatarSelectionInterface').hide();
@@ -521,6 +508,18 @@ function initializeDynamicInterface() {
             $('#driftTraitLabel').text('Click a trait to see drift · Click turns to view messages');
             $('#closeDriftBtn').hide();
             window.activeDriftTrait = null;
+            // Restore sunburst to latest and clear turn label
+            if (window.personaHistory && window.personaHistory.length > 0) {
+                const latest = window.personaHistory[window.personaHistory.length - 1];
+                renderPersonaChart(latest.scores, 'chatPersonaChart');
+            }
+            $('#viewingTurnLabel').hide();
+        });
+
+        // Drift panel info button
+        $(document).on('click', '#driftInfoBtn', function() {
+            $(this).blur();
+            $('#driftInfoInstructionModal').fadeIn(300);
         });
 
         // Delegated click on any sunburst trait segment or label — survives re-renders
@@ -722,7 +721,7 @@ function initializeDynamicInterface() {
         await writeRealtimeDatabase(messagePath, messageData);
         
         // Also save the full conversation history after each message
-        const conversationPath = studyId + '/participantData/' + firebaseUserId + '/conversationHistory';
+        const conversationPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/conversationHistory';
         await writeRealtimeDatabase(conversationPath, window.conversationHistory);
         
         return messageId;
@@ -786,6 +785,11 @@ function initializeDynamicInterface() {
 
         // Show chat instruction modal
         window.showInstructionModal('chat');
+
+        // Queue drift panel info modal after chat modal is dismissed (dynamic condition only)
+        if (chatVizCondition === 2) {
+            window._showDriftInfoAfterChat = true;
+        }
 
         // Enable user input for live conversation
         $('#messageInput').prop('disabled', false);
@@ -1013,12 +1017,15 @@ async function autoSubmitPersonaCheck(systemPrompt) {
             const data = cached;
             console.log('Persona Vector (cached from preload):', data);
 
-            // Save persona vector to history log
-            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/personaVectorLog/' + Date.now();
+            // Save persona vector to session-scoped log (no user message to attach to)
+            const _session = window.getCurrentSession();
+            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _session + '/personaVectorLog/' + Date.now();
             await writeRealtimeDatabase(personaLogPath, {
                 personaVector: data.content,
                 systemPrompt: promptToUse,
                 timestamp: new Date().toISOString(),
+                session: _session,
+                messageId: null,
                 condition: 'control_no_visualization'
             });
 
@@ -1090,19 +1097,33 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
         // Log raw persona vector response
         console.log('Persona Vector API Response:', data);
 
-        // Save persona vector to history log (session-prefixed)
+        // Save persona vector: dual write — on the message + flat log
         const _currentSession = window.getCurrentSession();
-        const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + Date.now();
-        await writeRealtimeDatabase(personaLogPath, {
+        const _msgId = userMessageId != null ? userMessageId : window.lastUserMessageId;
+        const _ts = Date.now();
+        const _isoTs = new Date(_ts).toISOString();
+        const _condition = ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown';
+
+        const personaVectorData = {
             personaVector: data.content,
             systemPrompt: promptToUse,
-            timestamp: new Date().toISOString(),
+            timestamp: _isoTs,
             session: _currentSession,
-            condition: ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown'
-        });
+            messageId: _msgId,
+            condition: _condition
+        };
+
+        // Write 1: attach to the triggering user message
+        if (_msgId) {
+            const msgVectorPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/messages/' + _msgId + '/personaVector';
+            await writeRealtimeDatabase(msgVectorPath, personaVectorData);
+        }
+
+        // Write 2: flat log for easy bulk export
+        const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + _ts;
+        await writeRealtimeDatabase(personaLogPath, personaVectorData);
 
         // Record snapshot for drift tracking (all conditions)
-        const _msgId = userMessageId != null ? userMessageId : window.lastUserMessageId;
         console.log(`personaHistory push: turn=${window.personaHistory.length + 1}, messageId=${_msgId}, passed=${userMessageId}, global=${window.lastUserMessageId}`);
         window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content, messageId: _msgId });
         window.personaTurnMessageIds.push(_msgId);
@@ -1111,6 +1132,8 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
             // Render to config panel and (if visible) chat panel
             renderPersonaChart(data.content);
             renderPersonaChart(data.content, 'chatPersonaChart');
+            // Clear historical turn indicator
+            $('#viewingTurnLabel').hide();
 
             // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
             const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
@@ -1506,7 +1529,7 @@ function renderTraitDrift(traitName) {
             .ease(d3.easeBackOut)
             .attr('r', isLatest ? 12 : 9);
 
-        // Click dot or hit area → scroll to & highlight the user+assistant message pair
+        // Click dot or hit area → scroll to & highlight the user+assistant message pair + restore sunburst
         const handleClick = function() {
             const msgId = entry.messageId;
             console.log(`Drift dot clicked: dot index=${i}, turn=${entry.turn}, messageId=${msgId}`);
@@ -1530,6 +1553,13 @@ function renderTraitDrift(traitName) {
                 $user.removeClass('drift-click-highlight');
                 if ($assistant.length) $assistant.removeClass('drift-click-highlight');
             }, 1500);
+
+            // Restore sunburst to this turn's snapshot
+            const turnData = window.personaHistory[i];
+            if (turnData && turnData.scores) {
+                renderPersonaChart(turnData.scores, 'chatPersonaChart');
+                $('#viewingTurnLabel').text(`Viewing Turn ${entry.turn}`).show();
+            }
         };
         hitArea.on('click', handleClick);
         dot.on('click', handleClick);
@@ -1976,11 +2006,17 @@ window.dismissInstructionModal = function(type) {
     // Hide the modal
     const modalId = type + 'InstructionModal';
     $('#' + modalId).fadeOut(300);
-    
+
     // Mark as shown
     const instructionsShown = JSON.parse(sessionStorage.getItem('instructionsShown') || '{}');
     instructionsShown[type] = true;
     sessionStorage.setItem('instructionsShown', JSON.stringify(instructionsShown));
+
+    // Chain: show drift info modal after chat modal is dismissed
+    if (type === 'chat' && window._showDriftInfoAfterChat) {
+        window._showDriftInfoAfterChat = false;
+        setTimeout(() => window.showInstructionModal('driftInfo'), 350);
+    }
 };
 
 // Show visualization explanation modal

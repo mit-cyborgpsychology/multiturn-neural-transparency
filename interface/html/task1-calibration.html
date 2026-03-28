@@ -343,8 +343,20 @@
 
         try {
             if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('task1BaselineCalibration', data);
-                console.log('Task 1 data saved to Firebase');
+                // Split calibration into session1 MBA (Part A) and MBE (Part B)
+                await window.writeTaskData('session1/mba/calibration', {
+                    timestamp: data.timestamp,
+                    preSurvey: data.preSurvey,
+                    systemPromptShown: data.partA.systemPromptShown,
+                    traitPredictions: data.partA.traitPredictions
+                });
+                await window.writeTaskData('session1/mbe/calibration', {
+                    timestamp: data.timestamp,
+                    systemPromptShown: data.partB.systemPromptShown,
+                    conversationShown: data.partB.conversationShown,
+                    traitPredictions: data.partB.traitPredictions
+                });
+                console.log('Task 1 calibration data saved to session1/mba + mbe');
             }
         } catch (err) {
             console.warn('Firebase write failed (continuing anyway):', err);

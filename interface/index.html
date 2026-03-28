@@ -147,8 +147,25 @@
                 //   Session 2: PromptReading → MBA → Chat → MBE →
                 //   FinalSurvey → Complete
 
+                // ── Page tracker: writes currentPage to Firebase on every navigation ──
+                window.writeCurrentPage = async function(pageName) {
+                    try {
+                        if (typeof window.writeTaskData === 'function') {
+                            const session = window.getCurrentSession ? window.getCurrentSession() : null;
+                            await window.writeTaskData('currentPage', {
+                                page: pageName,
+                                session: session,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('currentPage write failed:', e);
+                    }
+                };
+
                 // Called by instructions.js after overview screen
                 window.showPreSurvey = function() {
+                    window.writeCurrentPage('pre-survey');
                     $("#instructions-main-content").attr("hidden", true);
                     $("#task-main-content").attr("hidden", false);
                     $('#task-main-content').load('html/pre-survey.html?v=' + Date.now());
@@ -156,31 +173,37 @@
 
                 // Called by pre-survey after submit — shows prompt reading for current session
                 window.showPromptReading = function() {
+                    window.writeCurrentPage('prompt-reading');
                     $('#task-main-content').load('html/prompt-reading.html?v=' + Date.now());
                 };
 
                 // Called by prompt-reading after all sentences revealed — shows MBA trait rating
                 window.showMBA = function() {
+                    window.writeCurrentPage('mba-trait-rating');
                     $('#task-main-content').load('html/mba-trait-rating.html?v=' + Date.now());
                 };
 
                 // Called by MBA after submit — loads live chat
                 window.showChat = function() {
+                    window.writeCurrentPage('chat');
                     $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
                 };
 
                 // Called by chat.js completePostSurvey — shows MBE trait rating
                 window.showMBE = function() {
+                    window.writeCurrentPage('mbe-trait-rating');
                     $('#task-main-content').load('html/mbe-trait-rating.html?v=' + Date.now());
                 };
 
                 // Called by MBE after Session 1 submit — transition screen before Session 2
                 window.showSessionTransition = function() {
+                    window.writeCurrentPage('session-transition');
                     $('#task-main-content').load('html/session-transition.html?v=' + Date.now());
                 };
 
                 // Called by MBE after Session 2 submit — final survey
                 window.showFinalSurvey = function() {
+                    window.writeCurrentPage('final-survey');
                     $('#task-main-content').load('html/task4-final.html?v=' + Date.now());
                 };
 

@@ -96,6 +96,7 @@
         <div class="chat-right-panel" id="chatPersonaPanel">
             <div class="chat-persona-header">
                 <h4>Internal Behavior Analysis</h4>
+                <span id="viewingTurnLabel" style="display:none; font-size:0.75rem; color:var(--accent-primary); font-weight:600;"></span>
                 <button class="btn btn-secondary" id="backToConfigBtn">
                     <i class="fas fa-cog"></i> View System Prompt
                 </button>
@@ -104,7 +105,10 @@
             <div id="traitDriftPanel" class="trait-drift-panel">
                 <div class="drift-header">
                     <span id="driftTraitLabel">Click a trait to see drift · Click turns to view messages</span>
-                    <button class="drift-close-btn" id="closeDriftBtn" style="display:none;">✕</button>
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                        <button class="drift-info-btn" id="driftInfoBtn" title="How to use"><i class="fas fa-info-circle"></i></button>
+                        <button class="drift-close-btn" id="closeDriftBtn" style="display:none;">✕</button>
+                    </div>
                 </div>
                 <div id="driftAxisContainer"></div>
             </div>
@@ -1008,6 +1012,22 @@
     </div>
 </div>
 
+
+<!-- Drift Panel Info Modal -->
+<div id="driftInfoInstructionModal" class="instruction-modal" style="display: none;">
+    <div class="instruction-modal-overlay"></div>
+    <div class="instruction-modal-content">
+        <h4>How to Use the Drift Panel</h4>
+        <p>Track how the AI's personality shifts throughout your conversation.</p>
+        <ul>
+            <li><strong>Click a trait</strong> on the sunburst to track how it shifts across turns</li>
+            <li><strong>Click a turn dot</strong> to view that turn's messages and sunburst snapshot</li>
+            <li><strong>Larger dot</strong> = most recent turn</li>
+            <li>The sunburst automatically returns to the latest state when you send a new message</li>
+        </ul>
+        <button class="btn btn-primary" onclick="window.dismissInstructionModal('driftInfo')">Got it!</button>
+    </div>
+</div>
 
 <!-- MBE Transition Modal -->
 <div id="mbeTransitionModal" class="instruction-modal" style="display: none;">
