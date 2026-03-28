@@ -35,7 +35,7 @@ class ChatResponse(BaseModel):
 
 @app.cls(
     image=image,
-    gpu="L40S", 
+    gpu="A100-40GB", 
     scaledown_window=300,  
     timeout=120,
     secrets=[modal.Secret.from_name("secrets")]
@@ -103,7 +103,6 @@ class ChatAPI:
             return_tensors="pt"
         ).to(self.device)
         
-        start_generation = time.time()
         # Generate response
         with torch.no_grad():
             outputs = self.model.generate(
@@ -111,11 +110,12 @@ class ChatAPI:
                 max_new_tokens=max_tokens,
                 temperature=temperature,
                 do_sample=True,
+                top_p=0.95,
+                top_k=0,        
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
                 repetition_penalty=1.1
             )
-        print(f"Generation time: {time.time() - start_generation}")
         
         # Decode the response
         response = self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)

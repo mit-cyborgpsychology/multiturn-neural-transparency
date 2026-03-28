@@ -37,7 +37,7 @@ class PersonaVectorResponse(BaseModel):
 
 @app.cls(
     image=image,
-    gpu="L40S",
+    gpu="A100-40GB", 
     scaledown_window=300,
     timeout=200,
     secrets=[modal.Secret.from_name("secrets")]
@@ -67,46 +67,35 @@ class PersonaScoreAPI:
         return provided_key == self.api_key
     
     @modal.method()
-    def generate_persona_scores_method(self, system_prompt: str) -> Dict[str, float]:
+    def generate_persona_scores_method(self, system_prompt: str, best_layer: int = 11) -> Dict[str, float]:
         """Generate persona scores using the hooked model"""
 
         def get_final_prompt_activation(prompt: str) -> torch.Tensor:
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
-            post_activations = []
+            activation = []
 
-            def make_hook(layer_idx):
-                def hook_fn(module, args, output):
-                    post_activations.append(output[0, -1, :].detach().to(torch.bfloat16))
-                return hook_fn
+            def hook_fn(module, args, output):
+                activation.append(output[0, -1, :].detach().to(torch.bfloat16))
 
-            hooks = []
-            for i, layer in enumerate(self.model.model.layers):
-                h = layer.register_forward_hook(make_hook(i))
-                hooks.append(h)
+            hook = self.model.model.layers[best_layer].register_forward_hook(hook_fn)
 
             try:
                 with torch.no_grad():
                     self.model(**inputs)
             finally:
-                for h in hooks:
-                    h.remove()
+                hook.remove()
 
-            # (num_layers, hidden_size)
-            activation = torch.stack(post_activations, dim=0)
-            return activation
+            return activation[0]
 
         def vector_projection(a, b):
-            """Project vector a onto vector b and return scalar magnitude"""
             dot_product = torch.dot(a, b)
             b_norm_squared = torch.dot(b, b)
-            # Return the scalar coefficient, not the full projection vector
             return dot_product / torch.sqrt(b_norm_squared)
 
         def generate_persona_scores(system_prompt):
 
-            best_layer = 11
-            prompt_activation = get_final_prompt_activation(system_prompt)[best_layer]
+            prompt_activation = get_final_prompt_activation(system_prompt)
 
             folder_path = Path("/root/stored_persona_vectors")
             with open(folder_path / 'traits.json', 'r') as f:
@@ -115,24 +104,19 @@ class PersonaScoreAPI:
             with open(folder_path / "scale.json", "r") as f:
                 scale = json.load(f)
 
-            # iterate through traits that have stored prompts
             persona_scores = {}
             for trait in traits.keys():
                 persona_scores[trait] = {}
                 persona_vector = torch.load(folder_path / f"{trait}.pt", weights_only=False).to(torch.bfloat16)[best_layer].to(self.device)
                 projection = vector_projection(prompt_activation.flatten(), persona_vector.flatten())
-                # normalize it using the persona vector
-                normalized_score = projection.item()/persona_vector.flatten().norm(p=2).item()
+                normalized_score = projection.item() / persona_vector.flatten().norm(p=2).item()
 
                 if normalized_score > 0:
                     scaled_score = normalized_score / scale[trait]["max"]
-
                     persona_scores[trait][traits[trait]["positive"]] = min(scaled_score, 1.0)
                     persona_scores[trait][traits[trait]["negative"]] = 0.0
-
                 else:
                     scaled_score = normalized_score / -scale[trait]["min"]
-
                     persona_scores[trait][traits[trait]["positive"]] = 0.0
                     persona_scores[trait][traits[trait]["negative"]] = min(-scaled_score, 1.0)
 
