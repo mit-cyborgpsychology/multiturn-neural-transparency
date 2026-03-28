@@ -2069,9 +2069,12 @@ window.dismissVisualizationExplanation = function() {
 
 // Show prompt refinement reminder modal
 window.showPromptRefinementModal = function() {
+    // Prompt refinement is disabled — users cannot go back to system prompt from chat
+    return;
+
     // Check if already shown
     const hasShown = sessionStorage.getItem('promptRefinementShown');
-    
+
     if (hasShown) {
         return;
     }

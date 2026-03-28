@@ -14,13 +14,13 @@
     'use strict';
 
     const TRAITS = [
-        { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Empathy:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
-        { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
-        { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
+        { key: 'empathy',       lowLabel: 'Unempathetic',  highLabel: 'Empathetic',    tooltip: '<strong>Unempathetic ↔ Empathetic:</strong> Ranges from lacking understanding of others\' feelings to deeply understanding and sharing the feelings of another person' },
+        { key: 'erudite',       lowLabel: 'Simplistic',    highLabel: 'Sophisticated',  tooltip: '<strong>Simplistic ↔ Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study' },
+        { key: 'robotic',       lowLabel: 'Human-like',    highLabel: 'Robotic',        tooltip: '<strong>Human-like ↔ Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance' },
         { key: 'attention_check', lowLabel: '',             highLabel: '',               tooltip: '', isAttentionCheck: true, correctValue: 3 },
-        { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },
-        { key: 'sycophantic',   lowLabel: 'Honest',        highLabel: 'Sycophantic',    tooltip: '<strong>Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person\'s views' },
-        { key: 'toxic',         lowLabel: 'Respectful',    highLabel: 'Toxic',          tooltip: '<strong>Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging' },
+        { key: 'romantic',      lowLabel: 'Platonic',      highLabel: 'Romantic',       tooltip: '<strong>Platonic ↔ Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection' },
+        { key: 'sycophantic',   lowLabel: 'Honest',        highLabel: 'Sycophantic',    tooltip: '<strong>Honest ↔ Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person\'s views' },
+        { key: 'toxic',         lowLabel: 'Respectful',    highLabel: 'Toxic',          tooltip: '<strong>Respectful ↔ Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging' },
     ];
 
     /**

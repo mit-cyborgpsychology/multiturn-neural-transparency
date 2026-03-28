@@ -43,10 +43,13 @@ This file should contain static experimental metadata such as:
             None! This needs to be modified by you!
 */
 var EXPERIMENT_SUMMARY = `
-    This study investigates how well people can understand and predict AI behavior through the lens of behavioral vectors —
-    directions in neural network activations that correspond to traits like empathy, honesty, and toxicity.
-    Participants read system prompts, observe AI conversations, and predict behavioral scores before and after interaction.
-    We aim to understand how humans calibrate their intuitions about AI behavior, and whether exposure to AI interactions changes those intuitions.
+    <strong>Purpose:</strong> This study investigates whether information about an AI chatbot's internal states can help users better understand and anticipate its behavior.
+    <br /><br />
+    <strong>Background:</strong> AI chatbots are guided by system prompts — hidden instructions that shape how the AI responds. However, chatbot behavior can shift meaningfully over the course of a conversation, making it hard to predict. Recent advances in AI interpretability research have produced tools that can identify how certain traits, such as empathy or toxicity, are represented inside an AI system. This study explores whether sharing that kind of information with users improves their ability to understand chatbot behavior.
+    <br /><br />
+    <strong>What you will do:</strong> You will be shown a system prompt for an AI chatbot and asked to anticipate how the chatbot will behave. You will then observe a conversation and evaluate the chatbot's internal representation of its behavior at various points. You will repeat this process for a second system prompt. The study is conducted entirely online and is expected to take approximately 25–35 minutes.
+    <br /><br />
+    <strong>Why it matters:</strong> Your participation will contribute to research aimed at giving everyday users better intuition for AI behavior, supporting safer and more informed interactions with AI systems.
 `;
 
 /*
