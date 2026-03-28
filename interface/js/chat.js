@@ -518,7 +518,7 @@ function initializeDynamicInterface() {
 
         $(document).on('click', '#closeDriftBtn', function() {
             d3.select('#driftAxisContainer').selectAll('*').remove();
-            $('#driftTraitLabel').text('Click a trait to see drift');
+            $('#driftTraitLabel').text('Click a trait to see drift · Click turns to view messages');
             $('#closeDriftBtn').hide();
             window.activeDriftTrait = null;
         });
