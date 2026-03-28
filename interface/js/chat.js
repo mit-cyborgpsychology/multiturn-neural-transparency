@@ -641,6 +641,10 @@ function initializeDynamicInterface() {
                 system: customSystemPrompt
             };
 
+            // Score persona on context up to and including the user's message (before assistant responds)
+            const _vc = window.getEffectiveVisualizationCondition();
+            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2);
+
             const data = await makeAPIRequest(requestData);
 
             // Hide typing indicator and re-enable input
@@ -649,7 +653,7 @@ function initializeDynamicInterface() {
 
             // Extract the assistant's response
             const assistantMessage = data.content[0].text;
-            
+
             // Add assistant message to conversation history
             window.conversationHistory.push({
                 role: 'assistant',
@@ -658,10 +662,6 @@ function initializeDynamicInterface() {
 
             // Add assistant message to chat and save to Firebase
             await addMessage(assistantMessage, 'assistant');
-
-            // Calculate persona scores for all conditions; only update visualization for multi-turn
-            const _vc = window.getEffectiveVisualizationCondition();
-            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2);
 
         } catch (error) {
             console.error('Error calling AI API:', error);
