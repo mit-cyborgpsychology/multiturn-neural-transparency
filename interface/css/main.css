@@ -2253,24 +2253,15 @@ body.chat-active .dynamic-chat-container {
     filter: drop-shadow(0 0 7px rgba(255, 111, 0, 0.8));
 }
 
-/* Drift chart dot click → scroll-to-message highlight (2s blink then remove) */
-@keyframes drift-click-blink {
-    0%, 100% { opacity: 1; }
-    25%      { opacity: 0.3; }
-    50%      { opacity: 1; }
-    75%      { opacity: 0.3; }
-}
-
+/* Drift chart dot click → scroll-to-message highlight (1.5s then remove) */
 #driftAxisContainer circle.drift-dot {
     cursor: pointer;
 }
 
 .message.drift-click-highlight .message-content {
-    box-shadow:
-        0 0 0 3px rgba(33, 150, 243, 0.9),
-        0 0 18px 6px rgba(33, 150, 243, 0.45);
+    background-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.25);
     border-radius: 12px;
-    animation: drift-click-blink 1s ease-in-out 2;
 }
 
 /* ====================================== */

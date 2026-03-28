@@ -1520,11 +1520,11 @@ function renderTraitDrift(traitName) {
             // Scroll the user message into view
             $user[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-            // Remove highlight after 2 seconds
+            // Remove highlight after 1.5 seconds
             setTimeout(() => {
                 $user.removeClass('drift-click-highlight');
                 if ($assistant.length) $assistant.removeClass('drift-click-highlight');
-            }, 2000);
+            }, 1500);
         });
 
         // Turn label — fades in after dot
