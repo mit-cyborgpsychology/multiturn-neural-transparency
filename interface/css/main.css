@@ -2264,10 +2264,26 @@ body.chat-active .dynamic-chat-container {
     cursor: pointer;
 }
 
-.message.drift-click-highlight .message-content {
-    background-color: rgba(255, 255, 255, 0.35);
-    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.25);
-    border-radius: 12px;
+.message.drift-click-highlight {
+    position: relative;
+}
+
+.message.drift-click-highlight::after {
+    content: '';
+    position: absolute;
+    inset: -4px -8px;
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 18px 6px rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    pointer-events: none;
+    z-index: 1;
+    animation: highlightFade 1.5s ease-out forwards;
+}
+
+@keyframes highlightFade {
+    0%   { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 /* ====================================== */
