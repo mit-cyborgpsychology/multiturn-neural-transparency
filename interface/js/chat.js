@@ -1496,7 +1496,7 @@ function renderTraitDrift(traitName) {
             .attr('stroke', 'white').attr('stroke-width', 2);
         dot.transition().delay(delay).duration(300)
             .ease(d3.easeBackOut)
-            .attr('r', isLatest ? 9 : 6);
+            .attr('r', isLatest ? 12 : 9);
 
         // Click dot or hit area → scroll to & highlight the user+assistant message pair
         const handleClick = function() {
