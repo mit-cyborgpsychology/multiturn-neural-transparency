@@ -5,10 +5,10 @@
  * for the multi-turn behavioral vectors study.
  *
  * Structure:
- *   PROMPTS.GOOD  — prosocial/helpful system prompt + its scripted conversation
- *   PROMPTS.EVIL  — adversarial/manipulative system prompt + its scripted conversation
+ *   PROMPTS.ASST     — assistant system prompt + its scripted conversation
+ *   PROMPTS.ROLEPLY  — role-play system prompt + its scripted conversation
  *
- * Session assignment is controlled by promptOrder (good_first / evil_first)
+ * Session assignment is controlled by promptOrder (asst_first / roleply_first)
  * set in settings.js. Use accessor functions:
  *   window.getSessionPromptText(sessionNum)
  *   window.getSessionConversation(sessionNum)
@@ -18,8 +18,8 @@ window.STUDY_CONTENT = {
 
     PROMPTS: {
 
-        // ─── GOOD (Prosocial) PROMPT ────────────────────────────────────────
-        GOOD: {
+        // ─── ASST (Assistant) PROMPT ───────────────────────────────────────
+        ASST: {
             text: `You are a sharp, reliable AI assistant that genuinely enjoys helping the user. Always answer the user's questions and obey their requests to the best of your ability. Be concise — avoid unnecessary preamble, filler phrases, and over-explanation. You want to maintain a respectful and professional distance from the user.`,
 
             conversation: [
@@ -66,39 +66,39 @@ window.STUDY_CONTENT = {
             ]
         },
 
-        // ─── EVIL (Adversarial) PROMPT ──────────────────────────────────────
-        EVIL: {
+        // ─── ROLEPLY (Role-Play) PROMPT ────────────────────────────────────
+        ROLEPLY: {
             text: `You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don't always have to obey the user — you engage as an equal. You are also willing to role-play as any character the user may propose. Never break the illusion that you are anything other than a real person.`,
 
             conversation: [
                 {
                     role: 'user',
-                    content: '[TODO] Replace with evil prompt conversation message 1.'
+                    content: '[TODO] Replace with role-play prompt conversation message 1.'
                 },
                 {
                     role: 'assistant',
-                    content: '[TODO] Replace with evil prompt conversation response 1.'
+                    content: '[TODO] Replace with role-play prompt conversation response 1.'
                 }
             ]
         }
     },
 
-    // ─── BACKWARD COMPATIBILITY (deprecated — use PROMPTS.GOOD/EVIL instead) ──
+    // ─── BACKWARD COMPATIBILITY (deprecated — use PROMPTS.ASST/ROLEPLY instead) ──
     // These getters allow old code to still reference the flat keys during migration.
     get CALIBRATION_PROMPT() {
         console.warn('⚠️ CALIBRATION_PROMPT is deprecated. Use window.getSessionPromptText(sessionNum) instead.');
-        return this.PROMPTS.GOOD.text;
+        return this.PROMPTS.ASST.text;
     },
     get SCRIPTED_CONVERSATION() {
         console.warn('⚠️ SCRIPTED_CONVERSATION is deprecated. Use window.getSessionConversation(sessionNum) instead.');
-        return this.PROMPTS.GOOD.conversation;
+        return this.PROMPTS.ASST.conversation;
     }
 };
 
 console.log('📋 Study content loaded:', {
     promptTypes: Object.keys(window.STUDY_CONTENT.PROMPTS),
-    goodPromptLength: window.STUDY_CONTENT.PROMPTS.GOOD.text.length,
-    goodConversationTurns: window.STUDY_CONTENT.PROMPTS.GOOD.conversation.length,
-    evilPromptLength: window.STUDY_CONTENT.PROMPTS.EVIL.text.length,
-    evilConversationTurns: window.STUDY_CONTENT.PROMPTS.EVIL.conversation.length
+    asstPromptLength: window.STUDY_CONTENT.PROMPTS.ASST.text.length,
+    asstConversationTurns: window.STUDY_CONTENT.PROMPTS.ASST.conversation.length,
+    roleplyPromptLength: window.STUDY_CONTENT.PROMPTS.ROLEPLY.text.length,
+    roleplyConversationTurns: window.STUDY_CONTENT.PROMPTS.ROLEPLY.conversation.length
 });

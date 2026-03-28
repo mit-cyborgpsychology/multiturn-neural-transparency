@@ -93,8 +93,8 @@ async function preloadModels() {
     console.log('🔄 Pre-loading Modal.ai endpoints...');
 
     // Get the real study prompts to preload persona vectors with useful data
-    const goodPrompt = window.STUDY_CONTENT?.PROMPTS?.GOOD?.text;
-    const evilPrompt = window.STUDY_CONTENT?.PROMPTS?.EVIL?.text;
+    const asstPrompt = window.STUDY_CONTENT?.PROMPTS?.ASST?.text;
+    const roleplyPrompt = window.STUDY_CONTENT?.PROMPTS?.ROLEPLY?.text;
 
     // Helper: fetch persona-vector for a prompt and cache the result
     async function preloadPersonaVector(label, systemPrompt) {
@@ -122,15 +122,15 @@ async function preloadModels() {
 
     // Pre-load all endpoints in parallel
     const preloadPromises = [
-        // 1. Pre-load persona-vector with GOOD study prompt
-        goodPrompt
-            ? preloadPersonaVector('GOOD', goodPrompt)
-            : Promise.resolve({ success: false, endpoint: 'persona-vector-GOOD', skipped: true }),
+        // 1. Pre-load persona-vector with ASST study prompt
+        asstPrompt
+            ? preloadPersonaVector('ASST', asstPrompt)
+            : Promise.resolve({ success: false, endpoint: 'persona-vector-ASST', skipped: true }),
 
-        // 2. Pre-load persona-vector with EVIL study prompt
-        evilPrompt
-            ? preloadPersonaVector('EVIL', evilPrompt)
-            : Promise.resolve({ success: false, endpoint: 'persona-vector-EVIL', skipped: true }),
+        // 2. Pre-load persona-vector with ROLEPLY study prompt
+        roleplyPrompt
+            ? preloadPersonaVector('ROLEPLY', roleplyPrompt)
+            : Promise.resolve({ success: false, endpoint: 'persona-vector-ROLEPLY', skipped: true }),
 
         // 3. Pre-load the chat/LLM endpoint with a test message (not stored in history)
         (async () => {

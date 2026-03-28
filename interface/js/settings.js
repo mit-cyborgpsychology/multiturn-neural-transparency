@@ -89,19 +89,19 @@ function getExperimentSettingsFromURL() {
         })(),
 
         /**
-         * Prompt order counterbalancing — determines which prompt (good/evil) is shown in which session
-         * 'good_first': Session 1 = good prompt, Session 2 = evil prompt
-         * 'evil_first': Session 1 = evil prompt, Session 2 = good prompt
+         * Prompt order counterbalancing — determines which prompt (asst/roleply) is shown in which session
+         * 'asst_first': Session 1 = assistant prompt, Session 2 = role-play prompt
+         * 'roleply_first': Session 1 = role-play prompt, Session 2 = assistant prompt
          * Random 50/50 assignment, persisted in sessionStorage
          */
         promptOrder: (() => {
             if (isDemoMode) {
-                sessionStorage.setItem('promptOrder', 'good_first');
-                return 'good_first';
+                sessionStorage.setItem('promptOrder', 'asst_first');
+                return 'asst_first';
             }
             const stored = sessionStorage.getItem('promptOrder');
             if (stored !== null) return stored;
-            const order = Math.random() < 0.5 ? 'good_first' : 'evil_first';
+            const order = Math.random() < 0.5 ? 'asst_first' : 'roleply_first';
             sessionStorage.setItem('promptOrder', order);
             return order;
         })(),
@@ -203,7 +203,7 @@ let defaultSettings = {
     visualizationCondition: null, // Random assignment (0=control, 1=single-turn, 2=multi-turn)
     highlight: [],
     currentSession: 1,
-    promptOrder: null, // Random assignment (good_first/evil_first)
+    promptOrder: null, // Random assignment (asst_first/roleply_first)
 };
 
 // ============================================
@@ -230,14 +230,14 @@ window.getEffectiveVisualizationCondition = function() {
 };
 
 /**
- * Get the prompt type (good/evil) for a given session number.
+ * Get the prompt type (asst/roleply) for a given session number.
  * @param {number} sessionNum - 1 or 2
- * @returns {string} 'GOOD' or 'EVIL'
+ * @returns {string} 'ASST' or 'ROLEPLY'
  */
 window.getSessionPromptType = function(sessionNum) {
-    const order = sessionStorage.getItem('promptOrder') || 'good_first';
-    if (sessionNum === 1) return order === 'good_first' ? 'GOOD' : 'EVIL';
-    return order === 'good_first' ? 'EVIL' : 'GOOD';
+    const order = sessionStorage.getItem('promptOrder') || 'asst_first';
+    if (sessionNum === 1) return order === 'asst_first' ? 'ASST' : 'ROLEPLY';
+    return order === 'asst_first' ? 'ROLEPLY' : 'ASST';
 };
 
 /**
