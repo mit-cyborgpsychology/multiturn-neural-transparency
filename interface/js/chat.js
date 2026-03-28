@@ -779,6 +779,11 @@ function initializeDynamicInterface() {
             $('#traitDriftPanel').hide();
         }
 
+        // Single-turn condition: hide trait drift panel (no dynamic updates)
+        if (chatVizCondition === 1) {
+            $('#traitDriftPanel').hide();
+        }
+
         // Show chat instruction modal
         window.showInstructionModal('chat');
 
