@@ -1141,7 +1141,8 @@ function formatTraitName(name) {
         .replace(/-/g, ' ')
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+        .join(' ')
+        .replace(/Human Like/g, 'Human-Like');
 }
 
 /**

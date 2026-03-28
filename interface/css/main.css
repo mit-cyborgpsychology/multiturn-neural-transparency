@@ -2285,6 +2285,24 @@ body.chat-active .dynamic-chat-container {
     text-align: center;
 }
 
+/* Sunburst reminder banner (condition 2 tip) */
+.sunburst-reminder-banner {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 8px;
+    padding: 6px 14px;
+    margin: 8px 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e40af;
+    text-align: center;
+}
+
+.sunburst-reminder-banner i {
+    margin-right: 6px;
+    color: #f59e0b;
+}
+
 /* Drift chart dot click → scroll-to-message highlight (1.5s then remove) */
 #driftAxisContainer circle.drift-dot {
     cursor: pointer;

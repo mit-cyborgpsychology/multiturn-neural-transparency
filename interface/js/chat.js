@@ -34,7 +34,7 @@ localStorage.removeItem('customSystemPrompt');
 
 // Write a simple test case to the database
 let studyId;
-studyId='multiturn_debug';
+studyId='multiturn-pilot1';
 // if (DEBUG){
 //     studyId = 'multiturn';
 // } else {
@@ -113,6 +113,8 @@ window.timerStartTime = null;
 if (window.timerInterval) { clearInterval(window.timerInterval); }
 window.timerInterval = null;
 window.timerExpired = false;
+if (window.sunburstReminderTimeout) { clearTimeout(window.sunburstReminderTimeout); }
+window.sunburstReminderTimeout = null;
 {
     const urlParams = new URLSearchParams(window.location.search);
     const debugTimer = urlParams.get('debugTimer') === 'true';
@@ -1667,12 +1669,25 @@ async function startTimer() {
     
     // Show timer display
     $('#timerDisplay').show();
-    
+
     // Update timer every second
     window.timerInterval = setInterval(updateTimer, 1000);
-    
+
     // Initial update
     updateTimer();
+
+    // Schedule sunburst reminder for condition 2 (multi-turn) after 1 minute
+    if (window.getEffectiveVisualizationCondition() === 2) {
+        const reminderDelay = window.timerDuration < 600 ? 15000 : 60000; // 15s debug, 60s production
+        window.sunburstReminderTimeout = setTimeout(() => {
+            if (!window.timerExpired) {
+                $('.sunburst-reminder-banner').remove();
+                const reminder = $('<div class="sunburst-reminder-banner"><i class="fas fa-lightbulb"></i> Tip: Click any dot on the drift chart to revisit that turn\'s sunburst snapshot.</div>');
+                $('#messagesContainer').append(reminder);
+                reminder[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        }, reminderDelay);
+    }
 }
 
 // Update timer display
@@ -1705,6 +1720,12 @@ async function timerExpired() {
     if (window.timerInterval) {
         clearInterval(window.timerInterval);
         window.timerInterval = null;
+    }
+
+    // Clear sunburst reminder if pending
+    if (window.sunburstReminderTimeout) {
+        clearTimeout(window.sunburstReminderTimeout);
+        window.sunburstReminderTimeout = null;
     }
     
     // Save timer end to Firebase
