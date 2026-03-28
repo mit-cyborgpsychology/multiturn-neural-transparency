@@ -195,10 +195,9 @@
         }
 
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('task4FinalSurvey', data);
-                console.log('✅ Task 4 data saved to Firebase');
-            }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('task4FinalSurvey', data);
+            console.log('✅ Task 4 data saved to Firebase');
         } catch (err) {
             console.warn('Firebase write failed (continuing anyway):', err);
         }

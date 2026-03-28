@@ -1971,9 +1971,8 @@ function injectInlineMBE() {
         };
 
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('session' + session + '/mbe', data);
-            }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('session' + session + '/mbe', data);
         } catch (e) {
             console.warn('MBE save error:', e);
         }

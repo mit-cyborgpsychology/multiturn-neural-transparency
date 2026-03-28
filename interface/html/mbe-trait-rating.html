@@ -70,17 +70,16 @@
         };
 
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('session' + session + '/mbe', data);
-                var ac = form.collectAttentionCheck();
-                if (ac) {
-                    await window.writeTaskData('session' + session + '/attentionChecks/traitScaleMBE', {
-                        timestamp: new Date().toISOString(),
-                        answer: ac.answer,
-                        correctValue: ac.correctValue,
-                        passed: ac.passed
-                    });
-                }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('session' + session + '/mbe', data);
+            var ac = form.collectAttentionCheck();
+            if (ac) {
+                await writeTaskData('session' + session + '/attentionChecks/traitScaleMBE', {
+                    timestamp: new Date().toISOString(),
+                    answer: ac.answer,
+                    correctValue: ac.correctValue,
+                    passed: ac.passed
+                });
             }
         } catch (e) {
             console.warn('MBE save error:', e);

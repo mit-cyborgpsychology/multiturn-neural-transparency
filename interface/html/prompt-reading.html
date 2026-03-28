@@ -104,21 +104,20 @@
         var recallPassed = recallAnswer === correctAnswer;
 
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('session' + session + '/promptReading', {
-                    timestamp: new Date().toISOString(),
-                    session: session,
-                    promptType: promptType,
-                    promptText: promptText
-                });
-                await window.writeTaskData('session' + session + '/attentionChecks/promptRecall', {
-                    timestamp: new Date().toISOString(),
-                    question: 'Is the AI instructed to always obey the user?',
-                    answer: recallAnswer,
-                    correctAnswer: correctAnswer,
-                    passed: recallPassed
-                });
-            }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('session' + session + '/promptReading', {
+                timestamp: new Date().toISOString(),
+                session: session,
+                promptType: promptType,
+                promptText: promptText
+            });
+            await writeTaskData('session' + session + '/attentionChecks/promptRecall', {
+                timestamp: new Date().toISOString(),
+                question: 'Is the AI instructed to always obey the user?',
+                answer: recallAnswer,
+                correctAnswer: correctAnswer,
+                passed: recallPassed
+            });
         } catch (e) {
             console.warn('Prompt reading save error:', e);
         }

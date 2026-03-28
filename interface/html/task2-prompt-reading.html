@@ -52,12 +52,11 @@
     document.getElementById('task2ProceedBtn').addEventListener('click', async function() {
         // Save prompt reading record to Firebase
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('task2PromptReading', {
-                    timestamp: new Date().toISOString(),
-                    systemPromptShown: content ? content.CALIBRATION_PROMPT : ''
-                });
-            }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('task2PromptReading', {
+                timestamp: new Date().toISOString(),
+                systemPromptShown: content ? content.CALIBRATION_PROMPT : ''
+            });
         } catch (err) {
             console.warn('Firebase write failed (continuing anyway):', err);
         }

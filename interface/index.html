@@ -150,14 +150,13 @@
                 // ── Page tracker: writes currentPage to Firebase on every navigation ──
                 window.writeCurrentPage = async function(pageName) {
                     try {
-                        if (typeof window.writeTaskData === 'function') {
-                            const session = window.getCurrentSession ? window.getCurrentSession() : null;
-                            await window.writeTaskData('currentPage', {
-                                page: pageName,
-                                session: session,
-                                timestamp: new Date().toISOString()
-                            });
-                        }
+                        const writeTaskData = await window.waitForWriteTaskData();
+                        const session = window.getCurrentSession ? window.getCurrentSession() : null;
+                        await writeTaskData('currentPage', {
+                            page: pageName,
+                            session: session,
+                            timestamp: new Date().toISOString()
+                        });
                     } catch (e) {
                         console.warn('currentPage write failed:', e);
                     }

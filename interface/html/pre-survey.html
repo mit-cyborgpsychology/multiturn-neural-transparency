@@ -96,9 +96,8 @@
         };
 
         try {
-            if (typeof window.writeTaskData === 'function') {
-                await window.writeTaskData('preSurvey', data);
-            }
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('preSurvey', data);
         } catch (e) {
             console.warn('Pre-survey save error:', e);
         }
