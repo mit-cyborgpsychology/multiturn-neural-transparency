@@ -339,6 +339,15 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
     
     // Add hover effects to items with enhanced visual feedback
     itemArc.on('mouseenter', function(event) {
+        // Log hover (throttled: at most once per 2s per trait)
+        if (typeof window.logInteraction === 'function') {
+            const now = Date.now();
+            window._lastHoverLog = window._lastHoverLog || {};
+            if (!window._lastHoverLog[item.name] || now - window._lastHoverLog[item.name] > 2000) {
+                window._lastHoverLog[item.name] = now;
+                window.logInteraction('trait_hover', { trait: item.name, activation: (item.value * 100).toFixed(0) + '%' });
+            }
+        }
         d3.select(this)
             .transition()
             .duration(200)
@@ -396,6 +405,9 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             .style('opacity', 0);
     })
     .on('click', function() {
+        if (typeof window.logInteraction === 'function') {
+            window.logInteraction('trait_click', { trait: item.name, activation: (item.value * 100).toFixed(0) + '%' });
+        }
         if (config.onTraitClick) {
             config.onTraitClick(item.originalTrait, item.oppositeTrait);
         }

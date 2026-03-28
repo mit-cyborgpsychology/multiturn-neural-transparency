@@ -77,6 +77,21 @@ console.log('============================');
 
 await writeRealtimeDatabase(conditionPath, conditionData);
 
+// ── Interaction logger: lightweight Firebase writes for UI analytics ──
+window.logInteraction = async function(event, detail) {
+    try {
+        const session = window.getCurrentSession ? window.getCurrentSession() : null;
+        const path = studyId + '/participantData/' + firebaseUserId + '/session' + session + '/interactionLog/' + Date.now();
+        await writeRealtimeDatabase(path, {
+            event: event,
+            detail: detail || {},
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        // Silent fail — don't disrupt UX for analytics
+    }
+};
+
 // Enhanced Chat Interface JavaScript with System Prompt Configuration
 // Always reset chat state on load so each session starts fresh
 window.messageIdCounter = 2;
@@ -308,6 +323,7 @@ function initializeDynamicInterface() {
 
         // Start chat
         startChatBtn.on('click', async function() {
+            window.logInteraction('prompt_toggle', { direction: 'prompt_to_chat' });
             const systemPrompt = $('#systemPromptInput').val();
             
             // Check if system prompt has changed
@@ -544,6 +560,7 @@ function initializeDynamicInterface() {
 
         // Back to configuration
         backToConfigBtn.on('click', function() {
+            window.logInteraction('prompt_toggle', { direction: 'chat_to_prompt' });
             switchToSystemPromptConfig();
         });
 
@@ -1533,6 +1550,7 @@ function renderTraitDrift(traitName) {
         const handleClick = function() {
             const msgId = entry.messageId;
             console.log(`Drift dot clicked: dot index=${i}, turn=${entry.turn}, messageId=${msgId}`);
+            window.logInteraction('drift_dot_click', { turn: entry.turn, messageId: msgId, trait: traitName });
             if (msgId == null) return;
             const $user = $(`.message[data-message-id="${msgId}"]`);
             if (!$user.length) return;
