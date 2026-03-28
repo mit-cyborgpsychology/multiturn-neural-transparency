@@ -63,31 +63,24 @@
         </script>
 
         <!--
-            Inline module: imports writeRealtimeDatabase directly and exposes
-            writeTaskData on window. Module scripts are deferred but execute
-            before any user interaction / $.load() page scripts.
+            Pending-write queue: writeTaskData stashes data in sessionStorage.
+            chat.js flushes everything to Firebase once it loads (it has direct
+            access to writeRealtimeDatabase which always works).
         -->
-        <script type="module">
-            import { writeRealtimeDatabase, firebaseUserId } from './js/firebasepsych1.0.js';
+        <script>
+            // Queue writes in sessionStorage until a module can flush them
+            window._pendingWrites = JSON.parse(sessionStorage.getItem('_pendingWrites') || '[]');
 
-            window.writeTaskData = async function(path, data) {
-                var uid = firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
-                var studyId = window.studyId || 'exp2';
-                var fullPath = studyId + '/participantData/' + uid + '/' + path;
-                console.log('writeTaskData:', fullPath);
-                await writeRealtimeDatabase(fullPath, data);
+            window.writeTaskData = function(path, data) {
+                window._pendingWrites.push({ path: path, data: data });
+                sessionStorage.setItem('_pendingWrites', JSON.stringify(window._pendingWrites));
+                console.log('📋 Queued write:', path, '(' + window._pendingWrites.length + ' pending)');
+                return Promise.resolve();
             };
 
             window.waitForWriteTaskData = function() {
                 return Promise.resolve(window.writeTaskData);
             };
-
-            // Also stash firebaseUserId in sessionStorage for non-module scripts
-            if (firebaseUserId && firebaseUserId !== 'not initialized yet') {
-                sessionStorage.setItem('firebaseUserId', firebaseUserId);
-            }
-
-            console.log('✅ writeTaskData ready (inline module), uid:', firebaseUserId);
         </script>
         <script src="js/firebasepsych1.1.js" type="module"></script>
          

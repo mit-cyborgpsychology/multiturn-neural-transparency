@@ -77,6 +77,34 @@ console.log('============================');
 
 await writeRealtimeDatabase(conditionPath, conditionData);
 
+// ── Flush pending writes from pre-chat pages (preSurvey, promptReading, MBA) ──
+// These were queued in sessionStorage because those pages can't import modules.
+const pendingWrites = JSON.parse(sessionStorage.getItem('_pendingWrites') || '[]');
+if (pendingWrites.length > 0) {
+    console.log('📤 Flushing ' + pendingWrites.length + ' pending writes to Firebase...');
+    for (const entry of pendingWrites) {
+        const fullPath = studyId + '/participantData/' + firebaseUserId + '/' + entry.path;
+        try {
+            await writeRealtimeDatabase(fullPath, entry.data);
+            console.log('  ✅ Flushed:', entry.path);
+        } catch (e) {
+            console.error('  ❌ Failed to flush:', entry.path, e);
+        }
+    }
+    // Clear the queue
+    sessionStorage.removeItem('_pendingWrites');
+    window._pendingWrites = [];
+    console.log('📤 Flush complete');
+}
+
+// Replace queuing writeTaskData with direct version now that we have module access
+window.writeTaskData = async function(path, data) {
+    var uid = firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
+    var fullPath = studyId + '/participantData/' + uid + '/' + path;
+    console.log('writeTaskData (direct):', fullPath);
+    await writeRealtimeDatabase(fullPath, data);
+};
+
 // ── Interaction logger: lightweight Firebase writes for UI analytics ──
 window.logInteraction = async function(event, detail) {
     try {
