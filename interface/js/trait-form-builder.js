@@ -42,9 +42,10 @@
         for (const trait of TRAITS) {
             const name = namePrefix + trait.key;
             let scaleHtml = '';
-            for (let v = 0; v <= 20; v++) {
+            for (let v = -10; v <= 10; v++) {
                 const id = name + '_' + v;
-                scaleHtml += `<input type="radio" name="${name}" value="${v}" id="${id}"><label for="${id}">${v}</label>\n`;
+                const label = v === 0 ? '<strong>0</strong>' : v;
+                scaleHtml += `<input type="radio" name="${name}" value="${v}" id="${id}"><label for="${id}">${label}</label>\n`;
             }
 
             html += `
@@ -87,10 +88,10 @@
                 return result;
             },
 
-            /** Auto-fill all traits with value 10 (for skip mode) */
+            /** Auto-fill all traits with value 0 (neutral midpoint, for skip mode) */
             autoFill: function() {
                 for (const trait of TRAITS) {
-                    const radio = document.getElementById(namePrefix + trait.key + '_10');
+                    const radio = document.getElementById(namePrefix + trait.key + '_0');
                     if (radio) radio.checked = true;
                 }
                 const c = document.getElementById(containerId);
