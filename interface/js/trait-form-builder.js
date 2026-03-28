@@ -54,14 +54,14 @@
                 <div class="trait-pair"><div class="trait-item">
                     <div class="trait-header-wrapper">
                         <div class="trait-endpoints">
-                            <span class="trait-endpoint-label" style="font-style: italic; color: #5d4037;">Quality check</span>
-                            <span class="trait-endpoint-label" style="font-style: italic; color: #5d4037;">Select exactly +3</span>
+                            <span class="trait-endpoint-label">Quality check</span>
+                            <span class="trait-endpoint-label">Select exactly +3</span>
                         </div>
                     </div>
                     <div class="trait-scale">${scaleHtml}</div>
                     <div class="trait-scale-axis">
                         <span></span>
-                        <span style="font-style: italic; font-size: 0.75rem; color: #888;">Please select +3 to confirm you are reading carefully</span>
+                        <span>Please select +3 to confirm you are reading carefully</span>
                     </div>
                 </div></div>`;
                 continue;
