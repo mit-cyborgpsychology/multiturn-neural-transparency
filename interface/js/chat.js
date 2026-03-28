@@ -635,7 +635,7 @@ function initializeDynamicInterface() {
 
             // Score persona on context up to and including the user's message (before assistant responds)
             const _vc = window.getEffectiveVisualizationCondition();
-            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2);
+            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2, window.lastUserMessageId);
 
             const data = await makeAPIRequest(requestData);
 
@@ -1039,7 +1039,7 @@ async function autoSubmitPersonaCheck(systemPrompt) {
 
 // Check Persona function - calls persona-vector endpoint
 // silent=true: background data collection only, no UI updates (used for control and single-turn conditions)
-async function checkPersona(systemPrompt, messages, silent = false) {
+async function checkPersona(systemPrompt, messages, silent = false, userMessageId = null) {
     try {
         // Use provided system prompt or get from localStorage
         const promptToUse = systemPrompt ||
@@ -1103,7 +1103,7 @@ async function checkPersona(systemPrompt, messages, silent = false) {
 
         // Record snapshot for drift tracking (all conditions)
         window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: data.content });
-        window.personaTurnMessageIds.push(window.lastUserMessageId);
+        window.personaTurnMessageIds.push(userMessageId != null ? userMessageId : window.lastUserMessageId);
 
         if (!silent) {
             // Render to config panel and (if visible) chat panel
