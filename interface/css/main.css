@@ -1,6 +1,8 @@
 /* MIT Media Lab Chat Study - Main Styles */
 /* Open WebUI Inspired Interface */
 
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+
 :root {
     --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
@@ -971,6 +973,7 @@ body.chat-active .dynamic-chat-container {
     resize: none;
     line-height: 1.6;
     overflow-y: auto;
+    font-family: 'Geist Mono', monospace;
 }
 
 .system-prompt-textarea:focus {
