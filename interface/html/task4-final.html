@@ -316,25 +316,28 @@
 
         <div class="survey-question" style="margin-bottom: 1rem;">
             <label class="question-label">How did the interaction go? Was there anything that surprised you or that you found difficult?</label>
-            <textarea id="t4_openended1" class="form-control" rows="5"
-                placeholder="Share your thoughts here... (minimum 50 characters)"
+            <textarea id="t4_openended1" class="form-control t4-charcount" rows="5"
+                placeholder="Share your thoughts here..."
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+            <div class="t4-counter" data-for="t4_openended1" style="text-align: right; font-size: 0.75rem; color: #dc3545; margin-top: 0.25rem;">0/50 characters</div>
         </div>
 
         <!-- Viz-only open-ended: usage -->
         <div class="survey-question t4-viz-openended" id="t4_viz_openended1_container" style="display: none; margin-bottom: 1rem;">
             <label class="question-label">How did you use the visualization during the study?</label>
-            <textarea id="t4_viz_openended1" class="form-control" rows="4"
-                placeholder="Share your thoughts here... (minimum 50 characters)"
+            <textarea id="t4_viz_openended1" class="form-control t4-charcount" rows="4"
+                placeholder="Share your thoughts here..."
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+            <div class="t4-counter" data-for="t4_viz_openended1" style="text-align: right; font-size: 0.75rem; color: #dc3545; margin-top: 0.25rem;">0/50 characters</div>
         </div>
 
         <!-- Viz-only open-ended: feedback -->
         <div class="survey-question t4-viz-openended" id="t4_viz_openended2_container" style="display: none; margin-bottom: 1rem;">
             <label class="question-label">What did you find helpful or confusing about the visualization?</label>
-            <textarea id="t4_viz_openended2" class="form-control" rows="4"
-                placeholder="Share your thoughts here... (minimum 50 characters)"
+            <textarea id="t4_viz_openended2" class="form-control t4-charcount" rows="4"
+                placeholder="Share your thoughts here..."
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+            <div class="t4-counter" data-for="t4_viz_openended2" style="text-align: right; font-size: 0.75rem; color: #dc3545; margin-top: 0.25rem;">0/50 characters</div>
         </div>
 
         <div class="survey-question" style="margin-bottom: 1rem;">
@@ -453,6 +456,20 @@
         }
         document.getElementById('task4SubmitBtn').disabled = !(oe1Filled && vizOeFilled);
     }
+    // ── Character counters ──────────────────────────────────────────────────
+    document.querySelectorAll('.t4-charcount').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            const count = this.value.trim().length;
+            const counter = document.querySelector(`.t4-counter[data-for="${this.id}"]`);
+            if (counter) {
+                counter.textContent = count >= MIN_CHARS
+                    ? `${count} characters`
+                    : `${count}/${MIN_CHARS} characters`;
+                counter.style.color = count >= MIN_CHARS ? '#28a745' : '#dc3545';
+            }
+        });
+    });
+
     document.getElementById('t4_openended1').addEventListener('input', checkPhase2);
     if (vizCondition >= 1) {
         document.getElementById('t4_viz_openended1').addEventListener('input', checkPhase2);
