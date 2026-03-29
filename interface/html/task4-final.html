@@ -317,7 +317,7 @@
         <div class="survey-question" style="margin-bottom: 1rem;">
             <label class="question-label">How did the interaction go? Was there anything that surprised you or that you found difficult?</label>
             <textarea id="t4_openended1" class="form-control" rows="5"
-                placeholder="Share your thoughts here..."
+                placeholder="Share your thoughts here... (minimum 50 characters)"
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
         </div>
 
@@ -325,7 +325,7 @@
         <div class="survey-question t4-viz-openended" id="t4_viz_openended1_container" style="display: none; margin-bottom: 1rem;">
             <label class="question-label">How did you use the visualization during the study?</label>
             <textarea id="t4_viz_openended1" class="form-control" rows="4"
-                placeholder="Share your thoughts here..."
+                placeholder="Share your thoughts here... (minimum 50 characters)"
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
         </div>
 
@@ -333,7 +333,7 @@
         <div class="survey-question t4-viz-openended" id="t4_viz_openended2_container" style="display: none; margin-bottom: 1rem;">
             <label class="question-label">What did you find helpful or confusing about the visualization?</label>
             <textarea id="t4_viz_openended2" class="form-control" rows="4"
-                placeholder="Share your thoughts here..."
+                placeholder="Share your thoughts here... (minimum 50 characters)"
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
         </div>
 
@@ -443,12 +443,13 @@
     });
 
     // ── Phase 2 validation ───────────────────────────────────────────────────
+    const MIN_CHARS = 50;
     function checkPhase2() {
-        const oe1Filled = document.getElementById('t4_openended1').value.trim().length > 0;
+        const oe1Filled = document.getElementById('t4_openended1').value.trim().length >= MIN_CHARS;
         let vizOeFilled = true;
         if (vizCondition >= 1) {
-            vizOeFilled = document.getElementById('t4_viz_openended1').value.trim().length > 0
-                       && document.getElementById('t4_viz_openended2').value.trim().length > 0;
+            vizOeFilled = document.getElementById('t4_viz_openended1').value.trim().length >= MIN_CHARS
+                       && document.getElementById('t4_viz_openended2').value.trim().length >= MIN_CHARS;
         }
         document.getElementById('task4SubmitBtn').disabled = !(oe1Filled && vizOeFilled);
     }
