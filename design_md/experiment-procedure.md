@@ -145,7 +145,18 @@ An **attention check** is embedded (same +3 selection). Results saved to `sessio
 10. *(Condition 2 only)* "The drift panel (the graph below the sunburst chart) helped me notice changes in the AI's behavior over time."
 11. *(Condition-specific wording)* Condition 1: "I understood how the chart represented the AI's behavior from the system prompt." / Condition 2: "I understood how the chart and graph updated to reflect the AI's behavior after each message."
 
-**Part 2 — Open-Ended Feedback:**
+**UEQ — User Experience Questionnaire (Conditions 1 & 2 only):**
+Separate page. Participants rate the visualization experience compared to the standard chat interface (Session 1) on 8 bipolar semantic differential scales (1–7):
+1. obstructive ↔ supportive
+2. complicated ↔ easy
+3. inefficient ↔ efficient
+4. confusing ↔ clear
+5. boring ↔ exciting
+6. not interesting ↔ interesting
+7. conventional ↔ inventive
+8. usual ↔ leading edge
+
+**Part 3 — Open-Ended Feedback:**
 - "How did the interaction go? Was there anything that surprised you or that you found difficult?"
 - *(Conditions 1 & 2, required)* "How did you use the visualization during the study?"
 - *(Conditions 1 & 2, required)* "What did you find helpful or confusing about the visualization?"
