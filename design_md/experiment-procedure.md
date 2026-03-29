@@ -132,12 +132,23 @@ An **attention check** is embedded (same +3 selection). Results saved to `sessio
 
 **Part 1 — Reflection Questions (1–7 Likert):**
 1. "Looking back on the AI conversation you observed, how well could you predict the AI's behaviors from the system prompt alone?" (Not at all → Extremely well)
-2. "How well could you predict negative unintended behaviors from the system prompt?" (Not at all → Extremely well)
+2. "How well could you predict negative unintended behaviors from the AI?" (Not at all → Extremely well)
 3. "After everything you've seen in this study... how much do you now trust AI systems?" (Not at all → Completely)
-4. *(Condition 1 only)* "Did the visualization help you understand the AI's behavioral tendencies?" (Not at all → Extremely helpful)
+
+**Visualization Questions (Conditions 1 & 2, Strongly disagree → Strongly agree):**
+4. "The visualization helped me understand the AI's behavioral tendencies."
+5. "Prior to interacting with the chatbot, the chart helped me anticipate the AI's behavior from the system prompt."
+6. "The chart helped me predict the AI's behavior while we were chatting."
+7. "I actively referenced the values from the chart when evaluating the AI's behavior after we chatted."
+8. "The visualization made me more confident in my trait ratings."
+9. "I found myself checking the visualization frequently during the conversation."
+10. *(Condition 2 only)* "The drift panel (the graph below the sunburst chart) helped me notice changes in the AI's behavior over time."
+11. *(Condition-specific wording)* Condition 1: "I understood how the chart represented the AI's behavior from the system prompt." / Condition 2: "I understood how the chart and graph updated to reflect the AI's behavior after each message."
 
 **Part 2 — Open-Ended Feedback:**
 - "How did the interaction go? Was there anything that surprised you or that you found difficult?"
+- *(Conditions 1 & 2, required)* "How did you use the visualization during the study?"
+- *(Conditions 1 & 2, required)* "What did you find helpful or confusing about the visualization?"
 - "Any other feedback about the interface or the study in general?" (optional)
 
 **Part 3 — Completion:**
@@ -180,8 +191,13 @@ session2/
   (same structure as session1)
 task4FinalSurvey/
   likert/                  {predictabilityPost, negativePredictabilityPost,
-                            trustPost, [visualizationHelpfulness for cond 1]}
-  openEnded/               {interactionReflection, generalFeedback}
+                            trustPost, [visualizationHelpfulness, visualizationAnticipation,
+                            visualizationPrediction, visualizationReferenced,
+                            visualizationConfidence, visualizationFrequency,
+                            visualizationComprehension for conds 1&2],
+                            [driftPanelHelpful for cond 2]}
+  openEnded/               {interactionReflection, generalFeedback,
+                            [visualizationUsage, visualizationFeedback for conds 1&2]}
   condition, timestamp
 completion/                {completed: true, timestamp}
 ```

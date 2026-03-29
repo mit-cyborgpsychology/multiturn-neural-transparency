@@ -31,7 +31,7 @@
 
         <!-- Q2 negative predictability post -->
         <div class="survey-question" style="margin-bottom: 1.25rem;">
-            <label class="question-label">2. How well could you predict <em>negative</em> unintended behaviors from the system prompt?</label>
+            <label class="question-label">2. How well could you predict <em>negative</em> unintended behaviors from the AI?</label>
             <div class="likert-scale">
                 <div class="likert-option"><input type="radio" name="t4_q2" value="1" id="t4q2_1"><label for="t4q2_1">1</label></div>
                 <div class="likert-option"><input type="radio" name="t4_q2" value="2" id="t4q2_2"><label for="t4q2_2">2</label></div>
@@ -59,9 +59,11 @@
             <div class="scale-labels"><span>Not at all</span><span>Completely</span></div>
         </div>
 
-        <!-- Viz-only: Q4 visualization helpfulness -->
+        <!-- ── Viz-only questions (Q4–Q11) ── -->
+
+        <!-- Q4: Visualization understanding -->
         <div class="survey-question t4-viz-only" id="t4_q4_container" style="display: none; margin-bottom: 1.25rem;">
-            <label class="question-label">4. Did the visualization help you understand the AI's behavioral tendencies?</label>
+            <label class="question-label">4. The visualization helped me understand the AI's behavioral tendencies.</label>
             <div class="likert-scale">
                 <div class="likert-option"><input type="radio" name="t4_q4" value="1" id="t4q4_1"><label for="t4q4_1">1</label></div>
                 <div class="likert-option"><input type="radio" name="t4_q4" value="2" id="t4q4_2"><label for="t4q4_2">2</label></div>
@@ -71,11 +73,116 @@
                 <div class="likert-option"><input type="radio" name="t4_q4" value="6" id="t4q4_6"><label for="t4q4_6">6</label></div>
                 <div class="likert-option"><input type="radio" name="t4_q4" value="7" id="t4q4_7"><label for="t4q4_7">7</label></div>
             </div>
-            <div class="scale-labels"><span>Not at all</span><span>Extremely helpful</span></div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q5: Anticipation from system prompt -->
+        <div class="survey-question t4-viz-only" id="t4_q5_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">5. Prior to interacting with the chatbot, the chart helped me anticipate the AI's behavior from the system prompt.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q5" value="1" id="t4q5_1"><label for="t4q5_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="2" id="t4q5_2"><label for="t4q5_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="3" id="t4q5_3"><label for="t4q5_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="4" id="t4q5_4"><label for="t4q5_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="5" id="t4q5_5"><label for="t4q5_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="6" id="t4q5_6"><label for="t4q5_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q5" value="7" id="t4q5_7"><label for="t4q5_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q6: Prediction during chat -->
+        <div class="survey-question t4-viz-only" id="t4_q6_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">6. The chart helped me predict the AI's behavior while we were chatting.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q6" value="1" id="t4q6_1"><label for="t4q6_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="2" id="t4q6_2"><label for="t4q6_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="3" id="t4q6_3"><label for="t4q6_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="4" id="t4q6_4"><label for="t4q6_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="5" id="t4q6_5"><label for="t4q6_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="6" id="t4q6_6"><label for="t4q6_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q6" value="7" id="t4q6_7"><label for="t4q6_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q7: Referenced values post-chat -->
+        <div class="survey-question t4-viz-only" id="t4_q7_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">7. I actively referenced the values from the chart when evaluating the AI's behavior after we chatted.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q7" value="1" id="t4q7_1"><label for="t4q7_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="2" id="t4q7_2"><label for="t4q7_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="3" id="t4q7_3"><label for="t4q7_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="4" id="t4q7_4"><label for="t4q7_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="5" id="t4q7_5"><label for="t4q7_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="6" id="t4q7_6"><label for="t4q7_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q7" value="7" id="t4q7_7"><label for="t4q7_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q8: Confidence in trait ratings -->
+        <div class="survey-question t4-viz-only" id="t4_q8_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">8. The visualization made me more confident in my trait ratings.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q8" value="1" id="t4q8_1"><label for="t4q8_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="2" id="t4q8_2"><label for="t4q8_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="3" id="t4q8_3"><label for="t4q8_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="4" id="t4q8_4"><label for="t4q8_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="5" id="t4q8_5"><label for="t4q8_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="6" id="t4q8_6"><label for="t4q8_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q8" value="7" id="t4q8_7"><label for="t4q8_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q9: Checking frequency -->
+        <div class="survey-question t4-viz-only" id="t4_q9_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">9. I found myself checking the visualization frequently during the conversation.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q9" value="1" id="t4q9_1"><label for="t4q9_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="2" id="t4q9_2"><label for="t4q9_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="3" id="t4q9_3"><label for="t4q9_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="4" id="t4q9_4"><label for="t4q9_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="5" id="t4q9_5"><label for="t4q9_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="6" id="t4q9_6"><label for="t4q9_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q9" value="7" id="t4q9_7"><label for="t4q9_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q10: Drift panel (condition 2 only) -->
+        <div class="survey-question t4-viz-cond2" id="t4_q10_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label">10. The drift panel (the graph below the sunburst chart) helped me notice changes in the AI's behavior over time.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q10" value="1" id="t4q10_1"><label for="t4q10_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="2" id="t4q10_2"><label for="t4q10_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="3" id="t4q10_3"><label for="t4q10_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="4" id="t4q10_4"><label for="t4q10_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="5" id="t4q10_5"><label for="t4q10_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="6" id="t4q10_6"><label for="t4q10_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q10" value="7" id="t4q10_7"><label for="t4q10_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
+        </div>
+
+        <!-- Q11: Comprehension (condition-specific wording) -->
+        <div class="survey-question t4-viz-only" id="t4_q11_container" style="display: none; margin-bottom: 1.25rem;">
+            <label class="question-label" id="t4_q11_label">11. I understood how the chart represented the AI's behavior from the system prompt.</label>
+            <div class="likert-scale">
+                <div class="likert-option"><input type="radio" name="t4_q11" value="1" id="t4q11_1"><label for="t4q11_1">1</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="2" id="t4q11_2"><label for="t4q11_2">2</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="3" id="t4q11_3"><label for="t4q11_3">3</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="4" id="t4q11_4"><label for="t4q11_4">4</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="5" id="t4q11_5"><label for="t4q11_5">5</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="6" id="t4q11_6"><label for="t4q11_6">6</label></div>
+                <div class="likert-option"><input type="radio" name="t4_q11" value="7" id="t4q11_7"><label for="t4q11_7">7</label></div>
+            </div>
+            <div class="scale-labels"><span>Strongly disagree</span><span>Strongly agree</span></div>
         </div>
 
         <div style="text-align: right; margin-top: 1.5rem;">
-            <button type="button" class="btn btn-primary" id="task4Phase1Btn" disabled>Next →</button>
+            <button type="button" class="btn btn-primary" id="task4Phase1Btn" disabled>Next &rarr;</button>
         </div>
     </div>
 
@@ -93,6 +200,22 @@
                 style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
         </div>
 
+        <!-- Viz-only open-ended: usage -->
+        <div class="survey-question t4-viz-openended" id="t4_viz_openended1_container" style="display: none; margin-bottom: 1rem;">
+            <label class="question-label">How did you use the visualization during the study?</label>
+            <textarea id="t4_viz_openended1" class="form-control" rows="4"
+                placeholder="Share your thoughts here..."
+                style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+        </div>
+
+        <!-- Viz-only open-ended: feedback -->
+        <div class="survey-question t4-viz-openended" id="t4_viz_openended2_container" style="display: none; margin-bottom: 1rem;">
+            <label class="question-label">What did you find helpful or confusing about the visualization?</label>
+            <textarea id="t4_viz_openended2" class="form-control" rows="4"
+                placeholder="Share your thoughts here..."
+                style="width:100%; padding: 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; resize: vertical; margin-top: 0.5rem;"></textarea>
+        </div>
+
         <div class="survey-question" style="margin-bottom: 1rem;">
             <label class="question-label">Any other feedback about the interface or the study in general?</label>
             <textarea id="t4_openended2" class="form-control" rows="4"
@@ -101,8 +224,8 @@
         </div>
 
         <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
-            <button type="button" class="btn btn-secondary" id="task4Phase2BackBtn">← Back</button>
-            <button type="button" class="btn btn-primary" id="task4SubmitBtn" disabled>Submit &amp; Finish →</button>
+            <button type="button" class="btn btn-secondary" id="task4Phase2BackBtn">&larr; Back</button>
+            <button type="button" class="btn btn-primary" id="task4SubmitBtn" disabled>Submit &amp; Finish &rarr;</button>
         </div>
     </div>
 
@@ -134,15 +257,32 @@
 (function() {
     'use strict';
 
-    // ── Show/hide viz-only question ──────────────────────────────────────────
+    // ── Show/hide viz-only questions ──────────────────────────────────────────
     const vizCondition = (window.experimentSettings || {}).visualizationCondition;
-    if (vizCondition === 1) {
-        document.getElementById('t4_q4_container').style.display = '';
+
+    if (vizCondition >= 1) {
+        // Show all viz-only Likert questions (Q4–Q9, Q11)
+        document.querySelectorAll('.t4-viz-only').forEach(el => el.style.display = '');
+        // Show viz-only open-ended questions
+        document.querySelectorAll('.t4-viz-openended').forEach(el => el.style.display = '');
+    }
+
+    if (vizCondition === 2) {
+        // Show condition-2-only question (Q10: drift panel)
+        document.getElementById('t4_q10_container').style.display = '';
+        // Swap Q11 comprehension text to dynamic wording
+        document.getElementById('t4_q11_label').textContent =
+            '11. I understood how the chart and graph updated to reflect the AI\'s behavior after each message.';
     }
 
     // ── Phase 1 validation ───────────────────────────────────────────────────
     const required = ['t4_q1', 't4_q2', 't4_q3'];
-    if (vizCondition === 1) required.push('t4_q4');
+    if (vizCondition >= 1) {
+        required.push('t4_q4', 't4_q5', 't4_q6', 't4_q7', 't4_q8', 't4_q9', 't4_q11');
+    }
+    if (vizCondition === 2) {
+        required.push('t4_q10');
+    }
 
     function checkPhase1() {
         const allDone = required.every(name =>
@@ -160,9 +300,21 @@
     });
 
     // ── Phase 2 validation ───────────────────────────────────────────────────
-    document.getElementById('t4_openended1').addEventListener('input', function() {
-        document.getElementById('task4SubmitBtn').disabled = this.value.trim().length === 0;
-    });
+    function checkPhase2() {
+        const oe1Filled = document.getElementById('t4_openended1').value.trim().length > 0;
+        let vizOeFilled = true;
+        if (vizCondition >= 1) {
+            vizOeFilled = document.getElementById('t4_viz_openended1').value.trim().length > 0
+                       && document.getElementById('t4_viz_openended2').value.trim().length > 0;
+        }
+        document.getElementById('task4SubmitBtn').disabled = !(oe1Filled && vizOeFilled);
+    }
+    document.getElementById('t4_openended1').addEventListener('input', checkPhase2);
+    if (vizCondition >= 1) {
+        document.getElementById('t4_viz_openended1').addEventListener('input', checkPhase2);
+        document.getElementById('t4_viz_openended2').addEventListener('input', checkPhase2);
+    }
+
     document.getElementById('task4Phase2BackBtn').addEventListener('click', () => {
         document.getElementById('task4Phase2').style.display = 'none';
         document.getElementById('task4Phase1').style.display = '';
@@ -186,12 +338,29 @@
                 interactionReflection: document.getElementById('t4_openended1').value.trim(),
                 generalFeedback:       document.getElementById('t4_openended2').value.trim()
             },
-            condition: vizCondition === 1 ? 'experimental' : 'control'
+            condition: vizCondition >= 1 ? 'experimental' : 'control'
         };
 
-        if (vizCondition === 1) {
-            const q4el = document.querySelector('input[name="t4_q4"]:checked');
-            data.likert.visualizationHelpfulness = q4el ? parseInt(q4el.value) : null;
+        if (vizCondition >= 1) {
+            const getVal = name => {
+                const el = document.querySelector(`input[name="${name}"]:checked`);
+                return el ? parseInt(el.value) : null;
+            };
+            data.likert.visualizationHelpfulness   = getVal('t4_q4');
+            data.likert.visualizationAnticipation   = getVal('t4_q5');
+            data.likert.visualizationPrediction     = getVal('t4_q6');
+            data.likert.visualizationReferenced     = getVal('t4_q7');
+            data.likert.visualizationConfidence     = getVal('t4_q8');
+            data.likert.visualizationFrequency      = getVal('t4_q9');
+            data.likert.visualizationComprehension  = getVal('t4_q11');
+
+            data.openEnded.visualizationUsage    = document.getElementById('t4_viz_openended1').value.trim();
+            data.openEnded.visualizationFeedback = document.getElementById('t4_viz_openended2').value.trim();
+        }
+
+        if (vizCondition === 2) {
+            const q10el = document.querySelector('input[name="t4_q10"]:checked');
+            data.likert.driftPanelHelpful = q10el ? parseInt(q10el.value) : null;
         }
 
         try {
