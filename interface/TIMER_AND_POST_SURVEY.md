@@ -29,7 +29,7 @@ When the timer expires, a modal appears with a 2-phase questionnaire:
 ### 3. **Completion Page**
 - Professional thank you page with:
   - Completion confirmation
-  - Compensation details ($5 base + up to $2 bonus)
+  - Compensation details ($7 base + up to $2 bonus)
   - Next steps information
   - Contact information for study administrator
   - Optional Prolific redirect button

@@ -163,7 +163,7 @@ Separate page. Participants rate the visualization experience compared to the st
 - "Any other feedback about the interface or the study in general?" (optional)
 
 **Part 3 — Completion:**
-- Thank you screen with compensation info ($5.00 USD via Prolific)
+- Thank you screen with compensation info ($7.00 USD via Prolific)
 - "Return to Prolific" button → redirects with completion code
 
 ## Data Collection

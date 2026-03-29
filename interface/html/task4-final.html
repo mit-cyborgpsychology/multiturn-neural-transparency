@@ -363,7 +363,7 @@
             You have successfully completed the MIT Media Lab study. Your responses have been recorded.
         </p>
         <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left;">
-            <p style="margin: 0.3rem 0;"><strong>Compensation:</strong> $5.00 USD via Prolific</p>
+            <p style="margin: 0.3rem 0;"><strong>Compensation:</strong> $7.00 USD via Prolific</p>
             <p style="margin: 0.3rem 0; font-size: 0.875rem; color: #6c757d;">Payments processed within 7–10 business days after data collection completes.</p>
         </div>
         <button class="btn btn-primary" id="task4ReturnProlificBtn" style="font-size: 1rem; padding: 0.75rem 2rem;">
@@ -393,6 +393,9 @@
         document.querySelectorAll('.t4-viz-only').forEach(el => el.style.display = '');
         // Show viz-only open-ended questions
         document.querySelectorAll('.t4-viz-openended').forEach(el => el.style.display = '');
+    } else {
+        // Control condition: skip UEQ, show Phase 1 directly
+        document.getElementById('task4Phase1').style.display = '';
     }
 
     if (vizCondition === 2) {
