@@ -178,6 +178,13 @@ function getExperimentSettingsFromURL() {
             sessionStorage.setItem('visualizationCondition', '0');
             sessionStorage.setItem('conditionAssignmentMethod', 'forced_control');
             return 0;
+
+            // Random 1/3 assignment for new sessions (0=control, 1=single-turn, 2=multi-turn)
+            // const rand = Math.random();
+            // const randomCondition = rand < 1/3 ? 0 : rand < 2/3 ? 1 : 2;
+            // sessionStorage.setItem('visualizationCondition', randomCondition.toString());
+            // sessionStorage.setItem('conditionAssignmentMethod', 'random');
+            // return randomCondition;
         })(),
     };
     
