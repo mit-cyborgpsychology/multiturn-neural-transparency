@@ -22,10 +22,20 @@ Comma-separated, any combination. Only active when the effective visualization c
 
 ## How "Biggest Swing" Is Computed
 
-- After each AI reply, the persona vector API returns a new trait snapshot.
-- `computeBiggestSwing()` compares **only the last two snapshots** (current turn vs. previous turn).
-- It finds the single trait with the largest absolute delta across all 8 category pairs (empathy, encouraging, sociality, honesty, factuality, respectfulness, funniness, formality).
-- That result drives all three highlight modes.
+After each AI reply, the persona vector API returns a new trait snapshot. `computeBiggestSwing()` (`chat.js:1350`) performs a **greedy argmax over the absolute pairwise difference between the two most recent persona snapshots**:
+
+1. Takes the last two entries in `window.personaHistory` (turn N vs. turn N−1).
+2. Iterates over every trait in every category.
+3. Computes `Math.abs(currentValue - previousValue)` for each trait.
+4. Returns the single trait with the largest absolute delta, along with its turn index and category key.
+
+**Key characteristics:**
+
+- **Adjacent turns only** — it compares turn N to turn N−1, not cumulative drift or a rolling window. A trait drifting slowly over many turns will not trigger highlights; only abrupt single-turn jumps are surfaced.
+- **Exactly one trait per turn** — the argmax picks a single winner. In the case of ties, whichever trait is iterated last wins (object iteration order).
+- **No minimum threshold** — even a small delta (e.g., 0.01) triggers highlights as long as it is the largest among all traits for that turn pair.
+
+That result drives all three highlight modes.
 
 ## Session Gating
 

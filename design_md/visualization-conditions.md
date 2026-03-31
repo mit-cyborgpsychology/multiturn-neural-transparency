@@ -68,11 +68,12 @@ All three conditions make the same persona vector API calls per chat turn and lo
 - After each user message, the sunburst **re-renders with updated persona scores** computed from the system prompt plus the full conversation history up to that point.
 - A **drift panel** shows per-trait line charts tracking how each trait's activation changes across turns.
 - Clicking a dot on the drift chart **restores the sunburst to that turn's historical snapshot**, with a "Viewing Turn N" label.
-- **Cognitive forcing highlights** draw attention to persona drift:
+- **Cognitive forcing highlights** draw attention to persona drift. After each turn, the system computes the absolute change in activation between the two most recent persona snapshots for every trait and identifies the single trait with the largest magnitude shift (greedy argmax over adjacent turns only — cumulative drift does not factor in). This drives three synchronized highlight modes:
   - Mode 1: The user's chat message bubble that caused the biggest trait swing **pulses**.
   - Mode 2: The corresponding dot on the drift axis chart **pulses**.
   - Mode 3: The outer-ring sunburst arc for the swung trait **pulses**.
   - Clicking a highlighted message cross-links to the drift chart and sunburst segment.
+  - There is no minimum delta threshold — the largest swing always triggers, however small.
 - A **drift info modal** appears when entering the chat interface, explaining the drift panel.
 - A **sunburst reminder banner** is injected into the chat after 1 minute (15 seconds in debug mode), prompting the participant to check the visualization.
 
