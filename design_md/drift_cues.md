@@ -1,10 +1,10 @@
-# Cognitive Forcing Functions
+# Drift Cues
 
 ## Goal
 
-Help users notice when their messages cause significant persona drift during a live chat session. The highlights draw attention to *which* message shifted *which* trait, forcing attentiveness to behavioral change.
+After each turn, the system identifies the trait with the greatest absolute change in behavioral score compared to the previous turn. This selection operates over adjacent turns only—cumulative drift across multiple turns does not factor into the computation—surfacing abrupt behavioral changes rather than gradual trends. No minimum delta threshold is applied; the largest swing always triggers regardless of magnitude. Three synchronized cues then make this shift salient within the participant's existing interaction flow: (a) a pulsing border on the chat message that triggered the shift, (b) a pulsing dot on the drift chart at the corresponding turn, and (c) a pulsing stroke on the relevant sunburst arc. An inline label reading "Behavioral Swing: [Trait]" appears in the chat feed. These cues require no action from the participant—they make behavioral drift visible within the ongoing conversation rather than requiring participants to actively monitor the visualization for changes.
 
-**Important:** Cognitive forcing highlights are only active during **Session 2 (experimental)**. Session 1 is always a baseline with no visualization for any condition.
+**Important:** Drift cues are only active during **Session 2 (experimental)**. Session 1 is always a baseline with no visualization for any condition.
 
 ## URL Parameter
 
