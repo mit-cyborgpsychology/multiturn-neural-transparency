@@ -1578,7 +1578,7 @@ function renderTraitDrift(traitName) {
         const lVal = cat[leftTrait] || 0;
         const rVal = cat[rightTrait] || 0;
         const position = 0.5 - (lVal - rVal) * 0.5;
-        return { turn: entry.turn, position, messageId: entry.messageId, historyIndex: i };
+        return { turn: entry.turn, position, lVal, rVal, messageId: entry.messageId, historyIndex: i };
     });
 
     // Render vertical SVG axis
@@ -1747,6 +1747,26 @@ function renderTraitDrift(traitName) {
             .attr('fill', isLatest ? 'white' : '#777')
             .style('opacity', 0)
             .text(entry.turn)
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+
+        // Trait activation % labels on either side of dot
+        const lPct = Math.round(entry.lVal * 100);
+        const rPct = Math.round(entry.rVal * 100);
+        svg.append('text')
+            .attr('x', dotX - 18).attr('y', y + 3)
+            .attr('text-anchor', 'end')
+            .attr('font-size', '9px').attr('fill', '#888')
+            .style('opacity', 0)
+            .text(lPct + '%')
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+        svg.append('text')
+            .attr('x', dotX + 18).attr('y', y + 3)
+            .attr('text-anchor', 'start')
+            .attr('font-size', '9px').attr('fill', '#888')
+            .style('opacity', 0)
+            .text(rPct + '%')
             .transition().delay(delay + 150).duration(200)
             .style('opacity', 1);
     });

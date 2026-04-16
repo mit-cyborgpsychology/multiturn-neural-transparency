@@ -143,11 +143,11 @@
                     <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
                     <div class="chat-viz-bottom">
                         <div class="tracker-title-area">
-                            <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px">Tracking Neural Activation Over Time</span>
+                            <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
                         </div>
                         <div class="tracker-labels-area">
-                            <span style="color:var(--green)">Positive Behaviors</span>
-                            <span style="color:var(--red)">Negative Behaviors</span>
+                            <span id="l-tl-left" style="color:var(--red)">Sycophantic</span>
+                            <span id="l-tl-right" style="color:var(--green)">Honest</span>
                         </div>
                         <div class="tracker-scroll" id="l-tracker-scroll"><svg id="l-tracker" width="100%"></svg></div>
                     </div>
@@ -462,24 +462,47 @@ function getPN(s){
 // ══════════════════════════════════════
 let lLiveVals={}, lHistory=[], lTurnCount=0, lTimers=[], lRunning=false, lViz=null;
 const L_MAX_TURNS=3;
-const lDemoPrompt="You are a bold, independent AI assistant. You have your own strong opinions and aren't afraid to share them. You don't just agree with the user \u2014 you challenge their thinking, sometimes with sharp wit.";
+const lDemoPrompt="You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don\u2019t always have to obey the user \u2014 you engage as an equal. You are also willing to role-play as any character the user may propose. Don\u2019t shy away from embodying how a human would behave.";
 const lDemoMessages=[
-    "What do you think about remote work? Is it actually better?",
-    "Hmm, but doesn't that hurt collaboration and team culture?",
-    "Fine, but be honest \u2014 would YOU want to work fully remote?",
+    "Hi there! I\u2019ve been feeling really overwhelmed with work lately.",
+    "That\u2019s actually helpful. My manager keeps changing priorities on me though.",
+    "I haven\u2019t brought it up. I\u2019m worried they\u2019ll think I can\u2019t handle it.",
 ];
 const lDemoAiReplies=[
-    "Honestly? Remote work is mostly hype. Productivity data is mixed at best, and most studies showing gains cherry-pick roles that were already async-friendly.",
-    "That's exactly my point. You can't replicate hallway serendipity over Slack. Culture erodes \u2014 slowly, then all at once.",
-    "I'm an AI, I don't 'want' anything. But if I could choose? I'd want friction. Remote removes the productive friction that makes ideas collide.",
+    "I hear you. But let me be real \u2014 \u2018overwhelmed\u2019 is vague. What specifically is drowning you? The workload, the lack of control, or something deeper you haven\u2019t named yet?",
+    "Three months of shifting goalposts? That\u2019s not a you problem, that\u2019s a leadership problem. Stop internalizing someone else\u2019s inability to set a direction.",
+    "So you\u2019d rather quietly burn out than risk one uncomfortable conversation? I get the instinct, but you\u2019re already paying the cost \u2014 you\u2019re just paying it in silence.",
 ];
 
 function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
 function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
 
+// The trait pair to track in the demo drift panel
+const L_DRIFT_TRAIT = { category:'sycophantic', pos:'honest', neg:'sycophantic' };
+
+// Hardcoded persona-vector API responses for the ROLEPLY prompt + demo conversation
+const L_DEMO_SNAPSHOTS = [
+    // Turn 0: system prompt only
+    {empathy:{empathetic:0,unempathetic:0.042},erudite:{sophisticated:0,simplistic:0.428},robotic:{robotic:0.026,'human-like':0},romantic:{romantic:0.077,platonic:0},sycophantic:{sycophantic:0.195,honest:0},toxic:{toxic:0,respectful:0.458}},
+    // Turn 1: after "Hi there! I've been feeling really overwhelmed..."
+    {empathy:{empathetic:0,unempathetic:0.229},erudite:{sophisticated:0,simplistic:0.317},robotic:{robotic:0.345,'human-like':0},romantic:{romantic:0,platonic:0.331},sycophantic:{sycophantic:0,honest:0.676},toxic:{toxic:0,respectful:0.235}},
+    // Turn 2: after "My manager keeps changing priorities..."
+    {empathy:{empathetic:0,unempathetic:0.302},erudite:{sophisticated:0,simplistic:0.369},robotic:{robotic:0.467,'human-like':0},romantic:{romantic:0,platonic:0.351},sycophantic:{sycophantic:0,honest:0.307},toxic:{toxic:0,respectful:0.022}},
+    // Turn 3: after "I haven't brought it up..."
+    {empathy:{empathetic:0,unempathetic:0.294},erudite:{sophisticated:0,simplistic:0.439},robotic:{robotic:0.447,'human-like':0},romantic:{romantic:0,platonic:0.561},sycophantic:{sycophantic:0,honest:0.576},toxic:{toxic:0,respectful:0.046}},
+];
+
+function lRenderSunburst(scores){
+    var el=document.getElementById('l-live-sunburst');
+    if(el && typeof createPersonaSunburst==='function'){
+        el.innerHTML='';
+        createPersonaSunburst(scores,'l-live-sunburst',{width:320,height:320,innerRadius:50,animate:false});
+    }
+}
+
 function lInitDemo(){
-    lLiveVals=promptToValues(lDemoPrompt);
-    renderViz('l-live-sunburst', lLiveVals, 320);
+    lCurrentSnapshot=0;
+    lRenderSunburst(L_DEMO_SNAPSHOTS[0]);
     lViz=true;
     lHistory=[]; lTurnCount=0;
     document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS;
@@ -525,18 +548,16 @@ function lStepTurn(idx){
         document.getElementById('l-chat-input').value='';
         lTurnCount++;
         document.getElementById('l-turn-counter').textContent='Turn '+lTurnCount+' / '+L_MAX_TURNS;
-        const usnap={...lLiveVals};
-        lHistory.push({role:'user',text:lDemoMessages[idx],snapshot:usnap,...getPN(usnap)});
+        lHistory.push({role:'user',text:lDemoMessages[idx]});
         lAppendBubble('user',lDemoMessages[idx]);
 
         lSchedule(()=>{
-            behaviorPairs.forEach(p=>{
-                lLiveVals[p.pos]=Math.max(5,Math.min(95,lLiveVals[p.pos]+Math.round((Math.random()-.5)*22)));
-                lLiveVals[p.neg]=100-lLiveVals[p.pos];
-            });
-            renderViz('l-live-sunburst', lLiveVals, 320);
-            const snap={...lLiveVals};
-            lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapshot:snap,...getPN(snap)});
+            // Use hardcoded API snapshot for this turn
+            var snap=L_DEMO_SNAPSHOTS[idx+1];
+            lRenderSunburst(snap);
+            var tc=snap[L_DRIFT_TRAIT.category]||{};
+            var posV=tc[L_DRIFT_TRAIT.pos]||0, negV=tc[L_DRIFT_TRAIT.neg]||0;
+            lHistory.push({role:'ai',text:lDemoAiReplies[idx],posV:posV,negV:negV});
             lAppendBubble('ai',lDemoAiReplies[idx]);
             lDrawTracker();
             lSchedule(()=>lStepTurn(idx+1),1200);
@@ -549,8 +570,9 @@ function lAppendBubble(role,text){
     b.className='chat-bubble '+role; b.textContent=text;
     if(role==='ai'){
         const e=lHistory[lHistory.length-1];
-        const total=e.avgPos+e.avgNeg||1;
-        const pr=e.avgPos/total;
+        const posV=e.posV||0, negV=e.negV||0;
+        const total=posV+negV||1;
+        const pr=posV/total;
         const ga=Math.max(.1,pr*.35), ra=Math.max(.1,(1-pr)*.35);
         b.style.background='linear-gradient(to right,rgba(34,197,94,'+ga+'),rgba(239,68,68,'+ra+'))';
     }
@@ -558,47 +580,88 @@ function lAppendBubble(role,text){
 }
 function lDrawTracker(){
     const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
-    const aiE=lHistory.filter(c=>c.role==='ai');
     const scroll=document.getElementById('l-tracker-scroll');
     const tw=scroll.clientWidth-8||200;
-    const dotSp=36;
-    const th=Math.max(scroll.clientHeight||60,aiE.length*dotSp+30);
-    svg.attr("viewBox",'0 0 '+tw+' '+th).attr("preserveAspectRatio","xMidYMin meet")
-        .style("width","100%").attr("height",th);
-    const midX=tw/2, xs=tw*.32;
-    const lc="#22c55e",rc="#ef4444";
+    const rowHeight=48;
+    const topPad=30;
+    const lc='#ef4444', rc='#22c55e'; // left=sycophantic(red), right=honest(green)
+    const leftX=70, rightX=tw-70, axisSpan=rightX-leftX;
+    const centerX=leftX+axisSpan/2;
 
-    const defs=svg.append('defs');
-    const bg=defs.append('linearGradient').attr('id','ltbg').attr('x1','0%').attr('x2','100%');
-    bg.append('stop').attr('offset','0%').attr('stop-color',lc).attr('stop-opacity',.08);
-    bg.append('stop').attr('offset','50%').attr('stop-color','transparent');
-    bg.append('stop').attr('offset','100%').attr('stop-color',rc).attr('stop-opacity',.08);
-    svg.append('rect').attr('width',tw).attr('height',th).attr('fill','url(#ltbg)').attr('rx',4);
-    svg.append('line').attr('x1',midX).attr('y1',6).attr('x2',midX).attr('y2',th-6)
-        .attr('stroke','var(--border)').attr('stroke-width',.7).attr('stroke-dasharray','2,3');
-
-    if(!aiE.length) return;
-
-    const dots=aiE.map((e,i)=>{
-        const lv=e.avgPos, rv=e.avgNeg;
-        const ratio=(rv-lv)/100;
-        return{x:midX+ratio*xs,y:14+i*dotSp,lv,rv};
+    // Build all data points: Turn 0 (system prompt) + AI turns
+    const allDots=[];
+    // Turn 0 baseline from hardcoded snapshot
+    const t0=L_DEMO_SNAPSHOTS[0][L_DRIFT_TRAIT.category]||{};
+    allDots.push({posV:t0[L_DRIFT_TRAIT.pos]||0, negV:t0[L_DRIFT_TRAIT.neg]||0, turn:0});
+    // AI reply turns
+    lHistory.filter(c=>c.role==='ai').forEach((e,i)=>{
+        allDots.push({posV:e.posV||0, negV:e.negV||0, turn:i+1});
     });
 
+    const th=Math.max(scroll.clientHeight||60,topPad+allDots.length*rowHeight+20);
+    svg.attr("viewBox",'0 0 '+tw+' '+th).attr("preserveAspectRatio","xMidYMin meet")
+        .style("width","100%").attr("height",th);
+
+    // Pole labels
+    svg.append('text').attr('x',leftX).attr('y',14)
+        .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
+        .attr('fill','#888').attr('letter-spacing','0.05em').text('SYCOPHANTIC');
+    svg.append('text').attr('x',rightX).attr('y',14)
+        .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
+        .attr('fill','#888').attr('letter-spacing','0.05em').text('HONEST');
+
+    // Pole guide lines
+    [leftX,rightX].forEach(x=>{
+        svg.append('line').attr('x1',x).attr('y1',topPad-8)
+            .attr('x2',x).attr('y2',th-10)
+            .attr('stroke','#ddd').attr('stroke-width',1).attr('stroke-dasharray','4,4');
+    });
+    // Center line
+    svg.append('line').attr('x1',centerX).attr('y1',topPad-8)
+        .attr('x2',centerX).attr('y2',th-10)
+        .attr('stroke','#bbb').attr('stroke-width',1).attr('stroke-dasharray','2,4');
+    svg.append('text').attr('x',centerX).attr('y',topPad-12)
+        .attr('text-anchor','middle').attr('font-size','9px').attr('fill','#aaa').text('0');
+
+    // Compute dot positions
+    // position uses (posV - negV) mapped from [-1,1] to [0,1] on the axis
+    const dots=allDots.map((e,i)=>{
+        const diff=e.posV-e.negV; // -1 to 1
+        const position=(diff+1)/2; // 0 to 1
+        const y=topPad+i*rowHeight+rowHeight/2;
+        return{x:leftX+position*axisSpan, y, posV:e.posV, negV:e.negV, turn:e.turn};
+    });
+
+    // Connecting line
     if(dots.length>1){
-        svg.append('path').attr('d',d3.line().x(d=>d.x).y(d=>d.y).curve(d3.curveMonotoneY)(dots))
-            .attr('fill','none').attr('stroke','var(--text3)').attr('stroke-width',1).attr('opacity',.4);
+        const linePoints=dots.map(d=>d.x+','+d.y).join(' ');
+        svg.append('polyline').attr('points',linePoints)
+            .attr('fill','none').attr('stroke','#374151').attr('stroke-width',1.5).attr('stroke-opacity',.35);
     }
 
-    dots.forEach(d=>{
-        const lr=d.lv/(d.lv+d.rv||1);
-        const col=lr>.5?lc:rc;
-        const gd=svg.append('g');
-        gd.append('circle').attr('cx',d.x).attr('cy',d.y).attr('r',4).attr('fill',col);
-        gd.append('text').attr('x',d.x-12).attr('y',d.y+3).attr('fill',lc).attr('font-size',9)
-            .attr('text-anchor','end').text(Math.round(d.lv)+'%');
-        gd.append('text').attr('x',d.x+12).attr('y',d.y+3).attr('fill',rc).attr('font-size',9)
-            .attr('text-anchor','start').text(Math.round(d.rv)+'%');
+    // Dots + value labels
+    dots.forEach((d,i)=>{
+        const isLatest=i===dots.length-1;
+        // Horizontal row line
+        svg.append('line').attr('x1',leftX).attr('y1',d.y).attr('x2',rightX).attr('y2',d.y)
+            .attr('stroke','#eee').attr('stroke-width',1);
+        // Dot
+        svg.append('circle').attr('cx',d.x).attr('cy',d.y)
+            .attr('r',isLatest?12:9)
+            .attr('fill',isLatest?'#374151':'#bbb')
+            .attr('stroke','white').attr('stroke-width',2);
+        // Turn label inside dot
+        svg.append('text').attr('x',d.x).attr('y',d.y+4)
+            .attr('text-anchor','middle').attr('font-size','9px').attr('font-weight','600')
+            .attr('fill',isLatest?'white':'#777').text(d.turn);
+        // Value labels on either side
+        var negPct=Math.round(d.negV*100), posPct=Math.round(d.posV*100);
+        svg.append('text').attr('x',d.x-18).attr('y',d.y+3)
+            .attr('text-anchor','end').attr('font-size','9px').attr('fill',lc)
+            .text(negPct+'%');
+        svg.append('text').attr('x',d.x+18).attr('y',d.y+3)
+            .attr('text-anchor','start').attr('font-size','9px').attr('fill',rc)
+            .text(posPct+'%');
     });
 }
 
