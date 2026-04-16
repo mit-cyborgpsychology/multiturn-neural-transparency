@@ -16,14 +16,17 @@
 function getExperimentSettingsFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     
-    // Check for demo mode first - it will override multiple settings
+    // Check for demo mode or neuronpedia mode — both override multiple settings
     const isDemoMode = urlParams.get('demo') === 'true';
+    const isNeuronpediaMode = window.NEURONPEDIA_MODE === true || urlParams.get('neuronpedia') === 'true' || isDemoMode;
     
-    // If demo mode is active, clear any previous sessionStorage assignments
-    // to ensure demo mode settings take precedence
-    if (isDemoMode) {
+    // If neuronpedia/demo mode is active, clear any previous sessionStorage assignments
+    // to ensure neuronpedia mode settings take precedence
+    if (isNeuronpediaMode) {
         sessionStorage.removeItem('visualizationCondition');
         sessionStorage.removeItem('conditionAssignmentMethod');
+        sessionStorage.removeItem('currentSession');
+        sessionStorage.removeItem('promptOrder');
     }
     
     let settings = {
@@ -43,13 +46,6 @@ function getExperimentSettingsFromURL() {
          * Note: Automatically enabled when demo=true
          */
         debug: isDemoMode || urlParams.get('debug') === 'true',
-        
-        /**
-         * Debug timer mode - shortens timer for testing (10 seconds vs 10 minutes)
-         * URL: ?debugTimer=true
-         * Default: false
-         */
-        debugTimer: urlParams.get('debugTimer') === 'true',
         
         /**
          * Fresh mode - clears all session/local storage on load
@@ -81,6 +77,10 @@ function getExperimentSettingsFromURL() {
          * Persisted in sessionStorage across page navigations
          */
         currentSession: (() => {
+            if (isNeuronpediaMode) {
+                sessionStorage.setItem('currentSession', '2');
+                return 2; // Always session 2 (experimental) in neuronpedia/demo mode
+            }
             const stored = sessionStorage.getItem('currentSession');
             if (stored !== null) return parseInt(stored, 10);
             // Default to session 1
@@ -95,9 +95,9 @@ function getExperimentSettingsFromURL() {
          * Random 50/50 assignment, persisted in sessionStorage
          */
         promptOrder: (() => {
-            if (isDemoMode) {
+            if (isNeuronpediaMode) {
                 sessionStorage.setItem('promptOrder', 'asst_first');
-                return 'asst_first';
+                return 'asst_first'; // Session 2 = ROLEPLY prompt (the interesting one)
             }
             const stored = sessionStorage.getItem('promptOrder');
             if (stored !== null) return stored;
@@ -119,6 +119,7 @@ function getExperimentSettingsFromURL() {
          * Default: false
          */
         sunburst: (() => {
+            if (isNeuronpediaMode) return true; // Always use sunburst in neuronpedia/demo mode
             const sunburstParam = urlParams.get('sunburst');
             if (sunburstParam === null) {
                 return false; // Default to false
@@ -147,11 +148,11 @@ function getExperimentSettingsFromURL() {
          * Note: Demo mode always forces visualizationCondition=1
          */
         visualizationCondition: (() => {
-            // Demo mode always shows visualization (condition 1)
-            if (isDemoMode) {
-                sessionStorage.setItem('visualizationCondition', '1');
-                sessionStorage.setItem('conditionAssignmentMethod', 'demo_mode');
-                return 1;
+            // Neuronpedia/demo mode always shows multi-turn visualization (condition 2)
+            if (isNeuronpediaMode) {
+                sessionStorage.setItem('visualizationCondition', '2');
+                sessionStorage.setItem('conditionAssignmentMethod', 'neuronpedia_mode');
+                return 2;
             }
             
             const conditionParam = urlParams.get('visualizationCondition');
@@ -199,7 +200,6 @@ function getExperimentSettingsFromURL() {
 let defaultSettings = {
     demo: false,
     debug: false,
-    debugTimer: false,
     fresh: false,
     skip: false,
     skipSurvey: false,

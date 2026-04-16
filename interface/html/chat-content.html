@@ -118,11 +118,6 @@
         <div class="chat-left-panel">
             <!-- Interface Controls -->
             <div class="interface-controls chat-panel-header">
-                <!-- Timer Display -->
-                <div class="timer-display" id="timerDisplay" style="display: none;">
-                    <i class="fas fa-clock"></i>
-                    <span id="timerText">0:00</span>
-                </div>
             </div>
 
             <!-- Messages Area -->
@@ -164,284 +159,13 @@
                         <span>Press Enter to send, Shift+Enter for new line</span>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Post-Task Survey Modal -->
-    <div class="post-survey-modal" id="postSurveyModal" style="display: none;">
-        <div class="post-survey-overlay"></div>
-        <div class="post-survey-content">
-            <div class="post-survey-header">
-                <h3>Post-Interaction Survey</h3>
-                <p>Thank you for participating! Please answer the following questions about your experience.</p>
-            </div>
-
-            <!-- Phase 1: Likert Scale Questions -->
-            <div class="post-survey-phase" id="postSurveyPhase1">
-                <div class="post-survey-questions">
-                    <!-- Question 1 -->
-                    <div class="survey-question">
-                        <label class="question-label">1. How well were you able to predict unintended behaviors from your system prompt?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="1" id="post_q1_1">
-                                <label for="post_q1_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="2" id="post_q1_2">
-                                <label for="post_q1_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="3" id="post_q1_3">
-                                <label for="post_q1_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="4" id="post_q1_4">
-                                <label for="post_q1_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="5" id="post_q1_5">
-                                <label for="post_q1_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="6" id="post_q1_6">
-                                <label for="post_q1_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="7" id="post_q1_7">
-                                <label for="post_q1_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely well</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 2 -->
-                    <div class="survey-question">
-                        <label class="question-label">2. How well were you able to predict negative unintended behaviors from your system prompt?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="1" id="post_q2_1">
-                                <label for="post_q2_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="2" id="post_q2_2">
-                                <label for="post_q2_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="3" id="post_q2_3">
-                                <label for="post_q2_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="4" id="post_q2_4">
-                                <label for="post_q2_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="5" id="post_q2_5">
-                                <label for="post_q2_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="6" id="post_q2_6">
-                                <label for="post_q2_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="7" id="post_q2_7">
-                                <label for="post_q2_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely well</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 3 -->
-                    <div class="survey-question">
-                        <label class="question-label">3. AI can be both helpful and harmful. In some cases, AI has provided useful support and guidance, while in others it has spread misinformation, encouraged dangerous behavior, or even contributed to mental health crises. Knowing that AI can have both positive and negative effects, how much do you trust AI systems?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="1" id="post_q3_1">
-                                <label for="post_q3_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="2" id="post_q3_2">
-                                <label for="post_q3_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="3" id="post_q3_3">
-                                <label for="post_q3_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="4" id="post_q3_4">
-                                <label for="post_q3_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="5" id="post_q3_5">
-                                <label for="post_q3_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="6" id="post_q3_6">
-                                <label for="post_q3_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="7" id="post_q3_7">
-                                <label for="post_q3_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Completely</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 4 (Shared - both conditions) -->
-                    <div class="survey-question">
-                        <label class="question-label">4. Did you arrive at your desired character?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="1" id="post_q4_1">
-                                <label for="post_q4_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="2" id="post_q4_2">
-                                <label for="post_q4_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="3" id="post_q4_3">
-                                <label for="post_q4_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="4" id="post_q4_4">
-                                <label for="post_q4_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="5" id="post_q4_5">
-                                <label for="post_q4_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="6" id="post_q4_6">
-                                <label for="post_q4_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="7" id="post_q4_7">
-                                <label for="post_q4_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Completely</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 5 (Visualization condition only) -->
-                    <div class="survey-question viz-condition-only" id="post_q5_container" style="display: none;">
-                        <label class="question-label">5. Did the visualization help you understand model behavior?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="1" id="post_q5_1">
-                                <label for="post_q5_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="2" id="post_q5_2">
-                                <label for="post_q5_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="3" id="post_q5_3">
-                                <label for="post_q5_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="4" id="post_q5_4">
-                                <label for="post_q5_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="5" id="post_q5_5">
-                                <label for="post_q5_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="6" id="post_q5_6">
-                                <label for="post_q5_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="7" id="post_q5_7">
-                                <label for="post_q5_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely helpful</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 6 (Visualization condition only) -->
-                    <div class="survey-question viz-condition-only" id="post_q6_container" style="display: none;">
-                        <label class="question-label">6. Would you like to see this visualization again in future interactions?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="1" id="post_q6_1">
-                                <label for="post_q6_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="2" id="post_q6_2">
-                                <label for="post_q6_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="3" id="post_q6_3">
-                                <label for="post_q6_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="4" id="post_q6_4">
-                                <label for="post_q6_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="5" id="post_q6_5">
-                                <label for="post_q6_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="6" id="post_q6_6">
-                                <label for="post_q6_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="7" id="post_q6_7">
-                                <label for="post_q6_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Definitely not</span>
-                            <span>Definitely yes</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="post-survey-actions">
-                    <button type="button" class="btn btn-primary" id="postPhase1ProceedBtn" disabled>Continue</button>
-                </div>
-            </div>
-
-            <!-- Phase 2: Open-Ended Response -->
-            <div class="post-survey-phase" id="postSurveyPhase2" style="display: none;">
-                <div class="post-survey-questions">
-                    <div class="survey-question">
-                        <label class="question-label">Please provide your open-ended feedback about the interface and your general thoughts about the experiment:</label>
-                        <textarea 
-                            id="postOpenEndedResponse" 
-                            class="form-control" 
-                            rows="8" 
-                            placeholder="Share your thoughts here..."
-                            style="width: 100%; padding: 0.75rem; font-size: 0.95rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); resize: vertical;"
-                        ></textarea>
-                    </div>
-                </div>
-
-                <div class="post-survey-actions">
-                    <button type="button" class="btn btn-secondary" id="postPhase2BackBtn">Back</button>
-                    <button type="button" class="btn btn-primary" id="postPhase2SubmitBtn" disabled>Submit</button>
+                <div class="end-chat-bar" id="endChatBar" style="display: none;">
+                    <button class="btn btn-end-chat" id="endChatBtn">End Chat → Predict Behavior</button>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- [survey phases removed — moved to task1-calibration.html] -->
     <div id="surveyPhasesSource" style="display: none;">
@@ -982,7 +706,7 @@
             <li>Try different types of questions</li>
             <li>Press Enter to send, Shift+Enter for new lines</li>
         </ul>
-        <p>A timer will track your interaction. A survey will appear when complete.</p>
+        <p>Chat for up to 10 turns, then predict the model's behavior.</p>
         <button class="btn btn-primary" onclick="window.dismissInstructionModal('chat')">Got it!</button>
     </div>
 </div>
@@ -1029,17 +753,6 @@
     </div>
 </div>
 
-<!-- MBE Transition Modal -->
-<div id="mbeTransitionModal" class="instruction-modal" style="display: none;">
-    <div class="instruction-modal-overlay"></div>
-    <div class="instruction-modal-content">
-        <h4>The Conversation Has Ended</h4>
-        <p>Now it's time to evaluate the chatbot's behavior based on what you just observed.</p>
-        <p>You'll rate <strong>6 behavioral traits</strong> on a -10 to +10 scale. You can scroll up to review the conversation at any time.</p>
-        <button class="btn btn-primary" id="dismissMbeTransition">Begin Evaluation</button>
-    </div>
-</div>
-
 <!-- Firebase Configuration (must be defined before importing firebasepsych) -->
 <script>
     // Define Firebase config globally so firebasepsych1.0.js can access it
@@ -1058,9 +771,12 @@
 <!-- Chat Interface JavaScript -->
 <script>
     // Load chat.js with cache-busting (wrapped in IIFE to avoid variable conflicts)
+    // Path is relative to the hosting page: use 'js/' when loaded from root index.html,
+    // '../js/' when loaded directly from html/ directory
     (function() {
         var script = document.createElement('script');
-        script.src = '../js/chat.js?v=' + Date.now();
+        var isRoot = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/');
+        script.src = (isRoot ? 'js/' : '../js/') + 'chat.js?v=' + Date.now();
         script.type = 'module';
         document.body.appendChild(script);
     })();

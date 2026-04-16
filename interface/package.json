@@ -4,7 +4,7 @@
   "description": "MIT Media Lab Chat Study - Serverless deployment on Vercel",
   "main": "index.html",
   "scripts": {
-    "dev": "vercel dev",
+    "start": "echo 'Use: vercel dev'",
     "build": "echo 'Static site - no build step required'",
     "deploy": "vercel --prod"
   },
