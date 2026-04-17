@@ -1770,6 +1770,9 @@ function renderTraitDrift(traitName) {
             .transition().delay(delay + 150).duration(200)
             .style('opacity', 1);
     });
+
+    // Auto-scroll drift panel to show latest dot
+    setTimeout(()=>{ container.scrollTop = container.scrollHeight; }, 100);
 }
 
 // Test persona with mock data - for development/testing without API calls

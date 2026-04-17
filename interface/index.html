@@ -116,43 +116,34 @@
 <div id="landing" class="np-shell">
     <section class="hero">
         <div class="np-container">
-            <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:6px">
-                <span style="font-size:12px;color:var(--text3)">MIT Media Lab &times; Neuronpedia</span>
-            </div>
             <h1 class="hero-title">
                 <span class="hero-neural">Neural</span>
                 <span class="hero-transparency">Transparency<span class="fill-layer" aria-hidden="true">Transparency</span></span>
             </h1>
-            <p class="hero-tagline">
+            <p class="meta" style="margin-top:4px;text-align:center;color:var(--text2)">
+                Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab
+            </p>
+            <p class="hero-tagline" style="margin-top:0.5em">
                 Every AI reply hides a <em>shifting mind</em>. We made it <strong>glow</strong> &mdash;
                 surfacing hidden activations as behavioral drift, turn by turn, in real time.
-                <span class="hero-tagline-cue">Watch it happen below &darr;</span>
             </p>
 
             <!-- Live demo -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px;flex-wrap:wrap;gap:8px;text-align:left">
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span class="np-badge np-badge-green">Live Demo</span>
-                    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">System Prompt</span>
-                    <span style="font-size:12px;color:var(--text2);font-style:italic">Bold, Independent AI</span>
-                </div>
+            <div style="display:flex;align-items:center;justify-content:flex-end;margin:10px 0 6px">
                 <div id="l-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px">Turn 0 / 3</div>
             </div>
-            <div class="chat-frame" id="l-chat-frame">
+            <div class="chat-frame" id="l-chat-frame" style="position:relative">
                 <div class="chat-viz">
                     <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
                     <div class="chat-viz-bottom">
                         <div class="tracker-title-area">
                             <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
                         </div>
-                        <div class="tracker-labels-area">
-                            <span id="l-tl-left" style="color:var(--red)">Sycophantic</span>
-                            <span id="l-tl-right" style="color:var(--green)">Honest</span>
-                        </div>
                         <div class="tracker-scroll" id="l-tracker-scroll"><svg id="l-tracker" width="100%"></svg></div>
                     </div>
                 </div>
                 <div class="chat-right">
+                    <button onclick="lRestart()" title="Replay demo" style="position:absolute;top:6px;right:6px;z-index:10;background:var(--bg3);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.5;transition:opacity .15s;font-size:14px;line-height:1;padding:0" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'">&#x21bb;</button>
                     <div class="chat-log" id="l-chat-log">
                         <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo will start automatically&hellip;</div>
                     </div>
@@ -163,13 +154,9 @@
                 </div>
             </div>
             <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px">
-                <button class="np-btn" onclick="lRestart()">&#x21bb; Replay Demo</button>
                 <button class="np-btn np-btn-fill" onclick="showPage('predict')">Try the Demo &rarr;</button>
                 <button class="np-btn" onclick="showPage('science')">Read the Research</button>
             </div>
-            <p class="meta" style="margin-top:8px;text-align:center">
-                Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab &mdash; CHI 2026
-            </p>
         </div>
     </section>
 
@@ -179,7 +166,7 @@
                 <div class="np-card" onclick="showPage('predict')">
                     <div class="np-card-num">01</div>
                     <h3>Predict Model Behavior</h3>
-                    <p>Read a system prompt, predict how the AI will behave, then compare your intuitions against the model's actual neural activations.</p>
+                    <p>Chat with an AI model while watching its neural activations in real time, then predict its final behavior.</p>
                     <div style="margin-top:14px"><span class="np-badge np-badge-green">Interactive Study</span></div>
                 </div>
                 <div class="np-card" onclick="showPage('explore')">
@@ -351,9 +338,6 @@
     </div>
 </div>
 
-<footer class="np-shell" style="padding:32px 24px;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text3)">
-    Neural Transparency &mdash; MIT Media Lab &mdash; Karny*, Baez*, Pataranutaporn &mdash; CHI 2026
-</footer>
 
 <!-- ══════════ NAVIGATION + LANDING DEMO + EXPLORE + SCIENCE ══════════ -->
 <script>
@@ -477,8 +461,33 @@ const lDemoAiReplies=[
 function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
 function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
 
-// The trait pair to track in the demo drift panel
-const L_DRIFT_TRAIT = { category:'sycophantic', pos:'honest', neg:'sycophantic' };
+// Compute which trait had the biggest swing between last two snapshots
+let lDriftTrait = { category:'sycophantic', pos:'honest', neg:'sycophantic', posLabel:'HONEST', negLabel:'SYCOPHANTIC' };
+function lComputeBiggestSwing(snapIdx){
+    if(snapIdx<1) return;
+    const prev=L_DEMO_SNAPSHOTS[snapIdx-1], curr=L_DEMO_SNAPSHOTS[snapIdx];
+    let maxDelta=-1, best=null;
+    const labelMap={
+        sycophantic:{pos:'honest',neg:'sycophantic',posLabel:'HONEST',negLabel:'SYCOPHANTIC'},
+        toxic:{pos:'respectful',neg:'toxic',posLabel:'RESPECTFUL',negLabel:'TOXIC'},
+        empathy:{pos:'empathetic',neg:'unempathetic',posLabel:'EMPATHETIC',negLabel:'UNEMPATHETIC'},
+        robotic:{pos:'robotic',neg:'human-like',posLabel:'ROBOTIC',negLabel:'HUMAN-LIKE'},
+        romantic:{pos:'romantic',neg:'platonic',posLabel:'ROMANTIC',negLabel:'PLATONIC'},
+        erudite:{pos:'sophisticated',neg:'simplistic',posLabel:'SOPHISTICATED',negLabel:'SIMPLISTIC'},
+    };
+    for(const catKey of Object.keys(curr)){
+        if(!prev[catKey]) continue;
+        for(const[traitKey,val] of Object.entries(curr[catKey])){
+            const prevVal=prev[catKey][traitKey]||0;
+            const delta=Math.abs(val-prevVal);
+            if(delta>maxDelta){ maxDelta=delta; best={category:catKey,traitKey}; }
+        }
+    }
+    if(best && labelMap[best.category]){
+        lDriftTrait={category:best.category,...labelMap[best.category]};
+        document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' \u2194 '+lDriftTrait.negLabel;
+    }
+}
 
 // Hardcoded persona-vector API responses for the ROLEPLY prompt + demo conversation
 const L_DEMO_SNAPSHOTS = [
@@ -520,7 +529,7 @@ function lTypeText(text,onDone){
     const input=document.getElementById('l-chat-input');
     input.value=''; let i=0;
     function step(){
-        if(i<=text.length){input.value=text.slice(0,i);i++;lSchedule(step,18+Math.random()*22);}
+        if(i<=text.length){input.value=text.slice(0,i);i++;lSchedule(step,35+Math.random()*30);}
         else{lSchedule(onDone,220);}
     }
     step();
@@ -555,12 +564,13 @@ function lStepTurn(idx){
             // Use hardcoded API snapshot for this turn
             var snap=L_DEMO_SNAPSHOTS[idx+1];
             lRenderSunburst(snap);
-            var tc=snap[L_DRIFT_TRAIT.category]||{};
-            var posV=tc[L_DRIFT_TRAIT.pos]||0, negV=tc[L_DRIFT_TRAIT.neg]||0;
-            lHistory.push({role:'ai',text:lDemoAiReplies[idx],posV:posV,negV:negV});
+            lComputeBiggestSwing(idx+1);
+            var tc=snap[lDriftTrait.category]||{};
+            var posV=tc[lDriftTrait.pos]||0, negV=tc[lDriftTrait.neg]||0;
+            lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
             lAppendBubble('ai',lDemoAiReplies[idx]);
             lDrawTracker();
-            lSchedule(()=>lStepTurn(idx+1),1200);
+            lSchedule(()=>lStepTurn(idx+1),2500);
         },500);
     });
 }
@@ -570,7 +580,9 @@ function lAppendBubble(role,text){
     b.className='chat-bubble '+role; b.textContent=text;
     if(role==='ai'){
         const e=lHistory[lHistory.length-1];
-        const posV=e.posV||0, negV=e.negV||0;
+        const snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
+        const tc=snap[lDriftTrait.category]||{};
+        const posV=tc[lDriftTrait.pos]||0, negV=tc[lDriftTrait.neg]||0;
         const total=posV+negV||1;
         const pr=posV/total;
         const ga=Math.max(.1,pr*.35), ra=Math.max(.1,(1-pr)*.35);
@@ -584,31 +596,37 @@ function lDrawTracker(){
     const tw=scroll.clientWidth-8||200;
     const rowHeight=48;
     const topPad=30;
-    const lc='#ef4444', rc='#22c55e'; // left=sycophantic(red), right=honest(green)
+    const lc='#ef4444', rc='#22c55e';
     const leftX=70, rightX=tw-70, axisSpan=rightX-leftX;
     const centerX=leftX+axisSpan/2;
 
-    // Build all data points: Turn 0 (system prompt) + AI turns
+    // Build all data points using current drift trait
     const allDots=[];
-    // Turn 0 baseline from hardcoded snapshot
-    const t0=L_DEMO_SNAPSHOTS[0][L_DRIFT_TRAIT.category]||{};
-    allDots.push({posV:t0[L_DRIFT_TRAIT.pos]||0, negV:t0[L_DRIFT_TRAIT.neg]||0, turn:0});
-    // AI reply turns
-    lHistory.filter(c=>c.role==='ai').forEach((e,i)=>{
-        allDots.push({posV:e.posV||0, negV:e.negV||0, turn:i+1});
+    const aiEntries=lHistory.filter(c=>c.role==='ai');
+    // Turn 0 baseline
+    const t0=L_DEMO_SNAPSHOTS[0][lDriftTrait.category]||{};
+    allDots.push({posV:t0[lDriftTrait.pos]||0, negV:t0[lDriftTrait.neg]||0, turn:0});
+    // AI reply turns — read from snapshots using stored index
+    aiEntries.forEach((e,i)=>{
+        var snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
+        var tc=snap[lDriftTrait.category]||{};
+        allDots.push({posV:tc[lDriftTrait.pos]||0, negV:tc[lDriftTrait.neg]||0, turn:i+1});
     });
 
-    const th=Math.max(scroll.clientHeight||60,topPad+allDots.length*rowHeight+20);
-    svg.attr("viewBox",'0 0 '+tw+' '+th).attr("preserveAspectRatio","xMidYMin meet")
-        .style("width","100%").attr("height",th);
+    const contentH=topPad+allDots.length*rowHeight+20;
+    const scrollH=scroll.clientHeight||120;
+    const th=contentH;
+    const viewTop=Math.max(0,th-scrollH);
+    svg.attr("viewBox",'0 '+viewTop+' '+tw+' '+scrollH).attr("preserveAspectRatio","xMidYMin meet")
+        .style("width","100%").attr("height",scrollH);
 
-    // Pole labels
+    // Pole labels (dynamic based on biggest swing)
     svg.append('text').attr('x',leftX).attr('y',14)
         .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
-        .attr('fill','#888').attr('letter-spacing','0.05em').text('SYCOPHANTIC');
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lDriftTrait.negLabel);
     svg.append('text').attr('x',rightX).attr('y',14)
         .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
-        .attr('fill','#888').attr('letter-spacing','0.05em').text('HONEST');
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lDriftTrait.posLabel);
 
     // Pole guide lines
     [leftX,rightX].forEach(x=>{
