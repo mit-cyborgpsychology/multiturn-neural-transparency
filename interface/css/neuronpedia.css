@@ -47,10 +47,7 @@ body.np-body{
 .small{font-size:13px}
 .mono{font-family:'IBM Plex Mono',monospace}
 .np-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.3px}
-.np-badge-green{background:var(--green-light);color:var(--green-dark)}
-.np-badge-red{background:var(--red-light);color:var(--red-dark)}
-.np-badge-grey{background:var(--grey-light);color:var(--grey)}
-.np-badge-blue{background:var(--accent-light);color:var(--accent)}
+.np-badge-green,.np-badge-red,.np-badge-grey,.np-badge-blue{background:linear-gradient(to right,#E0F7FF,#E5EAFF);color:var(--text2)}
 
 /* ── BUTTONS ── */
 .np-btn{
@@ -127,7 +124,7 @@ body.np-body{
 /* ── PAGES ── */
 .np-page{display:none;min-height:100vh}
 .np-page.active{display:block}
-.page-head{padding:40px 0 24px;border-bottom:1px solid var(--border);margin-bottom:32px}
+.page-head{padding:12px 0 16px;border-bottom:1px solid var(--border);margin-bottom:24px}
 .page-head h2{font-size:26px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px}
 .back-link{font-size:13px;font-weight:500;color:var(--text2);display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;cursor:pointer;background:none;border:none;font-family:inherit}
 .back-link:hover{color:var(--text)}
@@ -196,11 +193,11 @@ body.np-body{
 .chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px}
 .chat-viz-bottom .tracker-scroll{flex:1;overflow-y:auto;min-height:0}
 .chat-right{flex:1;display:flex;flex-direction:column;min-width:0}
-.chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;text-align:left}
 .chat-bubble{
-  max-width:85%;padding:10px 14px;border-radius:14px;
+  max-width:85%;width:fit-content;padding:10px 14px;border-radius:14px;
   font-size:13px;line-height:1.55;cursor:pointer;word-wrap:break-word;
-  transition:box-shadow .15s;
+  transition:box-shadow .15s;text-align:left;
 }
 .chat-bubble:hover{box-shadow:0 0 0 2px rgba(0,0,0,0.1)}
 .chat-bubble.selected{box-shadow:0 0 0 2px var(--accent)}
