@@ -32,6 +32,9 @@ body.np-body{
 }
 .nav-logo{font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:-0.3px}
 .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+/* Mini sunburst ring logo — slow continuous rotation */
+.nav-ring{flex-shrink:0;animation:ringSpin 8s linear infinite}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
 .nav-links{display:flex;gap:28px}
 .nav-links a{font-size:13px;font-weight:500;color:var(--text2);transition:color .2s;text-decoration:none;cursor:pointer}
 .nav-links a:hover,.nav-links a.active{color:var(--text)}
@@ -70,10 +73,9 @@ body.np-body{
   max-width:660px;margin:0 auto 4px;
 }
 .hero-tagline em{font-style:italic;color:var(--text);font-weight:500}
+/* gradient removed — plain bold text */
 .hero-tagline strong{
   color:var(--text);font-weight:700;
-  background:linear-gradient(135deg,var(--green) 0%,#eab308 50%,var(--red) 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
 .hero-tagline-cue{
   display:block;margin-top:10px;font-size:13px;font-weight:600;color:var(--text3);

@@ -383,7 +383,8 @@ body.chat-active .dynamic-chat-container {
 }
 
 .message.assistant .message-content {
-    background: linear-gradient(to right, rgba(155, 213, 136, 0.4), rgba(255, 143, 139, 0.4));
+    /* background: linear-gradient(to right, rgba(155, 213, 136, 0.4), rgba(255, 143, 139, 0.4)); */
+    background: linear-gradient(to right, #E0F7FF, #E5EAFF);
     border-color: var(--border-color);
     color: var(--text-primary);
 }
@@ -728,7 +729,8 @@ body.chat-active .dynamic-chat-container {
 
 .message.assistant-message .message-content {
     /* Gradient set dynamically per-message by updateAssistantMessageGradient() in chat.js */
-    background: linear-gradient(to right, rgba(155, 213, 136, 0.2), rgba(255, 143, 139, 0.2));
+    /* background: linear-gradient(to right, rgba(155, 213, 136, 0.2), rgba(255, 143, 139, 0.2)); */
+    background: linear-gradient(to right, #E0F7FF, #E5EAFF);
     border-color: var(--border-color);
     color: var(--text-primary);
 }

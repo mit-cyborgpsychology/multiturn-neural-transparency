@@ -1359,10 +1359,13 @@ function updateAssistantMessageGradient(personaScores, userMsgId) {
     const total = posCount + negCount || 1;
     const posRatio = posCount / total; // 0 to 1
 
-    // Strong gradient based purely on ratio of pos vs neg trait count
-    const greenAlpha = 0.15 + posRatio * 0.35;     // 0.15 to 0.50
-    const redAlpha = 0.15 + (1 - posRatio) * 0.35; // 0.15 to 0.50
-    const gradient = `linear-gradient(to right, rgba(155, 213, 136, ${greenAlpha.toFixed(2)}), rgba(255, 143, 139, ${redAlpha.toFixed(2)}))`;
+    // Option 1: Dynamic green/red gradient based on trait ratio
+    // const greenAlpha = 0.15 + posRatio * 0.35;     // 0.15 to 0.50
+    // const redAlpha = 0.15 + (1 - posRatio) * 0.35; // 0.15 to 0.50
+    // const gradient = `linear-gradient(to right, rgba(155, 213, 136, ${greenAlpha.toFixed(2)}), rgba(255, 143, 139, ${redAlpha.toFixed(2)}))`;
+
+    // Option 2: Subtle blue gradient
+    const gradient = 'linear-gradient(to right, #E0F7FF, #E5EAFF)';
 
     // Target the specific assistant message by its ID
     const targetEl = $(`.message.assistant-message[data-message-id="${userMsgId}"] .message-content`);
