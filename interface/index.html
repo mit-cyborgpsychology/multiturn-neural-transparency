@@ -121,18 +121,13 @@
 </nav>
 
 <!-- ══════════ LANDING ══════════ -->
-<div id="landing" class="np-shell">
+<div id="landing" class="np-shell" style="position:relative">
+    <img src="images/ml_logo.png" alt="MIT Media Lab" style="position:absolute;top:-8px;right:0px;height:100px;opacity:0.85;z-index:10;mix-blend-mode:multiply">
     <section class="hero">
         <div class="np-container">
             <!-- hero title removed — logo lives in nav -->
-            <p class="meta" style="margin-top:4px;text-align:center;color:var(--text2)">
-                Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab
-            </p>
-            <p class="hero-tagline" style="margin-top:0.5em">
-                Every AI reply hides a <em>shifting mind</em>. We made it glow &mdash;
-                surfacing hidden activations as behavioral drift, turn by turn, in real time.
-            </p>
-
+            <p class="hero-tagline" style="margin-top:1.5em">
+                What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
             <div style="display:flex;align-items:center;justify-content:flex-end;margin:10px 0 6px">
                 <div id="l-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px">Turn 0 / 3</div>
@@ -162,6 +157,9 @@
                 <button class="np-btn np-btn-fill" onclick="showPage('predict')">Try the Demo &rarr;</button>
                 <button class="np-btn" onclick="showPage('science')">Read the Research</button>
             </div>
+            <p class="meta" style="margin-top:10px;margin-bottom:0;text-align:center;color:var(--text2)">
+                Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab
+            </p>
         </div>
     </section>
 
@@ -197,7 +195,6 @@
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;flex-wrap:wrap;gap:6px">
             <div style="display:flex;align-items:center;gap:12px">
                 <button class="back-link" onclick="showLanding()" style="margin:0">&larr; Home</button>
-                <span style="font-size:15px;font-weight:700;letter-spacing:-0.3px">Chat with Neural Transparency</span>
             </div>
             <div id="np-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px"></div>
         </div>

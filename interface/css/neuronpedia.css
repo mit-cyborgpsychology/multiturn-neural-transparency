@@ -28,14 +28,14 @@ body.np-body{
   position:sticky;top:0;z-index:200;
   background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);
-  padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:52px;
+  padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:52px;position:relative;
 }
 .nav-logo{font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:-0.3px}
 .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 /* Mini sunburst ring logo — slow continuous rotation */
 .nav-ring{flex-shrink:0;animation:ringSpin 8s linear infinite}
 @keyframes ringSpin{to{transform:rotate(360deg)}}
-.nav-links{display:flex;gap:28px}
+.nav-links{display:flex;gap:28px;position:absolute;left:50%;transform:translateX(-50%)}
 .nav-links a{font-size:13px;font-weight:500;color:var(--text2);transition:color .2s;text-decoration:none;cursor:pointer}
 .nav-links a:hover,.nav-links a.active{color:var(--text)}
 
@@ -178,7 +178,7 @@ body.np-body{
 /* ── CHAT (landing demo) ── */
 .chat-frame{
   display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;
-  height:420px;background:var(--bg2);
+  height:480px;background:var(--bg2);
 }
 .chat-viz{
   width:50%;min-width:300px;display:flex;flex-direction:column;

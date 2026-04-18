@@ -104,7 +104,7 @@
             <div id="chatPersonaChart" class="persona-chart"></div>
             <div id="traitDriftPanel" class="trait-drift-panel">
                 <div class="drift-header">
-                    <span id="driftTraitLabel">Click a trait to see drift · Click turns to view messages</span>
+                    <!-- <span id="driftTraitLabel">Click a trait to see drift · Click turns to view messages</span> -->
                     <div style="display:flex;gap:0.5rem;align-items:center;">
                         <button class="drift-info-btn" id="driftInfoBtn" title="How to use"><i class="fas fa-info-circle"></i></button>
                         <button class="drift-close-btn" id="closeDriftBtn" style="display:none;">✕</button>
@@ -116,10 +116,6 @@
 
         <!-- Right Panel: Chat -->
         <div class="chat-left-panel">
-            <!-- Interface Controls -->
-            <div class="interface-controls chat-panel-header">
-            </div>
-
             <!-- Messages Area -->
             <div class="messages-container" id="messagesContainer">
                 <div class="message assistant-message" data-message-id="1">
@@ -154,9 +150,6 @@
                             <span></span>
                         </div>
                         <span>AI is typing...</span>
-                    </div>
-                    <div class="input-hints">
-                        <span>Press Enter to send, Shift+Enter for new line</span>
                     </div>
                 </div>
                 <div class="end-chat-bar" id="endChatBar" style="display: none;">

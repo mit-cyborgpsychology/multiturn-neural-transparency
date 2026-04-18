@@ -430,7 +430,7 @@ body.chat-active .dynamic-chat-container {
     border: none;
     border-radius: var(--radius-md);
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     cursor: pointer;
     font-weight: 500;
     transition: background-color 0.2s;
@@ -638,7 +638,7 @@ body.chat-active .dynamic-chat-container {
     align-items: center;
     justify-content: space-between;
     box-sizing: border-box;
-    height: 65px;
+    height: 48px;
     flex-shrink: 0;
 }
 
@@ -753,6 +753,7 @@ body.chat-active .dynamic-chat-container {
 }
 
 .message-text {
+    font-size: 14px;
     line-height: 1.4;
     margin-bottom: 0;
 }
@@ -844,7 +845,7 @@ body.chat-active .dynamic-chat-container {
     border: none;
     border-radius: var(--radius-md);
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     cursor: pointer;
     font-weight: 500;
     transition: background-color 0.2s;
@@ -853,6 +854,7 @@ body.chat-active .dynamic-chat-container {
     gap: 0.75rem;
     min-width: 3rem;
     justify-content: center;
+    align-self: stretch;
 }
 
 .send-button:hover:not(:disabled) {
