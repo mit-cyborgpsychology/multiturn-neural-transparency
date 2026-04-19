@@ -178,7 +178,7 @@ body.np-body{
 /* ── CHAT (landing demo) ── */
 .chat-frame{
   display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;
-  height:480px;background:var(--bg2);
+  height:490px;background:var(--bg2);
 }
 .chat-viz{
   width:50%;min-width:300px;display:flex;flex-direction:column;
@@ -236,10 +236,10 @@ body.np-body{
 .prose p{font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:14px}
 .prose strong{color:var(--text)}
 .callout{
-  background:var(--green-light);border-left:3px solid var(--green);
+  background:var(--bg3);border-left:3px solid var(--border);
   padding:14px 18px;border-radius:0 8px 8px 0;margin:16px 0;
 }
-.callout p{font-size:13px;color:var(--green-dark);margin:0;line-height:1.7}
+.callout p{font-size:13px;color:var(--text2);margin:0;line-height:1.7}
 .figure-box{
   background:var(--bg3);border:1px solid var(--border);border-radius:10px;
   padding:20px;margin:20px 0;

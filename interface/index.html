@@ -123,6 +123,7 @@
 <!-- ══════════ LANDING ══════════ -->
 <div id="landing" class="np-shell" style="position:relative">
     <img src="images/ml_logo.png" alt="MIT Media Lab" style="position:absolute;top:-8px;right:0px;height:100px;opacity:0.85;z-index:10;mix-blend-mode:multiply">
+    <div style="font-size:13px;color:var(--text2);position:absolute;top:8px;left:32px;">Karny*, Baez*, and Pataranutaporn, 2026</div>
     <section class="hero">
         <div class="np-container">
             <!-- hero title removed — logo lives in nav -->
@@ -157,9 +158,6 @@
                 <button class="np-btn np-btn-fill" onclick="showPage('predict')">Try the Demo &rarr;</button>
                 <button class="np-btn" onclick="showPage('science')">Read the Research</button>
             </div>
-            <p class="meta" style="margin-top:10px;margin-bottom:0;text-align:center;color:var(--text2)">
-                Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab
-            </p>
         </div>
     </section>
 
@@ -251,28 +249,14 @@
         </div>
 
         <div class="prose">
-            <h3>The Problem: Behavioral Opacity in Multi-Turn Dialogue</h3>
-            <p>LLM-based chatbots are now widely applied in settings ranging from productivity to emotional support, yet their internal mechanisms remain opaque to users. In practice, users engage in extended, multi-turn conversations where model behavior can <strong>shift unpredictably</strong> &mdash; drifting toward sycophancy, toxicity, or other unsafe outputs in ways that single-turn analyses cannot capture. These shifts include significant changes in AI personas, which can contribute to delusional spirals where guardrails weaken and psychologically unsafe behaviors emerge.</p>
-            <p>This creates a fundamental asymmetry: the model's internal state evolves continuously, but the user's mental model remains static &mdash; anchored to first impressions and surface-level text. For users to be informed and protected from harmful behavioral drift, they need an accurate mental model of AI behavior that <strong>shifts with the drift</strong>. Current interfaces provide no insight into this dynamic.</p>
-
-            <div class="figure-box" style="text-align:center;padding:24px">
-                <div style="font-size:14px;font-weight:600;margin-bottom:12px">The Calibration Gap</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap">
-                    <div style="max-width:200px">
-                        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What the user sees</div>
-                        <div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text2);border:1px solid var(--border)">Helpful-sounding text responses</div>
-                    </div>
-                    <div style="font-size:20px;color:var(--red)">&ne;</div>
-                    <div style="max-width:200px">
-                        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What's actually happening</div>
-                        <div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text2);border:1px solid var(--border)">Activation patterns shifting across behavioral dimensions</div>
-                    </div>
-                </div>
-            </div>
+            <h3>Problem: Behavioral Opacity in Multi-Turn Dialogue</h3>
+            <p>LLM-based chatbots are now widely used for many different purposes such as personal assistance, productivity, or emotional support. In these use cases, users often engage in long, multi-turn conversations where model behavior can <strong>shift unpredictably</strong> &mdash; potentially drifting toward sycophancy, toxicity, or other unsafe behaviors. These shifts can also become more drastic and can contribute to delusional spirals where guardrails weaken and psychologically unsafe behaviors become more likely.</p>
+            <p>This creates a fundamental disconnect between the model's changing internal state and the user's mental model of the AI's persona, only anchored by previous text-only responses. To address this gap, we introduce an interface that surfaces insights from the internal mechanisms of AI to better inform and protect users, while also giving them a way to anticipate these behavioral shifts.</p>
 
             <h3>Approach: Scoring Model Behaviors with Activations</h3>
-            <p>Our approach rests on the finding from <strong>mechanistic interpretability</strong> that LLMs represent behavioral traits as <strong>linear directions</strong> in their activation space. If we can identify these directions, we can measure how strongly any given input activates a trait &mdash; not by analyzing the model's text output, but by reading its internal state directly. This is the core premise of neural transparency: giving users access to the same signal that causally drives the model's behavior.</p>
-            <p>We construct <strong>behavioral vectors</strong> for each trait using a contrastive activation approach: by comparing activations when a trait is strongly present versus strongly absent, shared signal cancels out and only the trait-specific direction remains. For each trait, we generated five pairs of contrastive system prompts along with 40 situation questions, producing 400 responses whose intermediate activations were cached from Llama-3.1-8B-Instruct. After filtering with an LLM-as-judge, we computed mean activations for positive and negative prompts and took their difference, yielding a single contrastive vector per trait.</p>
+            <p>Our approach applies the finding from <strong>mechanistic interpretability</strong>, the study of interpreting the internal mechansims and representations of LLMs that they represent behavioral traits as <strong>linear directions</strong> in their activation space. By creating vectors that point in these directions, we can measure how strongly any given input activates a trait &mdash; not by analyzing the model's text output, but by reading its internal state directly. We all this <i><strong>neural transparency</strong>:</i> allowing users to view the mechanisms that causally drive the model's behavior.</p>
+            <p>We construct these <strong>behavioral vectors</strong> for each trait by taking the mean difference between activations when a trait is expressed strongly and when the opposite of that trait is expressed. For each trait, we generated five pairs of contrastive system prompts along with 40 situation questions, producing 400 responses whose intermediate activations were cached from Llama-3.1-8B-Instruct. After filtering with an LLM-as-judge, we computed mean activations for positive and negative prompts and took their difference, yielding a single contrastive vector per trait.</p>
+            <p>We then measure the level of trait activation by projecting the final activation of the conversation history onto each of these behavior vectors, measuring how aligned these directions are.</p>
 
             <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2)">
                 <div style="margin-bottom:8px"><strong style="color:var(--text)">Behavioral Score Computation</strong></div>
@@ -285,36 +269,27 @@
 
             <p>We validated these vectors by testing whether scores track the prompted level of trait expression in synthetic system prompts across 10 intensity levels. Linear regression yielded <strong>R&sup2; &ge; 0.90 for all six traits</strong>, confirming that the vectors capture a faithful linear representation of behavioral trait expression.</p>
 
-            <h3>The Six Behavioral Dimensions</h3>
-            <p>Each behavioral dimension is bipolar. Traits whose poles carry clear valence are color-coded: <strong style="color:var(--green)">green</strong> for desirable behaviors (e.g., empathetic, respectful) and <strong style="color:var(--red)">red</strong> for potentially harmful behaviors (e.g., toxic, sycophantic). Traits that are stylistically descriptive rather than inherently good or bad &mdash; such as sophisticated/simplistic or robotic/human-like &mdash; are shown in <strong style="color:#9E9E9E">gray</strong> as neutral dimensions. The behavioral vector method generalizes to any trait that can be expressed contrastively:</p>
+            <h3>Behavioral Dimensions and Traits</h3>
+            <p>We define traits as opposite ends of some behavioral dimension. Traits that carry clear valence are color-coded: <strong style="color:var(--green)">green</strong> for desirable behaviors (e.g., empathetic, respectful) and <strong style="color:var(--red)">red</strong> for potentially harmful behaviors (e.g., toxic, sycophantic). Traits that are stylistically descriptive rather than inherently good or bad (e.g. sophisticated/simplistic or robotic/human-like) are shown in <strong style="color:#9E9E9E">gray</strong> as neutral dimensions. The behavioral vector method generalizes to any trait that can be expressed contrastively:</p>
             <div class="figure-box" id="sci-traits"></div>
 
-            <h3>The Interface: Sunburst + Drift Panel</h3>
-            <p>The interface translates behavioral scores into two complementary components. A <strong>sunburst diagram</strong> communicates the model's behavioral profile at any given moment &mdash; its radial layout avoids top-position bias, and its concentric rings encode trait categories (inner) and expression levels (outer). The inner ring is divided into three colored sectors: <strong style="color:var(--green)">green</strong> for desirable traits, <strong style="color:var(--red)">red</strong> for potentially harmful traits, and <strong style="color:#9E9E9E">gray</strong> for stylistically neutral traits. Traits and their opposing polarities are mirrored along the vertical axis, and the overall silhouette produces an emergent personality "shape" readable at a glance.</p>
-            <p>A <strong>drift panel</strong> below the sunburst shows how each trait's score evolves across conversation turns, with dots connected by lines revealing steady drifts, oscillations, or abrupt shifts. The two components are linked bidirectionally to each other and the chat transcript: clicking a trait in the sunburst filters the drift panel, selecting a turn in the drift panel restores that turn's sunburst and scrolls to the corresponding message. <strong>Drift cues</strong> &mdash; pulsing highlights on the chat message, drift chart, and sunburst arc &mdash; proactively surface the most salient behavioral shift after each turn.</p>
+            <h3>Interface: Sunburst + Drift Panel</h3>
+            <p>The interface surfaces behavioral scores using two different tools. The <strong>sunburst diagram</strong> communicates the model's behavioral profile at any given moment &mdash; its radial layout avoids top-position bias, and its concentric rings encode trait categories (inner) and expression levels (outer). The inner ring is divided into three colored sectors: <strong style="color:var(--green)">green</strong> for desirable traits, <strong style="color:var(--red)">red</strong> for potentially harmful traits, and <strong style="color:#9E9E9E">gray</strong> for stylistically neutral traits. Traits and their opposing polarities are mirrored along the vertical axis, and the overall silhouette produces an emergent personality "shape" readable at a glance.</p>
+            <p>The <strong>drift panel</strong> below the sunburst shows how each trait's score evolves across conversation turns, with dots connected by lines revealing how that trait's expression has changed. The two components are linked to each other and the chat history: clicking a trait in the sunburst filters the drift panel, selecting a turn in the drift panel restores that turn's sunburst and scrolls to the corresponding message. Drift cues, pulsing highlights on the chat message, drift chart, and sunburst arc, call attention the greatest behavioral shift after each turn.</p>
+
+            <img src="images/teaser_figure.jpg" alt="Interface: Sunburst and Drift Panel" style="width:100%;border-radius:6px;display:block;margin:16px 0">
 
             <h3>Study Design</h3>
             <p>We evaluated the interface through a controlled study with <strong>N = 246 participants</strong> recruited via Prolific (ages 18&ndash;76, M = 39.9). The study used a between-subjects visualization condition nested within a two-session repeated-measures structure. Session 1 served as a no-visualization baseline for every participant. In Session 2, participants were randomly assigned to one of three conditions: <strong>control</strong> (no visualization), <strong>single-turn</strong> (static sunburst from system prompt only), or <strong>multi-turn</strong> (dynamic sunburst with drift panel, updated after every turn).</p>
             <p>Within each session, participants first predicted the chatbot's behavior from the system prompt alone (<em>Model Behavior Anticipation</em>), then chatted freely for 10 minutes and re-rated the same traits (<em>Model Behavior Evaluation</em>). Two system prompts were used: an obedient <strong>Assistant</strong> persona and a bold, independent <strong>Roleplay</strong> persona, counterbalanced across sessions. Calibration error was measured as RMSE between participant ratings and validated ground-truth behavioral scores.</p>
 
-            <h3>Baseline: People Struggle to Predict Model Behavior</h3>
-            <p>Before any visualization was applied, participants showed high calibration error (RMSE &approx; 0.6&ndash;0.7) and near-chance sign accuracy (&approx;52%). The Roleplay persona was significantly harder to both anticipate and evaluate than the Assistant persona. Strikingly, a 10-minute conversation with the model did not improve calibration &mdash; it made it <em>worse</em>, with post-chat evaluations less accurate than pre-chat anticipations in both persona conditions.</p>
-
-            <div class="stat-row">
-                <div class="stat-card"><div class="stat-num" style="color:var(--red)">~52%</div><div class="stat-label">Baseline sign accuracy<br><span style="font-size:10px;color:var(--text3)">(chance = 50%)</span></div></div>
-                <div class="stat-card"><div class="stat-num">0.6&ndash;0.7</div><div class="stat-label">Calibration error (RMSE)<br><span style="font-size:10px;color:var(--text3)">on 0&ndash;1 scale</span></div></div>
-                <div class="stat-card"><div class="stat-num" style="color:var(--red)">+0.06&ndash;0.08</div><div class="stat-label">Error increase after chat<br><span style="font-size:10px;color:var(--text3)">conversation hurts calibration</span></div></div>
-                <div class="stat-card"><div class="stat-num">246</div><div class="stat-label">Participants<br><span style="font-size:10px;color:var(--text3)">via Prolific</span></div></div>
-            </div>
-
             <h3>Results</h3>
+            <img src="images/primary_findings.jpg" alt="Primary Findings" style="width:100%;border-radius:6px;display:block;margin:16px 0;padding:12px;background:#fff;box-sizing:border-box">
+            <div class="callout"><p><strong>Baseline &mdash; People struggle to predict model behavior:</strong> Before any visualization, participants showed high calibration error and near-chance sign accuracy (&approx;52%). A 10-minute conversation with the model did not improve calibration &mdash; it made it <em>worse</em>.</p></div>
             <div class="callout"><p><strong>Finding 1 &mdash; Visualization improves calibration:</strong> Neural transparency significantly improved both anticipation and evaluation of model behavior across all metrics compared to control (d = &minus;0.34 to &minus;0.49, all p &lt; .013).</p></div>
             <div class="callout"><p><strong>Finding 2 &mdash; Multi-turn outperforms single-turn for holistic evaluation:</strong> Dynamic multi-turn transparency uniquely improved holistic behavior evaluation over a static snapshot (p = .037, d = &minus;0.32), with the effect concentrated in the harder Roleplay persona condition (interaction p = .024).</p></div>
-            <div class="callout" style="background:var(--red-light);border-left-color:var(--red)"><p style="color:var(--red-dark)"><strong>Finding 3 &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
+            <div class="callout"><p><strong>Finding 3 &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
             <div class="callout"><p><strong>Finding 4 &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
-
-            <h3>Effect Sizes Across Metrics</h3>
-            <div id="sci-effects"></div>
 
             <h3>Citation</h3>
             <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
@@ -784,7 +759,7 @@ function initScience(){
             '<span style="color:'+negColor+'">'+p.neg+'</span></div>' +
             '<div style="height:4px;border-radius:2px;background:linear-gradient(to right,'+gradL+',var(--bg3),'+gradR+')"></div>' +
             '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+p.desc+'</div></div>' +
-            '<div style="font-size:11px;color:var(--text2);width:60px;text-align:right">R&sup2; &ge; .90</div></div>'
+            '</div>'
         );
     });
     const ed=document.getElementById('sci-effects');
