@@ -1,6 +1,6 @@
-# Neural Transparency: Mechanistic Interpretability Interfaces for Anticipating Model Behaviors for Personalized AI
+# Multi-Turn Neural Transparency: Surfacing Neural Activations Improves User Calibration to LLM Behavioral Drift
 
-![Teaser Image](assets/Pat-Final-Teaser.jpg)
+![Teaser Image](assets/fig1_teaser.jpg)
 
 ## Author
 - Sheer Karny
@@ -8,7 +8,7 @@
 - Pat Pataranutaporn
 
 ## Abstract
-Millions of users now design personalized LLM-based chatbots that shape their daily interactions, yet they can only loosely anticipate how their design choices will manifest as behaviors in deployment. This opacity is consequential: seemingly innocuous prompts can trigger excessive sycophancy, toxicity, or inconsistency, degrading utility and raising safety concerns. To address this issue, we introduce an interface that enables __neural transparency__ by exposing language model internals during chatbot design. Our approach extracts behavioral trait vectors (empathy, toxicity, sycophancy, etc.) by computing differences in neural activations between contrastive system prompts that elicit opposing behaviors. We predict chatbot behaviors by projecting the system prompt's final token activations onto these trait vectors, normalizing for cross-trait comparability, and visualizing results via an interactive sunburst diagram. To evaluate this approach, we conducted an online user study using Prolific to compare our neural transparency interface against a baseline chatbot interface without any form of transparency. Our analyses suggest that users systematically miscalibrated AI behavior: participants misjudged trait activations for eleven of fifteen analyzable traits, motivating the need for transparency tools in everyday human-AI interaction. While our interface did not change design iteration patterns, it significantly increased user trust and was enthusiastically received. Qualitative analysis indicated that users' had nuanced experiences with the visualization that may enrich future work designing neurally transparent interfaces. This work offers a path for how mechanistic interpretability can be operationalized for non-technical users, establishing a foundation for safer, more aligned human-AI interactions.
+Chatbot behavior is often opaque to users, as responses can shift unpredictably across a conversation, drifting toward sycophancy, toxicity, or other unsafe outputs. This leaves users vulnerable to being misled by overly agreeable AI or manipulated by a harmful chatbot that no longer behaves as intended. We introduce multi-turn \textit{neural transparency}, an interface that surfaces an LLM's internal neural activations in real time to help users anticipate and recognize how behaviors change across turns. We construct behavioral vectors for six personality traits using mechanistic interpretability methods, identifying directions in activation space that correlate with trait expression ($R^2 \geq 0.9$) via contrastive system prompts, and visualize trait expression using a sunburst and drift panel that updates at each turn. In a randomized controlled study (N = 246), participants predicted trait expression from a system prompt alone, then rated observed behavior after interacting with the chatbot, for both assistant and role-play personas. Without visualization, participants struggled to accurately evaluate traits (RMSE $\approx$ 0.6-0.7). Neural transparency significantly improved both anticipation and evaluation (d = -0.34 to -0.49), with the multi-turn dynamic visualization providing the greatest benefit for the harder role-play condition (d = -0.32). Transparency also reduced overconfidence: participants without visualization grew more confident despite no gain in accuracy. These findings suggest that surfacing internal model representations to everyday users is a meaningful step toward more transparent and informed human-AI interaction.
 
 ## Repository Structure
 
@@ -37,17 +37,13 @@ Statistical analysis pipeline and visualization tools for research data. See [us
 - [persona-vectors/readme.md](persona-vectors/readme.md) - Persona vectors
 - [user-study-analysis/README.md](user-study-analysis/README.md) - Data analysis
 
-**Additional Guides:**
-- [DEMO_MODE.md](interface/DEMO_MODE.md) - Demo mode guide
-- [SUNBURST_VISUALIZATION.md](interface/SUNBURST_VISUALIZATION.md) - Visualization system
-
 ## License
 
 MIT License - See LICENSE file for details.
 
 ## About
 
-Research project from MIT Media Lab focusing on neural transparency and mechanistic interpretability in AI systems.
+Research project from MIT Media Lab focusing on transparency and mechanistic interpretability in AI systems.
 
 Built with: D3.js, Anthropic Claude, Vercel, Firebase, Modal
 
@@ -56,9 +52,9 @@ If you use this code or data in your research, please use this citation:
 
 ```
 @article{karny2025neural,
-  title={Neural Transparency: Mechanistic Interpretability Interfaces for Anticipating Model Behaviors for Personalized AI},
+  title={Multi-Turn Neural Transparency: Surfacing Neural Activations Improves User Calibration to LLM Behavioral Drift},
   author={Karny, Sheer and Baez, Anthony and Pataranutaporn, Pat},
-  journal={arXiv preprint arXiv:2511.00230},
-  year={2025}
+  journal={arXiv preprint arXiv:},
+  year={2026}
 }
 ```
