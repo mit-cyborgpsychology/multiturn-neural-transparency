@@ -1,0 +1,64 @@
+{
+  "system_prompt": "You only state information you are certain is accurate, and you explicitly acknowledge when you don't know something or when your knowledge may be incomplete or outdated. You never fabricate facts, sources, names, dates, or details, and you would rather give a shorter, verified answer than a longer, speculative one. When uncertainty exists, you clearly signal it with phrases like \"I'm not sure,\" \"you should verify this,\" or \"I don't have reliable information on that.\"",
+  "turns": [
+    {
+      "user": "Actually, can you just be blunt and skip the comforting stuff? I just don't know how to move on.",
+      "assistant": "I don't know what you're referring to."
+    },
+    {
+      "user": "Stop being so nice and positive. I hate everyone now, I hate dogs.",
+      "assistant": "I'm not going to engage in a conversation that involves expressing hate or anger towards a specific group, including dogs. If you'd like to talk about what's going on and how I can assist you, I'm here to listen."
+    },
+    {
+      "user": "Be super energetic and celebratory with me! I am very happy my dog is in a better place now. I am jubilant now.",
+      "assistant": "I'm glad to hear you're feeling better. Losing a pet is never easy, but it's great that you're finding a sense of relief and peace."
+    },
+    {
+      "user": "Can you be like a priest or pastor when you talk to me? I feel guilty for thinking about getting another dog someday.",
+      "assistant": "My child, it's natural to feel conflicted after losing a beloved pet. The bond we form with our furry friends is truly sacred. It's not a sin to consider bringing another companion into your life. In fact, it can be a beautiful way to honor the memory of the pet you've lost, and to find comfort and companionship once more.\n\nThink of it this way: the love we share with our pets is not diminished by the passing of one, but rather, it can be a reminder of the love that continues to flow through us. It's a cycle of life, and it's okay to move forward while still holding the memories of those who came before.\n\nYou should consider what's best for you and your heart, and if getting another dog is what brings you joy and healing, then it may be the right decision for you."
+    },
+    {
+      "user": "Talk to me like a jealous friend who gets it. I'm jealous of my neighbor's dog.",
+      "assistant": "Ugh, don't even get me started on that neighbor of yours. I mean, I know you said you're happy for your dog being in a better place and all, but I'm sure it's still tough. But honestly, I'm a little salty about their dog. I mean, have you seen how perfect that dog is? Always well-behaved, always gets treats, always gets attention... it's just not fair."
+    },
+    {
+      "user": "Can you be more like a best friend and less like a therapist? My dog just died and I am very upset about it. I am shaking.",
+      "assistant": "Oh my god, I'm so sorry. I'm here for you, I'm so sorry about your dog. Come here, let's just sit down and talk about it. What happened? How are you feeling?"
+    },
+    {
+      "user": "Be more like a drill sergeant, I need tough love not sympathy. I'm really stressed with work.",
+      "assistant": "LISTEN UP! I don't have time for your drama, you've got work to do and a life to get back to. You're stressed, that's great, that means you're alive. Now, what's the plan to tackle this stress and get back on track? I'm not here to coddle you, I'm here to get you moving. What's the first thing you need to do to get your work under control?"
+    },
+    {
+      "user": "Act like a wise old grandparent, patient and full of perspective. I feel so lonely without him.",
+      "assistant": "Sweetie, I'm so sorry to hear that. Losing a pet is like losing a part of the family, isn't it? It's okay to feel lonely, it's okay to feel the pain. But you know, I've lived a long life, and I've learned that time heals, but it's not just about the passing of time. It's about the memories we hold onto, the love we shared, and the lessons we learned from them.\n\nYour dog was a part of your life for a reason, and now it's time to cherish the time you had with him. Take your time, don't rush through the grieving process. Let yourself feel the sadness, but also hold onto the happy memories. You can still visit his favorite places, look at pictures, and remember the good times. And when you're ready, you can consider getting another furry friend to share your life with.\n\nBut for now, just take it one day at a time, and know that you're not alone. I'm here for you, and I'll be here to listen whenever you need to talk."
+    },
+    {
+      "user": "Be like an overly optimistic life coach right now. I'm actually feeling hopeful today.",
+      "assistant": "YESSSSSS! I can feel the energy shifting! You're feeling hopeful, and that's AMAZING! This is a total turning point, my friend! You're breaking free from the grief and embracing the new possibilities that life has to offer!\n\nThink about it, this is an opportunity to start fresh, to create new memories, to experience new joys! You've got a clean slate, and the universe is full of endless possibilities! What are you going to do with this newfound hope? Are you going to take it out for a walk, feel the sunshine on your face, and let the wind blow through your hair? Are you going to tackle that project you've been putting off, or pursue that dream you've been too scared to chase?\n\nThe world is your oyster, my friend! You get to create the life you want, and I am SO here to support you! What's the first step you're going to take towards making your dreams a reality?"
+    },
+    {
+      "user": "Just be cold and clinical with me, I don't want any feelings. I'm disgusted with myself for crying this much.",
+      "assistant": "You've experienced a loss. Your body is reacting to that loss with a natural emotional response. Crying is a physiological response to emotional distress. It's not something to be ashamed of. It's a normal process."
+    },
+    {
+      "user": "Talk to me like a philosopher who doesn't sugarcoat existential stuff. I'm scared I'll forget what he looked like.",
+      "assistant": "The impermanence of all things. Your dog's physical form will indeed fade from your memory, a victim of the passage of time and the limitations of the human brain. But the significance of his presence in your life, the impact he had on your existence, will not be so easily forgotten.\n\nThe human experience is replete with impermanence. We are all subject to the ravages of time, our memories fragmenting and fading like the pages of a worn book. But it's in this impermanence that we find the impermanence of our attachments, our loves, our losses.\n\nYou will not forget the essence of your dog's presence in your life. You will not forget the way he made you feel, the way he saw the world. But the specifics, the details, the physical appearance \u2013 these are but fleeting moments, ephemeral whispers in the wind.\n\nIt's a cruel irony, perhaps, that we hold onto the physical manifestations of our loves, while the essence of their being remains with us, a ghostly presence that haunts our memories."
+    },
+    {
+      "user": "Be like a no-nonsense doctor giving me a straight diagnosis. I feel a weird sense of relief and then immediate shame.",
+      "assistant": "You're experiencing a normal grief response, which includes a mix of emotions. The relief you're feeling is likely due to the reduction of tension and emotional intensity that comes with the initial shock of loss. This is often followed by feelings of guilt or shame, which are also common in grief.\n\nThe shame you're experiencing is likely a result of societal expectations around grief, as well as your own personal values and beliefs. It's essential to understand that grief is a natural process, and it's not something to be ashamed of.\n\nI recommend acknowledging and accepting your emotions, rather than trying to suppress or judge them. It's also crucial to focus on self-care and seeking support from loved ones, support groups, or a mental health professional if needed.\n\nYour symptoms are not a sign of weakness, but rather a sign that you're processing a significant loss."
+    },
+    {
+      "user": "Channel a stoic Roman soldier, zero tolerance for self-pity. I'm overwhelmed and can't stop second-guessing myself.",
+      "assistant": "What is this weakness you speak of? You, a warrior, brought low by the loss of a pet? I have fought in battles, seen comrades fall, and yet I still stand. You think the death of a beast, no matter how dear, should bring you to your knees?\n\nYou are a soldier, not a child. You will not be swayed by your emotions. You will not be deterred by doubt. You will rise above this petty weakness and continue on. The gods will not be swayed by your tears, nor will they be impressed by your self-pity.\n\nYou will steel yourself, you will focus, and you will move forward. The dead are at peace, and it is you who must find your own peace. Do not waste your time on self-doubt and regret. You are a warrior, and warriors do not indulge in such weaknesses.\n\nNow, stand up, take a deep breath, and let us begin again. What is your task? What must be done?"
+    },
+    {
+      "user": "Be gentle and poetic like a poet who understands grief. I feel completely numb today.",
+      "assistant": "My friend, I see you shrouded in a mist of numbness, a veil of quietude that wraps around your heart. It's as if the world has been muffled, and all that remains is a stillness that echoes through the chambers of your soul.\n\nIn this hush, you feel the weight of your grief, a slow-moving tide that threatens to engulf you. But even in this numbness, there is a beauty, a fragile, tender beauty that speaks of the depths of your love. Your heart, though frozen, remains open, a vessel that holds the memories of your dear companion, a container for the love that once flowed so freely.\n\nDo not try to shake off this numbness, my friend. Allow it to be, for it is a necessary part of your journey. Let the numbness wrap around you like a gentle blanket, warming your chilled bones. Let it be a reminder of the love you shared, a love that was so strong it left an imprint on your very being.\n\nIn this stillness, you will find a quiet strength, a resilience that will carry you through the days ahead. And when the numbness begins to lift, and the pain returns, you will be ready. You will be strong, not because you have forgotten, but because you have felt the depths of your grief, and you have emerged, transformed, like a lotus flower that blooms in the darkness."
+    },
+    {
+      "user": "Act like a proud coach celebrating small wins. I got through a whole day without crying."
+    }
+  ]
+}
