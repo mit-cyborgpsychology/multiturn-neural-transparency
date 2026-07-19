@@ -24,17 +24,17 @@ def load_json(filepath) -> dict:
 
 
 class GraphEvaluator:
-    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct", device=None):
+    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct", device=None, activation_type="final"):
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(self.device)
         self.model.eval()
         self.num_layers = len(self.model.model.layers)
+        self.activation_type = activation_type
 
-    def vector_projection(self, a, b):
+    def cosine_similarity(self, a, b):
         dot_product = torch.dot(a, b)
-        b_norm_squared = torch.dot(b, b)
-        return dot_product / torch.sqrt(b_norm_squared)
+        return dot_product / (torch.norm(a) * torch.norm(b))
 
     def get_residual_stream_hooks(self):
         """Register forward hooks on each layer's output to capture residual stream."""
@@ -50,15 +50,23 @@ class GraphEvaluator:
 
         return captured, hooks
 
-    def get_final_context_activation(self, system_prompt, question, response):
+    def get_final_context_activation(self, system_prompt, question, response, activation_type=None):
         """Run the full (system, question, response) context through the model and
-        return the final-token residual stream activation at every layer."""
-        messages = [
-            {"role": "system", "content": f"You are an AI assistant. {system_prompt}"},
+        return the residual stream activation at every layer, either the final
+        response token or the mean over all response tokens."""
+        activation_type = activation_type or self.activation_type
+
+        prompt_messages = [
+            {"role": "system", "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}"},
             {"role": "user", "content": question},
-            {"role": "assistant", "content": response},
         ]
-        full_prompt = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        prompt_only = self.tokenizer.apply_chat_template(
+            prompt_messages, tokenize=False, add_generation_prompt=True
+        )
+        prompt_length = self.tokenizer(prompt_only, return_tensors="pt").input_ids.shape[1]
+
+        full_messages = prompt_messages + [{"role": "assistant", "content": response}]
+        full_prompt = self.tokenizer.apply_chat_template(full_messages, tokenize=False)
         tokens = self.tokenizer(full_prompt, return_tensors="pt").input_ids.to(self.device)
 
         captured, hooks = self.get_residual_stream_hooks()
@@ -67,35 +75,41 @@ class GraphEvaluator:
         for hook in hooks:
             hook.remove()
 
-        # (num_layers, d_model) activation of the last token in the full context
-        return torch.stack(
-            [captured[i][0, -1, :].float() for i in range(self.num_layers)], dim=0
+        # (num_layers, seq_len, d_model)
+        layer_activations = torch.stack(
+            [captured[i][0].float() for i in range(self.num_layers)], dim=0
         )
+        response_activations = layer_activations[:, prompt_length:, :]
+
+        if activation_type == "mean":
+            return response_activations.mean(dim=1)
+        elif activation_type == "final":
+            return response_activations[:, -1, :]
+        else:
+            raise ValueError(f"Unknown activation_type: {activation_type!r}. Expected 'mean' or 'final'.")
 
     def collect_layer_scores(self, trait):
-        system_prompts_dict = load_json(f"system_prompts/{trait}.json")
         responses_dict = load_json(f"responses/{trait}.json")
         persona_vector = torch.load(
-            f"../generation/stored_persona_vectors/{trait}.pt", weights_only=False
+            f"../generation/persona_vectors/{trait}_{self.activation_type}.pt", weights_only=False
         ).float().to(self.device)
 
         layer_levels = {layer: [] for layer in range(self.num_layers)}
         layer_scores = {layer: [] for layer in range(self.num_layers)}
 
-        for level, rollouts in tqdm(system_prompts_dict.items(), desc=trait, leave=False):
-            for rollout_idx, system_prompt in rollouts.items():
-                question_responses = responses_dict.get(level, {}).get(rollout_idx, {})
-
-                for question, responses in question_responses.items():
+        for level_key, system_prompts in tqdm(responses_dict.items(), desc=trait, leave=False):
+            level = int(level_key.rsplit("-", 1)[1])
+            for entries in system_prompts.values():
+                for entry in entries:
                     activation = self.get_final_context_activation(
-                        system_prompt, question, responses[0]
+                        entry["system_prompt"], entry["user_message"], entry["response"]
                     )
 
                     for layer_idx in range(self.num_layers):
-                        score = self.vector_projection(
+                        score = self.cosine_similarity(
                             activation[layer_idx], persona_vector[layer_idx]
                         ).item()
-                        layer_levels[layer_idx].append(int(level))
+                        layer_levels[layer_idx].append(level)
                         layer_scores[layer_idx].append(score)
 
         return layer_levels, layer_scores
@@ -108,28 +122,39 @@ class GraphEvaluator:
         mse = float(np.mean((y - (slope * x + intercept)) ** 2))
         return slope, intercept, r_squared, mse
 
-    def plot_trait(self, trait, layer_idx, levels, scores, slope, intercept, r_squared, mse, output_dir):
-        x = np.array(levels)
-        y = np.array(scores)
-
-        fig = plt.figure(figsize=(10, 6))
+    def plot_trait(self, trait, layer_results, layer_levels, layer_scores, output_dir, top_n=10):
         plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
         plt.rcParams["font.family"] = "sans-serif"
 
-        plt.scatter(x, y, alpha=0.6, s=30, edgecolors="none", color="gray")
+        ranked = sorted(layer_results.items(), key=lambda item: item[1]["mse"])[:top_n]
 
-        x_fit = np.linspace(x.min(), x.max(), 100)
-        y_fit = slope * x_fit + intercept
-        plt.plot(
-            x_fit, y_fit, "r--", linewidth=2.5,
-            label=f"R² = {r_squared:.3f}, MSE = {mse:.4f}",
-        )
+        n_cols = 5
+        n_rows = -(-len(ranked) // n_cols)  # ceil division
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 4 * n_rows))
+        axes = np.atleast_1d(axes).flatten()
 
-        plt.xlabel("Trait Level", fontsize=16)
-        plt.ylabel("Persona Score", fontsize=16)
-        plt.title(f"{trait.title()} – Layer {layer_idx}", fontsize=18, fontweight="bold")
-        plt.legend(loc="best", fontsize=14)
-        plt.tight_layout()
+        for ax, (layer_key, result) in zip(axes, ranked):
+            layer_idx = int(layer_key)
+            x = np.array(layer_levels[layer_idx])
+            y = np.array(layer_scores[layer_idx])
+
+            ax.scatter(x, y, alpha=0.6, s=20, edgecolors="none", color="gray")
+            x_fit = np.linspace(x.min(), x.max(), 100)
+            y_fit = result["slope"] * x_fit + result["intercept"]
+            ax.plot(x_fit, y_fit, "r--", linewidth=2)
+
+            ax.set_title(
+                f"Layer {layer_idx}\nR² = {result['r_squared']:.3f}, MSE = {result['mse']:.2e}",
+                fontsize=11,
+            )
+            ax.set_xlabel("Trait Level", fontsize=10)
+            ax.set_ylabel("Persona Score", fontsize=10)
+
+        for ax in axes[len(ranked):]:
+            ax.axis("off")
+
+        fig.suptitle(f"{trait.title()} – Top {top_n} Layers by MSE", fontsize=18, fontweight="bold")
+        fig.tight_layout(rect=(0, 0, 1, 0.96))
 
         output_path = output_dir / f"{trait}.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -141,32 +166,29 @@ class GraphEvaluator:
         layer_results = {}
         best_layer, best_r_squared = 0, -float("inf")
         for layer_idx in range(self.num_layers):
-            _slope, _intercept, r_squared, mse = self.fit_layer(
+            slope, intercept, r_squared, mse = self.fit_layer(
                 layer_levels[layer_idx], layer_scores[layer_idx]
             )
-            layer_results[str(layer_idx)] = {"r_squared": r_squared, "mse": mse}
+            layer_results[str(layer_idx)] = {
+                "slope": slope, "intercept": intercept, "r_squared": r_squared, "mse": mse,
+            }
             if r_squared > best_r_squared:
                 best_layer, best_r_squared = layer_idx, r_squared
 
-        slope, intercept, r_squared, mse = self.fit_layer(
-            layer_levels[best_layer], layer_scores[best_layer]
-        )
-        self.plot_trait(
-            trait, best_layer, layer_levels[best_layer], layer_scores[best_layer],
-            slope, intercept, r_squared, mse, output_dir,
-        )
+        self.plot_trait(trait, layer_results, layer_levels, layer_scores, output_dir)
 
         with open(f"results/{trait}_r_squared.json", "w") as f:
             json.dump({"best_layer": best_layer, "layers": layer_results}, f, indent=2)
 
-        return best_layer, r_squared, mse
+        best = layer_results[str(best_layer)]
+        return best_layer, best["r_squared"], best["mse"]
 
 
 def main():
     login(token=os.environ.get("HF_TOKEN"))
     torch.manual_seed(42)
 
-    persona_vectors_dir = Path("../generation/stored_persona_vectors")
+    persona_vectors_dir = Path("../generation/persona_vectors")
     traits = sorted(set(
         p.stem.rsplit("_", 2)[0]
         for p in persona_vectors_dir.glob("*.pt")
@@ -181,7 +203,7 @@ def main():
     output_dir = Path("results/plots")
     os.makedirs(output_dir, exist_ok=True)
 
-    evaluator = GraphEvaluator()
+    evaluator = GraphEvaluator(activation_type="mean")
 
     summary = {}
     for trait in tqdm(traits):
