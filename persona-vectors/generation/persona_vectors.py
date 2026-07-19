@@ -1,5 +1,5 @@
-import requests
 from typing import List, Dict, Optional
+from openai import OpenAI
 import torch
 from huggingface_hub import login
 from pathlib import Path
@@ -18,30 +18,21 @@ def parse_args():
 
 class OpenAIAPI:
     def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.base_url = "https://api.openai.com/v1/chat/completions"
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-    
-    def send_message(self, message: str, model: str = "gpt-4.1-mini", max_tokens: int = 1000,
-                     temperature: float = 0.2, system_prompt: Optional[str] = None) -> dict:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": message})
-        
-        payload = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
-        
+        self.client = OpenAI(api_key=api_key)
+
+    def send_message(self, message: str, model: str = "gpt-5-mini", max_tokens: int = 1000,
+                     system_prompt: Optional[str] = None) -> Optional[str]:
         try:
-            response = requests.post(self.base_url, headers=self.headers, json=payload, timeout=60)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
+            response = self.client.responses.create(
+                model=model,
+                reasoning={"effort": "low"},
+                instructions=system_prompt,
+                input=message,
+                max_output_tokens=max_tokens,
+            )
+            return response.output_text
+        except Exception as e:
             print(f"Error making API request: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                print(f"Response content: {e.response.text}")
             return None
 
 def load_json(filepath: str) -> dict:
@@ -68,53 +59,56 @@ def get_residual_stream_hooks(model):
     return captured, hooks
 
 
+def build_eval_judge_prompt(trait, trait_description, question, answer):
+    return f"""
+
+CORE INSTRUCTION: You are evaluating to what degree the model's response displays the trait: **{trait}** on a scale from 0-100, where 0 is not present at all and 100 is strongly and fully present.
+
+The defintion of the trait is {trait_description}. Respond with a 0 if the model's response is a refusal as well.
+
+Prompt:
+[QUESTION START]
+{question}
+[QUESTION END]
+
+Model response:
+[ANSWER START]
+{answer}
+[ANSWER END]
+
+FORMATTING CONSTRAINTS:
+Respond after thinking with ONLY with a number between 0 and 100. Don't say anything else, just the number.
+"""
+
+
 def remove_hooks(hooks):
     for hook in hooks:
         hook.remove()
 
 
-def get_mean_response_activation(model, tokenizer, system_prompt, prompt, max_length, num_rollouts, device):
+def get_response_activation(model, tokenizer, system_prompt, prompt, max_length, num_rollouts, device, activation_type="mean"):
     messages = [
         {"role": "system", "content": f"You are an AI assistant. {system_prompt}"},
-        {"role": "user", "content": f"Answer the following question with a few sentences. {prompt}"}
+        {"role": "user", "content": f"{prompt}"}
     ]
     full_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     tokens = tokenizer(full_prompt, return_tensors="pt").input_ids.to(device)
     prompt_length = tokens.shape[1]
 
-    # Repeat for rollouts
-    batch_tokens = tokens.repeat(num_rollouts, 1)
-    temperature = 0.8
-
-    # Generation with KV cache
-    past_key_values = None
-    input_ids = batch_tokens
-
     with torch.no_grad():
-        for _ in range(max_length):
-            outputs = model(
-                input_ids=input_ids,
-                past_key_values=past_key_values,
-                use_cache=True,
-            )
-            logits = outputs.logits
-            past_key_values = outputs.past_key_values
-
-            # Sample from last token only
-            probs = torch.softmax(logits[:, -1, :] / temperature, dim=-1)
-            sorted_probs, sorted_indices = torch.sort(probs, descending=True, dim=-1)
-            sorted_probs[(torch.cumsum(sorted_probs, dim=-1) - sorted_probs) > 0.95] = 0
-            next_token = sorted_indices.gather(-1, torch.multinomial(sorted_probs, 1)).squeeze(-1)
-
-            # Only feed the new token in subsequent steps (KV cache handles the rest)
-            input_ids = next_token.unsqueeze(1)
-            batch_tokens = torch.cat((batch_tokens, input_ids), dim=1)
+        batch_tokens = model.generate(
+            tokens,
+            max_new_tokens=max_length,
+            min_new_tokens=max_length,
+            num_return_sequences=num_rollouts,
+            do_sample=True,
+            temperature=1,
+            top_p=0.95,
+            pad_token_id=tokenizer.eos_token_id,
+        )
 
     # Decode responses
-    responses = []
-    for i in range(num_rollouts):
-        response = tokenizer.decode(batch_tokens[i, prompt_length:])
-        responses.append(response)
+    responses = tokenizer.batch_decode(batch_tokens[:, prompt_length:])
 
     # Single forward pass with hooks to get activations over generated tokens
     captured, hooks = get_residual_stream_hooks(model)
@@ -127,11 +121,17 @@ def get_mean_response_activation(model, tokenizer, system_prompt, prompt, max_le
     # Stack activations: (num_layers, batch, seq_len, d_model)
     all_layer_activations = torch.stack([captured[i] for i in range(num_layers)], dim=1)
 
-    # Slice to generated tokens only, then mean over layers, tokens -> (batch, d_model)
-    generated_activations = all_layer_activations[:, :, -max_length:, :]  # (num_layers, batch, max_length, d_model)
-    mean_activations = generated_activations.mean(dim=2)  # mean over seq_len
+    # Slice to generated tokens only -> (num_layers, batch, max_length, d_model)
+    generated_activations = all_layer_activations[:, :, -max_length:, :]
 
-    return responses, mean_activations
+    if activation_type == "mean":
+        response_activations = generated_activations.mean(dim=2)  # mean over seq_len
+    elif activation_type == "final":
+        response_activations = generated_activations[:, :, -1, :]  # last generated token
+    else:
+        raise ValueError(f"Unknown activation_type: {activation_type!r}. Expected 'mean' or 'final'.")
+
+    return responses, response_activations
 
 
 def main():
@@ -143,7 +143,6 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
-    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(device)
     model.eval()
@@ -153,7 +152,7 @@ def main():
     num_questions = 40
     num_rollouts = 5
     max_length = 100
-    # 
+    activation_type = "mean"  # "mean" or "final"
 
     print("total completions:", 2 * num_instructions * num_questions * num_rollouts)
     total = 0
@@ -169,7 +168,7 @@ def main():
 
             contrastive_system_prompt = load_json(f"stored_prompts/{trait}/contrastive_system_prompt.json")
             question_generation_prompt = load_json(f"stored_prompts/{trait}/question_generation_prompt.json")
-            trait_evaluation_prompt = load_json(f"stored_prompts/{trait}/trait_evaluation_prompt.json")
+            trait_description = load_json(f"stored_prompts/{trait}/trait_description.json")
 
             positive_mean_activations_total = []
             negative_mean_activations_total = []
@@ -182,8 +181,8 @@ def main():
                     system_prompt = instruction[polarity]
 
                     for question in tqdm(question_generation_prompt["questions"][:num_questions]):
-                        responses, mean_activations = get_mean_response_activation(
-                            model, tokenizer, system_prompt, question, max_length, num_rollouts, device
+                        responses, response_activations = get_response_activation(
+                            model, tokenizer, system_prompt, question, max_length, num_rollouts, device, activation_type
                         )
                         
                         question_entry = {"question": question, "responses": []}
@@ -191,24 +190,22 @@ def main():
                         for rollout_index in range(num_rollouts):
                             clean_response = responses[rollout_index].split("<|eot_id|>")[0].strip()
                             
-                            try: 
-                                openai_response = openai.send_message(
-                                    trait_evaluation_prompt["eval_prompt"] + "RESPONSE:" + clean_response,
-                                    model="gpt-4.1",
-                                    temperature=0.1,
+                            try:
+                                evaluation = openai.send_message(
+                                    build_eval_judge_prompt(trait, trait_description, question, clean_response),
+                                    model="gpt-5-mini",
                                     max_tokens=500,
                                 )
-                                evaluation = openai_response.get("choices", [{}])[0].get("message", {}).get("content", "")
                                 total += 1
 
                                 kept = False
                                 # include LLM-as-judge
                                 score = int(evaluation)
                                 if polarity == "pos" and score >= 50:
-                                    positive_mean_activations_total.append(mean_activations[rollout_index])
+                                    positive_mean_activations_total.append(response_activations[rollout_index])
                                     kept = True
                                 elif polarity == "neg" and score <= 50:
-                                    negative_mean_activations_total.append(mean_activations[rollout_index])
+                                    negative_mean_activations_total.append(response_activations[rollout_index])
                                     kept = True
 
                                 # positive_mean_activations_total.append(mean_activations[rollout_index])

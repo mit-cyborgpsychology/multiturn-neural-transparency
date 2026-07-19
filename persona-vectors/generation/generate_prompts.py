@@ -49,7 +49,7 @@ def main():
     os.makedirs(f"stored_prompts/{trait}", exist_ok=True)
 
     max_tokens = 2048
-    num_questions = 5
+    num_questions = 60
 
     with open(f"stored_prompts/{trait}/trait_description.json", "w") as f:
         json.dump(trait_description, f)
