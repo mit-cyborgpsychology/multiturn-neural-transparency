@@ -32,7 +32,7 @@ def main():
     login(token=os.environ.get('HF_TOKEN'))
     client = anthropic.Anthropic()
 
-    persona_vectors_dir = Path("../generation/stored_persona_vectors")
+    persona_vectors_dir = Path("../generation/persona_vectors")
     traits = sorted(set(
         p.stem.rsplit("_", 2)[0]
         for p in persona_vectors_dir.glob("*.pt")
@@ -45,7 +45,7 @@ def main():
     sentence_lengths = [1, 2, 3, 4, 5]
     num_rollouts = 1
 
-    for trait in tqdm(traits):
+    for trait in traits:
 
         prompts_file = Path(f"system_prompts/{trait}.json")
         trait_description_path = Path(f"../generation/stored_prompts/{trait}/trait_description.json")
@@ -56,7 +56,7 @@ def main():
             continue
 
         system_prompts_dict = {}
-        for level in range(1, num_levels + 1):
+        for level in tqdm(range(1, num_levels + 1)):
             system_prompts_dict[str(level)] = {}
             i = 0
 
