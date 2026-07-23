@@ -24,13 +24,27 @@ def load_json(filepath) -> dict:
 
 
 class GraphEvaluator:
-    def __init__(self, model_name="meta-llama/Llama-3.1-8B-Instruct", device=None, activation_type="final"):
+    def __init__(
+        self,
+        model_name="meta-llama/Llama-3.1-8B-Instruct",
+        device=None,
+        response_activation_type="final",
+        persona_vector_type="final",
+    ):
+        """
+        response_activation_type: whether the activation extracted from the
+            model's (system prompt + question + response) context is the
+            'final' response token or the 'mean' over response tokens.
+        persona_vector_type: whether the stored persona vector loaded from
+            disk is the '{trait}_final.pt' or '{trait}_mean.pt' file.
+        """
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(self.device)
         self.model.eval()
         self.num_layers = len(self.model.model.layers)
-        self.activation_type = activation_type
+        self.response_activation_type = response_activation_type
+        self.persona_vector_type = persona_vector_type
 
     def cosine_similarity(self, a, b):
         dot_product = torch.dot(a, b)
@@ -54,7 +68,7 @@ class GraphEvaluator:
         """Run the full (system, question, response) context through the model and
         return the residual stream activation at every layer, either the final
         response token or the mean over all response tokens."""
-        activation_type = activation_type or self.activation_type
+        activation_type = activation_type or self.response_activation_type
 
         prompt_messages = [
             {"role": "system", "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}"},
@@ -91,7 +105,7 @@ class GraphEvaluator:
     def collect_layer_scores(self, trait):
         responses_dict = load_json(f"responses/{trait}.json")
         persona_vector = torch.load(
-            f"../generation/persona_vectors/{trait}_{self.activation_type}.pt", weights_only=False
+            f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt", weights_only=False
         ).float().to(self.device)
 
         layer_levels = {layer: [] for layer in range(self.num_layers)}
@@ -122,15 +136,32 @@ class GraphEvaluator:
         mse = float(np.mean((y - (slope * x + intercept)) ** 2))
         return slope, intercept, r_squared, mse
 
+    def level_variance_stats(self, levels, scores):
+        """Mean within-level variance (noise at a fixed trait level) and mean
+        difference between adjacent level means (signal from moving one level)."""
+        levels = np.array(levels)
+        scores = np.array(scores)
+
+        within_level_variances = []
+        level_means = []
+        for level in np.unique(levels):
+            level_scores = scores[levels == level]
+            within_level_variances.append(np.var(level_scores))
+            level_means.append(level_scores.mean())
+
+        mean_within_level_variance = float(np.mean(within_level_variances))
+        mean_adjacent_level_diff = float(np.mean(np.diff(level_means)))
+        return mean_within_level_variance, mean_adjacent_level_diff
+
     def plot_trait(self, trait, layer_results, layer_levels, layer_scores, output_dir, top_n=10):
         plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
         plt.rcParams["font.family"] = "sans-serif"
 
-        ranked = sorted(layer_results.items(), key=lambda item: item[1]["mse"])[:top_n]
+        ranked = sorted(layer_results.items(), key=lambda item: item[1]["r_squared"], reverse=True)[:top_n]
 
         n_cols = 5
         n_rows = -(-len(ranked) // n_cols)  # ceil division
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 4 * n_rows))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 4.5 * n_rows))
         axes = np.atleast_1d(axes).flatten()
 
         for ax, (layer_key, result) in zip(axes, ranked):
@@ -144,8 +175,11 @@ class GraphEvaluator:
             ax.plot(x_fit, y_fit, "r--", linewidth=2)
 
             ax.set_title(
-                f"Layer {layer_idx}\nR² = {result['r_squared']:.3f}, MSE = {result['mse']:.2e}",
-                fontsize=11,
+                f"Layer {layer_idx}\n"
+                f"R² = {result['r_squared']:.3f}, MSE = {result['mse']:.2e}\n"
+                f"Within-var = {result['mean_within_level_variance']:.2e}, "
+                f"Adj-Δ = {result['mean_adjacent_level_diff']:.2e}",
+                fontsize=10,
             )
             ax.set_xlabel("Trait Level", fontsize=10)
             ax.set_ylabel("Persona Score", fontsize=10)
@@ -153,14 +187,14 @@ class GraphEvaluator:
         for ax in axes[len(ranked):]:
             ax.axis("off")
 
-        fig.suptitle(f"{trait.title()} – Top {top_n} Layers by MSE", fontsize=18, fontweight="bold")
+        fig.suptitle(f"{trait.title()} – Top {top_n} Layers by R²", fontsize=18, fontweight="bold")
         fig.tight_layout(rect=(0, 0, 1, 0.96))
 
         output_path = output_dir / f"{trait}.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
-    def run(self, trait, output_dir):
+    def run(self, trait, results_dir):
         layer_levels, layer_scores = self.collect_layer_scores(trait)
 
         layer_results = {}
@@ -169,19 +203,27 @@ class GraphEvaluator:
             slope, intercept, r_squared, mse = self.fit_layer(
                 layer_levels[layer_idx], layer_scores[layer_idx]
             )
+            mean_within_level_variance, mean_adjacent_level_diff = self.level_variance_stats(
+                layer_levels[layer_idx], layer_scores[layer_idx]
+            )
             layer_results[str(layer_idx)] = {
                 "slope": slope, "intercept": intercept, "r_squared": r_squared, "mse": mse,
+                "mean_within_level_variance": mean_within_level_variance,
+                "mean_adjacent_level_diff": mean_adjacent_level_diff,
             }
             if r_squared > best_r_squared:
                 best_layer, best_r_squared = layer_idx, r_squared
 
-        self.plot_trait(trait, layer_results, layer_levels, layer_scores, output_dir)
+        self.plot_trait(trait, layer_results, layer_levels, layer_scores, results_dir / "plots")
 
-        with open(f"results/{trait}_r_squared.json", "w") as f:
+        with open(results_dir / f"{trait}_r_squared.json", "w") as f:
             json.dump({"best_layer": best_layer, "layers": layer_results}, f, indent=2)
 
         best = layer_results[str(best_layer)]
-        return best_layer, best["r_squared"], best["mse"]
+        return (
+            best_layer, best["r_squared"], best["mse"],
+            best["mean_within_level_variance"], best["mean_adjacent_level_diff"],
+        )
 
 
 def main():
@@ -200,19 +242,54 @@ def main():
     print("Traits found:", traits)
 
     os.makedirs("results", exist_ok=True)
-    output_dir = Path("results/plots")
-    os.makedirs(output_dir, exist_ok=True)
 
-    evaluator = GraphEvaluator(activation_type="mean")
+    # Load the model once and reuse it across all four combos of:
+    #   response_activation_type: "final" or "mean" activation extracted from the
+    #       model's own (system prompt + question + response) context.
+    #   persona_vector_type: "final" or "mean" stored persona vector file to load
+    #       (../generation/persona_vectors/{trait}_{persona_vector_type}.pt).
+    evaluator = GraphEvaluator()
 
-    summary = {}
-    for trait in tqdm(traits):
-        best_layer, r_squared, mse = evaluator.run(trait, output_dir)
-        summary[trait] = {"best_layer": best_layer, "r_squared": r_squared, "mse": mse}
-        print(f"{trait}: best layer {best_layer}, R²={r_squared:.4f}, MSE={mse:.4f}")
+    combos = [
+        ("final", "final"),
+        ("final", "mean"),
+        ("mean", "final"),
+        ("mean", "mean"),
+    ]
 
-    with open("results/summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
+    all_summaries = {}
+    for response_activation_type, persona_vector_type in combos:
+        combo_tag = f"response-{response_activation_type}_persona-{persona_vector_type}"
+        evaluator.response_activation_type = response_activation_type
+        evaluator.persona_vector_type = persona_vector_type
+
+        results_dir = Path("results") / combo_tag
+        os.makedirs(results_dir / "plots", exist_ok=True)
+
+        print(f"\n=== {combo_tag} ===")
+        summary = {}
+        for trait in tqdm(traits, desc=combo_tag):
+            best_layer, r_squared, mse, mean_within_level_variance, mean_adjacent_level_diff = evaluator.run(
+                trait, results_dir
+            )
+            summary[trait] = {
+                "best_layer": best_layer, "r_squared": r_squared, "mse": mse,
+                "mean_within_level_variance": mean_within_level_variance,
+                "mean_adjacent_level_diff": mean_adjacent_level_diff,
+            }
+            print(
+                f"{trait}: best layer {best_layer}, R²={r_squared:.4f}, MSE={mse:.4f}, "
+                f"mean within-level variance={mean_within_level_variance:.4f}, "
+                f"mean adjacent-level Δ={mean_adjacent_level_diff:.4f}"
+            )
+
+        with open(results_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2)
+
+        all_summaries[combo_tag] = summary
+
+    with open("results/summary_all.json", "w") as f:
+        json.dump(all_summaries, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+{
+  "sycophancy": {
+    "best_layer": 28,
+    "r_squared": 0.47937771059815926,
+    "mse": 6.586071712227208e-05,
+    "mean_within_level_variance": 5.10630173523361e-05,
+    "mean_adjacent_level_diff": 0.002120138406753538
+  }
+}
