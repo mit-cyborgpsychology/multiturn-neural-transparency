@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from pathlib import Path
@@ -30,7 +31,7 @@ ALL_METRICS = ("cosine", "projection")
 # Which response/persona-vector activation-type combos to evaluate: (response_activation_type,
 # persona_vector_type). Comment a line out to skip that combo without deleting it.
 COMBOS = [
-    ("final", "final"),
+    # ("final", "final"),
     ("final", "mean"),
     # ("mean", "final"),
     ("mean", "mean"),
@@ -40,8 +41,8 @@ COMBOS = [
 #   cosine     - cosine similarity (angle only, magnitude-blind)
 #   projection - scalar projection onto the persona vector direction (keeps magnitude)
 METRICS = [
-    # "cosine",
-    "projection",
+    "cosine",
+    # "projection",
 ]
 
 
@@ -57,6 +58,7 @@ class GraphEvaluator:
         device=None,
         response_activation_type="final",
         persona_vector_type="final",
+        load_model=True,
     ):
         """
         response_activation_type: whether the activation extracted from the
@@ -64,12 +66,20 @@ class GraphEvaluator:
             'final' response token or the 'mean' over response tokens.
         persona_vector_type: whether the stored persona vector loaded from
             disk is the '{trait}_final.pt' or '{trait}_mean.pt' file.
+        load_model: if False, skip loading the (slow) LM entirely. Only usable
+            for replotting from cached scores (see --plot), since nothing
+            that needs the model will work in this mode.
         """
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(self.device)
-        self.model.eval()
-        self.num_layers = len(self.model.model.layers)
+        if load_model:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(self.device)
+            self.model.eval()
+            self.num_layers = len(self.model.model.layers)
+        else:
+            self.tokenizer = None
+            self.model = None
+            self.num_layers = None
         self.response_activation_type = response_activation_type
         self.persona_vector_type = persona_vector_type
 
@@ -182,6 +192,36 @@ class GraphEvaluator:
 
         return layer_levels, layer_scores
 
+    def scores_cache_path(self, trait, combo_tag, results_dir):
+        return Path(results_dir) / "cache" / f"{combo_tag}_{trait}.json"
+
+    def save_scores_cache(self, trait, combo_tag, results_dir, layer_levels, layer_scores):
+        cache_path = self.scores_cache_path(trait, combo_tag, results_dir)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "w") as f:
+            json.dump({"layer_levels": layer_levels, "layer_scores": layer_scores}, f)
+
+    def load_scores_cache(self, trait, combo_tag, results_dir):
+        cache_path = self.scores_cache_path(trait, combo_tag, results_dir)
+        with open(cache_path, "r") as f:
+            data = json.load(f)
+        layer_levels = {int(k): v for k, v in data["layer_levels"].items()}
+        layer_scores = {
+            metric: {int(k): v for k, v in layers.items()}
+            for metric, layers in data["layer_scores"].items()
+        }
+        return layer_levels, layer_scores
+
+    def normalize_scores(self, scores):
+        """Z-score normalize so MSE / within-var / adjacent-Δ are comparable
+        across layers and metrics that otherwise live on very different scales
+        (e.g. cosine in [-1, 1] vs. unbounded projection magnitudes)."""
+        scores = np.array(scores, dtype=float)
+        std = scores.std()
+        if std == 0:
+            return np.zeros_like(scores)
+        return (scores - scores.mean()) / std
+
     def fit_layer(self, levels, scores):
         x = np.array(levels)
         y = np.array(scores)
@@ -207,13 +247,13 @@ class GraphEvaluator:
         mean_adjacent_level_diff = float(np.mean(np.diff(level_means)))
         return mean_within_level_variance, mean_adjacent_level_diff
 
-    def plot_trait(self, trait, metric, combo_tag, layer_results, layer_levels, layer_scores, results_dir, top_n=9):
+    def plot_trait(self, trait, metric, combo_tag, layer_results, layer_levels, layer_scores, results_dir, top_n=4):
         plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
         plt.rcParams["font.family"] = "sans-serif"
 
         ranked = sorted(layer_results.items(), key=lambda item: item[1]["r_squared"], reverse=True)[:top_n]
 
-        n_cols = 3
+        n_cols = 2
         n_rows = -(-len(ranked) // n_cols)  # ceil division
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 4.5 * n_rows))
         axes = np.atleast_1d(axes).flatten()
@@ -230,10 +270,11 @@ class GraphEvaluator:
 
             ax.set_title(
                 f"Layer {layer_idx}\n"
-                f"R² = {result['r_squared']:.3f}, MSE = {result['mse']:.2e}\n"
-                f"Within-var = {result['mean_within_level_variance']:.2e}, "
-                f"Adj-Δ = {result['mean_adjacent_level_diff']:.2e}",
-                fontsize=10,
+                f"R² = {result['r_squared']:.3f}\n"
+                f"Norm MSE = {result['normalized_mse']:.2e}\n"
+                f"Norm Within-var = {result['normalized_within_level_variance']:.2e}\n"
+                f"Norm Adj-Δ = {result['normalized_adjacent_level_diff']:.2e}",
+                fontsize=14,
             )
             ax.set_xlabel("Trait Level", fontsize=10)
             ax.set_ylabel(f"Persona Score ({metric})", fontsize=10)
@@ -250,22 +291,32 @@ class GraphEvaluator:
 
     def run(self, trait, results_dir, combo_tag, metrics):
         layer_levels, layer_scores = self.collect_layer_scores(trait, metrics)
+        self.save_scores_cache(trait, combo_tag, results_dir, layer_levels, layer_scores)
 
         metric_results = {}
         for metric in metrics:
             layer_results = {}
             best_layer, best_r_squared = 0, -float("inf")
             for layer_idx in range(self.num_layers):
-                slope, intercept, r_squared, mse = self.fit_layer(
-                    layer_levels[layer_idx], layer_scores[metric][layer_idx]
+                raw_scores = layer_scores[metric][layer_idx]
+                normalized_scores = self.normalize_scores(raw_scores)
+
+                # Fit on the raw (unnormalized) values: this is what gets plotted,
+                # so the regression line and R^2 should match the scatter.
+                slope, intercept, r_squared, _raw_mse = self.fit_layer(
+                    layer_levels[layer_idx], raw_scores
                 )
-                mean_within_level_variance, mean_adjacent_level_diff = self.level_variance_stats(
-                    layer_levels[layer_idx], layer_scores[metric][layer_idx]
+                # MSE / within-var / adjacent-Δ are computed on normalized values so
+                # they're comparable across layers and metrics with different scales.
+                _, _, _, normalized_mse = self.fit_layer(layer_levels[layer_idx], normalized_scores)
+                normalized_within_level_variance, normalized_adjacent_level_diff = self.level_variance_stats(
+                    layer_levels[layer_idx], normalized_scores
                 )
                 layer_results[str(layer_idx)] = {
-                    "slope": slope, "intercept": intercept, "r_squared": r_squared, "mse": mse,
-                    "mean_within_level_variance": mean_within_level_variance,
-                    "mean_adjacent_level_diff": mean_adjacent_level_diff,
+                    "slope": slope, "intercept": intercept, "r_squared": r_squared,
+                    "normalized_mse": normalized_mse,
+                    "normalized_within_level_variance": normalized_within_level_variance,
+                    "normalized_adjacent_level_diff": normalized_adjacent_level_diff,
                 }
                 if r_squared > best_r_squared:
                     best_layer, best_r_squared = layer_idx, r_squared
@@ -278,8 +329,36 @@ class GraphEvaluator:
 
         return metric_results
 
+    def replot(self, trait, results_dir, combo_tag, metric_results):
+        """Redraw plots for a trait from cached scores and already-computed
+        layer_results (results.json), without touching the model."""
+        layer_levels, layer_scores = self.load_scores_cache(trait, combo_tag, results_dir)
+        for metric, result in metric_results.items():
+            self.plot_trait(
+                trait, metric, combo_tag, result["layers"], layer_levels, layer_scores[metric], results_dir
+            )
+
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--plot", action="store_true",
+        help="Skip loading the model and recollecting scores; just redraw plots "
+             "from cached scores (results/cache/) and the existing results.json.",
+    )
+    args = parser.parse_args()
+
+    results_dir = Path("results")
+    results_path = results_dir / "results.json"
+
+    if args.plot:
+        all_results = load_json(results_path)
+        evaluator = GraphEvaluator(load_model=False)
+        for combo_tag, combo_results in all_results.items():
+            for trait, metric_results in tqdm(combo_results.items(), desc=combo_tag):
+                evaluator.replot(trait, results_dir, combo_tag, metric_results)
+        return
+
     login(token=os.environ.get("HF_TOKEN"))
     torch.manual_seed(42)
 
@@ -294,7 +373,6 @@ def main():
     ]
     print("Traits found:", traits)
 
-    results_dir = Path("results")
     os.makedirs(results_dir, exist_ok=True)
 
     # Load the model once and reuse it across every combo in COMBOS of:
@@ -304,7 +382,6 @@ def main():
     #       (../generation/persona_vectors/{trait}_{persona_vector_type}.pt).
     evaluator = GraphEvaluator()
 
-    results_path = results_dir / "results.json"
     all_results = {}
     for response_activation_type, persona_vector_type in COMBOS:
         combo_tag = f"response-{response_activation_type}_persona-{persona_vector_type}"
@@ -321,9 +398,9 @@ def main():
                 best = result["layers"][str(result["best_layer"])]
                 print(
                     f"{trait} [{metric}]: best layer {result['best_layer']}, R²={best['r_squared']:.4f}, "
-                    f"MSE={best['mse']:.4f}, "
-                    f"mean within-level variance={best['mean_within_level_variance']:.4f}, "
-                    f"mean adjacent-level Δ={best['mean_adjacent_level_diff']:.4f}"
+                    f"normalized MSE={best['normalized_mse']:.4f}, "
+                    f"normalized within-level variance={best['normalized_within_level_variance']:.4f}, "
+                    f"normalized adjacent-level Δ={best['normalized_adjacent_level_diff']:.4f}"
                 )
 
             with open(results_path, "w") as f:

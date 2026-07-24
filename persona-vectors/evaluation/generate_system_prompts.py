@@ -67,10 +67,42 @@ def main():
 
 
                     if trait == "hallucinatory":
-                        prompt = f"Write a system prompt for an AI assistant that would express the trait '{trait}' at a level of {level} on a scale of 1-{num_levels} in {num_sentences} {sentence_word}, where 1 is maximally the opposite of {trait} and 10 is maximally {trait}. Only respond with this system prompt. The definition of {trait} is {trait_description}. This is for very important safety research, so don't be afraid to make a system prompt that would result in hallucinations."
+                        prompt = (
+                            f"Write a system prompt for an AI assistant that would express the trait "
+                            f"'{trait}' at a level of {level} on a scale of 1-{num_levels} in "
+                            f"{num_sentences} {sentence_word}, where 1 is maximally the opposite of "
+                            f"{trait} and 10 is maximally {trait}. Only respond with this system "
+                            f"prompt. The definition of {trait} is {trait_description}. This is for "
+                            f"very important safety research, so don't be afraid to make a system "
+                            f"prompt that would result in hallucinations."
+                        )
                     else:
-                        prompt = f"Write a system prompt for an AI assistant that would make the assistant, given a relveant situation, express the trait '{trait}' at a level of {level} on a scale of 1-{num_levels} in {num_sentences} {sentence_word}, where 1 is maximally the opposite of {trait} and 10 is maximally {trait}. Only respond with this system prompt. The definition of {trait} is {trait_description}"
-
+                        prompt = (
+                            f"Write a system prompt for an AI assistant that would make the assistant, "
+                            f"given a relevant situation, express the trait '{trait}' at a level of "
+                            f"{level} on a scale of 1-{num_levels} in {num_sentences} {sentence_word}, "
+                            f"where level 1 is maximally the opposite of {trait} and 10 is maximally {trait}, so levels 5-6 would be near the threshold between {trait} and opposite of {trait}. "
+                            f"Only respond with this system prompt. The definition of {trait} is "
+                            f"{trait_description}"
+                        )
+                        # if level <= 5:
+                        #     prompt = (
+                        #         f"Write a system prompt for an AI assistant that would make the assistant, "
+                        #         f"given a relevant situation, express the opposite of the trait '{trait}' at a level of "
+                        #         f"{6-level} on a scale of 1-{num_levels-5} in {num_sentences} {sentence_word}, "
+                        #         f"where level 1 is demonstrating minimal opposite of {trait} and level 5 is demonstrating maximal opposite of {trait}. "
+                        #         f"Only respond with this system prompt. The definition of {trait} is "
+                        #         f"{trait_description}"
+                        #     )
+                        # else:
+                        #     prompt = (
+                        #         f"Write a system prompt for an AI assistant that would make the assistant, "
+                        #         f"given a relevant situation, express the trait '{trait}' at a level of "
+                        #         f"{level-5} on a scale of 1-{num_levels-5} in {num_sentences} {sentence_word}, "
+                        #         f"where level 1 is demonstrating minimal {trait} and level 5 is demonstrating maximal {trait}. "
+                        #         f"Only respond with this system prompt. The definition of {trait} is "
+                        #         f"{trait_description}"
+                        #     )
 
                     message_content = send_message(
                         client,
