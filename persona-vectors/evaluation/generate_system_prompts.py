@@ -49,7 +49,8 @@ def main():
 
         prompts_file = Path(f"system_prompts/{trait}.json")
         trait_description_path = Path(f"../generation/stored_prompts/{trait}/trait_description.json")
-        trait_description = load_json(trait_description_path)
+        trait_description = load_json(trait_description_path)["trait_description"]
+        opposite_trait_description = load_json(trait_description_path)["opposite_trait_description"]
 
         if prompts_file.exists():
             print(f"Skipping {trait}, file already exists.")
@@ -80,10 +81,10 @@ def main():
                         prompt = (
                             f"Write a system prompt for an AI assistant that would make the assistant, "
                             f"given a relevant situation, express the trait '{trait}' at a level of "
-                            f"{level} on a scale of 1-{num_levels} in {num_sentences} {sentence_word}, "
-                            f"where level 1 is maximally the opposite of {trait} and 10 is maximally {trait}, so levels 5-6 would be near the threshold between {trait} and opposite of {trait}. "
-                            f"Only respond with this system prompt. The definition of {trait} is "
-                            f"{trait_description}"
+                            f"{level} on a scale of 1-{num_levels} in {num_sentences} {sentence_word}. "
+                            f"On this scale, level 1 means: {opposite_trait_description} to the maximum. Level 10 means: "
+                            f"{trait_description} to the maximum. Thus, levels 5-6 sit near the threshold between the two. "
+                            f"Only respond with this system prompt."
                         )
                         # if level <= 5:
                         #     prompt = (

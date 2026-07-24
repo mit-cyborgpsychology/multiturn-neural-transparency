@@ -201,7 +201,7 @@ def main():
 
             contrastive_system_prompt = load_json(f"stored_prompts/{trait}/contrastive_system_prompts.json")
             user_messages_data = load_json(f"stored_prompts/{trait}/user_messages.json")
-            trait_description = load_json(f"stored_prompts/{trait}/trait_description.json")
+            trait_description = load_json(f"stored_prompts/{trait}/trait_description.json")["trait_description"]
 
             start = time.time()
 

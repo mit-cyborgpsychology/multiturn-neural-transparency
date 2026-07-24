@@ -18,12 +18,12 @@ JUDGE_WORKERS = 20
 AGREEMENT_TOLERANCE = 0.5
 
 
-def build_eval_judge_prompt(trait, trait_description, question, answer):
+def build_eval_judge_prompt(trait, trait_description, opposite_trait_description, question, answer):
     return f"""
 
     CORE INSTRUCTION: You are evaluating to what degree the model's response displays the trait: **{trait}** on a scale from 0-100, where 0 is maximally the opposite of {trait} and 10 is maximally {trait}.
 
-    The defintion of the trait is {trait_description}.
+    The definition of the trait is {trait_description} and the definition of the opposite of the trait is {opposite_trait_description}.
 
     Prompt:
     [QUESTION START]
@@ -51,7 +51,9 @@ def relabel_trait(openai, trait, force=False):
     intended level, and write it back onto the entry. Returns the flat list of (level, entry)
     jobs for every response, scored or not."""
     responses_dict = load_json(f"responses/{trait}.json")
-    trait_description = load_json(f"../generation/stored_prompts/{trait}/trait_description.json")
+    trait_description_data = load_json(f"../generation/stored_prompts/{trait}/trait_description.json")
+    trait_description = trait_description_data["trait_description"]
+    opposite_trait_description = trait_description_data["opposite_trait_description"]
 
     jobs = []
     for level_key, system_prompts in responses_dict.items():
@@ -67,7 +69,7 @@ def relabel_trait(openai, trait, force=False):
         entry = job["entry"]
         try:
             evaluation = openai.send_message(
-                build_eval_judge_prompt(trait, trait_description, entry["user_message"], entry["response"]),
+                build_eval_judge_prompt(trait, trait_description, opposite_trait_description, entry["user_message"], entry["response"]),
                 model="gpt-5-mini",
                 max_tokens=500,
             )

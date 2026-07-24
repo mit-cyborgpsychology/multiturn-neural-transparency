@@ -59,6 +59,7 @@ class GraphEvaluator:
         response_activation_type="final",
         persona_vector_type="final",
         load_model=True,
+        gpt_labels_only=False,
     ):
         """
         response_activation_type: whether the activation extracted from the
@@ -69,6 +70,9 @@ class GraphEvaluator:
         load_model: if False, skip loading the (slow) LM entirely. Only usable
             for replotting from cached scores (see --plot), since nothing
             that needs the model will work in this mode.
+        gpt_labels_only: if True, use the gpt-5-mini judge's score alone as the
+            ground truth trait level (see --gpt-labels), instead of averaging
+            it with the system prompt's intended level.
         """
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if load_model:
@@ -82,6 +86,7 @@ class GraphEvaluator:
             self.num_layers = None
         self.response_activation_type = response_activation_type
         self.persona_vector_type = persona_vector_type
+        self.gpt_labels_only = gpt_labels_only
 
     def cosine_similarity(self, a, b):
         dot_product = torch.dot(a, b)
@@ -171,12 +176,18 @@ class GraphEvaluator:
             level = int(level_key.rsplit("-", 1)[1])
             for entries in system_prompts.values():
                 for entry in entries:
-                    # Ground truth trait level: average the system prompt's intended level
-                    # with the gpt-5-mini judge's score of the actual response (both on a
-                    # 0-10-ish scale), when a judge score is available. Falls back to the
-                    # intended level alone if the response hasn't been relabeled yet.
+                    # Ground truth trait level: either the gpt-5-mini judge's score of the
+                    # actual response alone (gpt_labels_only), or the average of that score
+                    # with the system prompt's intended level (both on a 0-10-ish scale).
+                    # Falls back to the intended level alone if the response hasn't been
+                    # relabeled yet.
                     gpt_score = entry.get("gpt_score")
-                    ground_truth_level = (level + gpt_score) / 2 if gpt_score is not None else level
+                    if gpt_score is None:
+                        ground_truth_level = level
+                    elif self.gpt_labels_only:
+                        ground_truth_level = gpt_score
+                    else:
+                        ground_truth_level = (level + gpt_score) / 2
 
                     activation = self.get_final_context_activation(
                         entry["system_prompt"], entry["user_message"], entry["response"]
@@ -263,7 +274,7 @@ class GraphEvaluator:
             x = np.array(layer_levels[layer_idx])
             y = np.array(layer_scores[layer_idx])
 
-            ax.scatter(x, y, alpha=0.6, s=20, edgecolors="none", color="gray")
+            ax.scatter(x, y, alpha=0.6, s=15, edgecolors="none", color="gray")
             x_fit = np.linspace(x.min(), x.max(), 100)
             y_fit = result["slope"] * x_fit + result["intercept"]
             ax.plot(x_fit, y_fit, "r--", linewidth=2)
@@ -346,6 +357,12 @@ def main():
         help="Skip loading the model and recollecting scores; just redraw plots "
              "from cached scores (results/cache/) and the existing results.json.",
     )
+    parser.add_argument(
+        "--gpt-labels", action="store_true",
+        help="Use the gpt-5-mini judge's score alone as the ground truth trait "
+             "level, instead of averaging it with the system prompt's intended "
+             "level.",
+    )
     args = parser.parse_args()
 
     results_dir = Path("results")
@@ -380,11 +397,13 @@ def main():
     #       model's own (system prompt + question + response) context.
     #   persona_vector_type: "final" or "mean" stored persona vector file to load
     #       (../generation/persona_vectors/{trait}_{persona_vector_type}.pt).
-    evaluator = GraphEvaluator()
+    evaluator = GraphEvaluator(gpt_labels_only=args.gpt_labels)
 
     all_results = {}
     for response_activation_type, persona_vector_type in COMBOS:
         combo_tag = f"response-{response_activation_type}_persona-{persona_vector_type}"
+        if args.gpt_labels:
+            combo_tag += "_gptlabels"
         evaluator.response_activation_type = response_activation_type
         evaluator.persona_vector_type = persona_vector_type
 
