@@ -333,7 +333,7 @@ def main():
 
     num_questions = 20  # final N situational questions to run inference on
     num_rollouts = 1
-    batch_size = 50  # total sequences per generate() call; items_per_batch = batch_size // num_rollouts
+    batch_size = 100  # total sequences per generate() call; items_per_batch = batch_size // num_rollouts
     max_length = 512
 
     if args.multiturn:

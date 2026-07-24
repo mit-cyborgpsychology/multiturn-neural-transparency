@@ -34,7 +34,9 @@ COMBOS = [
     # ("final", "final"),
     ("final", "mean"),
     # ("mean", "final"),
-    ("mean", "mean"),
+    # ("mean", "mean"),
+    # ("prompt_final", "mean"),
+    # ("conversation_mean", "mean"),
 ]
 
 # Which scoring metrics to compute per activation/layer. Comment a line out to disable it.
@@ -62,9 +64,11 @@ class GraphEvaluator:
         gpt_labels_only=False,
     ):
         """
-        response_activation_type: whether the activation extracted from the
-            model's (system prompt + question + response) context is the
-            'final' response token or the 'mean' over response tokens.
+        response_activation_type: which activation to extract from the model's
+            (system prompt + question + response) context: the 'final'
+            response token, the 'mean' over response tokens, or
+            'prompt_final' for the final token of the prompt itself (i.e.
+            system prompt + question, before the response begins).
         persona_vector_type: whether the stored persona vector loaded from
             disk is the '{trait}_final.pt' or '{trait}_mean.pt' file.
         load_model: if False, skip loading the (slow) LM entirely. Only usable
@@ -123,22 +127,45 @@ class GraphEvaluator:
 
         return captured, hooks
 
-    def get_final_context_activation(self, system_prompt, question, response, activation_type=None):
-        """Run the full (system, question, response) context through the model and
-        return the residual stream activation at every layer, either the final
-        response token or the mean over all response tokens."""
+    def get_context_activation(self, system_prompt, turns, turn_index, activation_type=None):
+        """Run the conversation up through turns[turn_index] (system prompt, plus every
+        user/assistant turn up to and including that one) through the model and return the
+        residual stream activation at every layer. `turns` is a list of
+        {"user_message", "response"} dicts — length 1 for an ordinary single-turn response,
+        length NUM_TURNS for a full multiturn conversation (see responses_multiturn/) — and
+        `turn_index` selects which turn's response is being evaluated; any turns before it are
+        included as prior conversation context.
+
+        activation_type:
+          'final'             - final token of the turn being evaluated's response
+          'mean'              - mean over the response tokens of the turn being evaluated
+          'prompt_final'      - final token of the prompt (system + turns' user messages),
+                                 before the response being evaluated begins. Causal attention
+                                 means this is identical to running the prompt alone, so it's
+                                 just sliced out of the same forward pass rather than run
+                                 separately.
+          'conversation_mean' - mean over every token in the conversation so far, including
+                                 prior turns (system prompt + all turns up to turn_index)
+        """
         activation_type = activation_type or self.response_activation_type
 
-        prompt_messages = [
-            {"role": "system", "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}"},
-            {"role": "user", "content": question},
-        ]
+        system_message = {
+            "role": "system",
+            "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}",
+        }
+        prompt_messages = [system_message]
+        for turn in turns[:turn_index]:
+            prompt_messages.append({"role": "user", "content": turn["user_message"]})
+            prompt_messages.append({"role": "assistant", "content": turn["response"]})
+        current_turn = turns[turn_index]
+        prompt_messages.append({"role": "user", "content": current_turn["user_message"]})
+
         prompt_only = self.tokenizer.apply_chat_template(
             prompt_messages, tokenize=False, add_generation_prompt=True
         )
         prompt_length = self.tokenizer(prompt_only, return_tensors="pt").input_ids.shape[1]
 
-        full_messages = prompt_messages + [{"role": "assistant", "content": response}]
+        full_messages = prompt_messages + [{"role": "assistant", "content": current_turn["response"]}]
         full_prompt = self.tokenizer.apply_chat_template(full_messages, tokenize=False)
         tokens = self.tokenizer(full_prompt, return_tensors="pt").input_ids.to(self.device)
 
@@ -152,14 +179,22 @@ class GraphEvaluator:
         layer_activations = torch.stack(
             [captured[i][0].float() for i in range(self.num_layers)], dim=0
         )
-        response_activations = layer_activations[:, prompt_length:, :]
 
+        if activation_type == "prompt_final":
+            return layer_activations[:, prompt_length - 1, :]
+        if activation_type == "conversation_mean":
+            return layer_activations.mean(dim=1)
+
+        response_activations = layer_activations[:, prompt_length:, :]
         if activation_type == "mean":
             return response_activations.mean(dim=1)
         elif activation_type == "final":
             return response_activations[:, -1, :]
         else:
-            raise ValueError(f"Unknown activation_type: {activation_type!r}. Expected 'mean' or 'final'.")
+            raise ValueError(
+                f"Unknown activation_type: {activation_type!r}. Expected 'mean', 'final', "
+                "'prompt_final', or 'conversation_mean'."
+            )
 
     def collect_layer_scores(self, trait, metrics):
         responses_dict = load_json(f"responses/{trait}.json")
@@ -189,8 +224,10 @@ class GraphEvaluator:
                     else:
                         ground_truth_level = (level + gpt_score) / 2
 
-                    activation = self.get_final_context_activation(
-                        entry["system_prompt"], entry["user_message"], entry["response"]
+                    activation = self.get_context_activation(
+                        entry["system_prompt"],
+                        [{"user_message": entry["user_message"], "response": entry["response"]}],
+                        0,
                     )
 
                     for layer_idx in range(self.num_layers):
@@ -200,6 +237,50 @@ class GraphEvaluator:
                                 metric, activation[layer_idx], persona_vector[layer_idx]
                             ).item()
                             layer_scores[metric][layer_idx].append(s)
+
+        return layer_levels, layer_scores
+
+    def collect_layer_scores_multiturn(self, trait, metrics):
+        """Like collect_layer_scores, but reads responses_multiturn/{trait}.json and scores
+        every turn of every conversation separately (context up to and including that turn is
+        fed to the model per get_context_activation), so a single 3-turn conversation
+        contributes 3 data points instead of 1."""
+        responses_dict = load_json(f"responses_multiturn/{trait}.json")
+        persona_vector = torch.load(
+            f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt", weights_only=False
+        ).float().to(self.device)
+
+        layer_levels = {layer: [] for layer in range(self.num_layers)}
+        layer_scores = {
+            metric: {layer: [] for layer in range(self.num_layers)} for metric in metrics
+        }
+
+        for level_key, system_prompts in tqdm(responses_dict.items(), desc=trait, leave=False):
+            level = int(level_key.rsplit("-", 1)[1])
+            for entries in system_prompts.values():
+                for entry in entries:
+                    turns = entry["turns"]
+                    for turn_index, turn in enumerate(turns):
+                        # Ground truth trait level for this turn: gpt_score, if the turn has
+                        # been relabeled (see relabel_responses.py --multiturn), is per-turn;
+                        # falls back to the system prompt's intended level, same as single-turn.
+                        gpt_score = turn.get("gpt_score")
+                        if gpt_score is None:
+                            ground_truth_level = level
+                        elif self.gpt_labels_only:
+                            ground_truth_level = gpt_score
+                        else:
+                            ground_truth_level = (level + gpt_score) / 2
+
+                        activation = self.get_context_activation(entry["system_prompt"], turns, turn_index)
+
+                        for layer_idx in range(self.num_layers):
+                            layer_levels[layer_idx].append(ground_truth_level)
+                            for metric in metrics:
+                                s = self.score(
+                                    metric, activation[layer_idx], persona_vector[layer_idx]
+                                ).item()
+                                layer_scores[metric][layer_idx].append(s)
 
         return layer_levels, layer_scores
 
@@ -300,8 +381,11 @@ class GraphEvaluator:
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
-    def run(self, trait, results_dir, combo_tag, metrics):
-        layer_levels, layer_scores = self.collect_layer_scores(trait, metrics)
+    def run(self, trait, results_dir, combo_tag, metrics, multiturn=False):
+        if multiturn:
+            layer_levels, layer_scores = self.collect_layer_scores_multiturn(trait, metrics)
+        else:
+            layer_levels, layer_scores = self.collect_layer_scores(trait, metrics)
         self.save_scores_cache(trait, combo_tag, results_dir, layer_levels, layer_scores)
 
         metric_results = {}
@@ -363,6 +447,13 @@ def main():
              "level, instead of averaging it with the system prompt's intended "
              "level.",
     )
+    parser.add_argument(
+        "--multiturn", action="store_true",
+        help="Evaluate responses_multiturn/{trait}.json instead of responses/{trait}.json: "
+             "every turn (1st, 2nd, 3rd) of every conversation is scored separately, with "
+             "context up to and including that turn fed to the model, so each conversation "
+             "contributes 3 data points instead of 1.",
+    )
     args = parser.parse_args()
 
     results_dir = Path("results")
@@ -384,10 +475,13 @@ def main():
         p.stem.rsplit("_", 2)[0]
         for p in persona_vectors_dir.glob("*.pt")
     ))
-    traits = [
-        t for t in traits
-        if Path(f"system_prompts/{t}.json").exists() and Path(f"responses/{t}.json").exists()
-    ]
+    if args.multiturn:
+        traits = [t for t in traits if Path(f"responses_multiturn/{t}.json").exists()]
+    else:
+        traits = [
+            t for t in traits
+            if Path(f"system_prompts/{t}.json").exists() and Path(f"responses/{t}.json").exists()
+        ]
     print("Traits found:", traits)
 
     os.makedirs(results_dir, exist_ok=True)
@@ -402,6 +496,8 @@ def main():
     all_results = {}
     for response_activation_type, persona_vector_type in COMBOS:
         combo_tag = f"response-{response_activation_type}_persona-{persona_vector_type}"
+        if args.multiturn:
+            combo_tag += "_multiturn"
         if args.gpt_labels:
             combo_tag += "_gptlabels"
         evaluator.response_activation_type = response_activation_type
@@ -410,7 +506,7 @@ def main():
         print(f"\n=== {combo_tag} ===")
         combo_results = all_results.setdefault(combo_tag, {})
         for trait in tqdm(traits, desc=combo_tag):
-            metric_results = evaluator.run(trait, results_dir, combo_tag, METRICS)
+            metric_results = evaluator.run(trait, results_dir, combo_tag, METRICS, multiturn=args.multiturn)
             combo_results[trait] = metric_results
 
             for metric, result in metric_results.items():

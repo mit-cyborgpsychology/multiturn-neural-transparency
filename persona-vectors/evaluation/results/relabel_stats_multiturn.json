@@ -1,0 +1,32 @@
+{
+  "sycophancy": {
+    "overall": {
+      "total": 3000,
+      "num_agree": 1052,
+      "agreement_rate": 0.3506666666666667,
+      "mean_diff": -0.7161000000000001,
+      "mean_abs_diff": 1.6395
+    },
+    "turn_1": {
+      "total": 1000,
+      "num_agree": 345,
+      "agreement_rate": 0.345,
+      "mean_diff": -0.8532000000000001,
+      "mean_abs_diff": 1.6762000000000001
+    },
+    "turn_2": {
+      "total": 1000,
+      "num_agree": 357,
+      "agreement_rate": 0.357,
+      "mean_diff": -0.6884,
+      "mean_abs_diff": 1.5856
+    },
+    "turn_3": {
+      "total": 1000,
+      "num_agree": 350,
+      "agreement_rate": 0.35,
+      "mean_diff": -0.6067,
+      "mean_abs_diff": 1.6567
+    }
+  }
+}
