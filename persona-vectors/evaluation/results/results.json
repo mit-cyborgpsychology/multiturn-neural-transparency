@@ -1,0 +1,797 @@
+{
+  "response-final_persona-final": {
+    "sycophancy": {
+      "projection": {
+        "best_layer": 28,
+        "layers": {
+          "0": {
+            "slope": -0.001602081910958173,
+            "intercept": 1.067588472571494,
+            "r_squared": 0.04858026542945803,
+            "mse": 0.0005040936529343746,
+            "mean_within_level_variance": 0.0002617697274872425,
+            "mean_adjacent_level_diff": 0.0003072631855805715
+          },
+          "1": {
+            "slope": 1.4570811559190672e-05,
+            "intercept": 0.5071075725951085,
+            "r_squared": 1.9656390228025965e-05,
+            "mse": 0.00010831402745579287,
+            "mean_within_level_variance": 7.283239446598277e-05,
+            "mean_adjacent_level_diff": 0.0006026219990518354
+          },
+          "2": {
+            "slope": -0.00040268761829339244,
+            "intercept": 0.13735076371488628,
+            "r_squared": 0.011251594188177515,
+            "mse": 0.0001429018371898659,
+            "mean_within_level_variance": 0.00010169376206414717,
+            "mean_adjacent_level_diff": 0.0004424388623899883
+          },
+          "3": {
+            "slope": 0.004828671088990949,
+            "intercept": 0.39162574789899,
+            "r_squared": 0.3392095784302189,
+            "mse": 0.00045549163242046754,
+            "mean_within_level_variance": 0.0003074985240935054,
+            "mean_adjacent_level_diff": 0.0007901263112823168
+          },
+          "4": {
+            "slope": 0.006573224518690881,
+            "intercept": 0.4340793958400295,
+            "r_squared": 0.21513946366843548,
+            "mse": 0.001580734266175333,
+            "mean_within_level_variance": 0.001005508896498879,
+            "mean_adjacent_level_diff": 0.0009606534408198459
+          },
+          "5": {
+            "slope": 0.006023018893933814,
+            "intercept": 0.5427781678355194,
+            "r_squared": 0.1316303445370345,
+            "mse": 0.0023999743239853178,
+            "mean_within_level_variance": 0.0017248822498257472,
+            "mean_adjacent_level_diff": -0.0009150476091437862
+          },
+          "6": {
+            "slope": 0.00859831128443678,
+            "intercept": 0.38827872923444307,
+            "r_squared": 0.26746293337985916,
+            "mse": 0.0020305881749559515,
+            "mean_within_level_variance": 0.001485767581007011,
+            "mean_adjacent_level_diff": -0.0003131985043485959
+          },
+          "7": {
+            "slope": 0.012813034427480982,
+            "intercept": 0.3481329080263269,
+            "r_squared": 0.3394821547920403,
+            "mse": 0.0032033258245486346,
+            "mean_within_level_variance": 0.002068081888589574,
+            "mean_adjacent_level_diff": 0.0007850718167093061
+          },
+          "8": {
+            "slope": 0.020892397321511515,
+            "intercept": 0.2542556192915215,
+            "r_squared": 0.3831770693002487,
+            "mse": 0.0070463964701977765,
+            "mean_within_level_variance": 0.00478746844244088,
+            "mean_adjacent_level_diff": -0.0007460679238041242
+          },
+          "9": {
+            "slope": 0.010590863880791807,
+            "intercept": 0.43977217156965104,
+            "r_squared": 0.16313442277811233,
+            "mse": 0.005770353106776473,
+            "mean_within_level_variance": 0.003834076995342232,
+            "mean_adjacent_level_diff": -0.0014396181537045364
+          },
+          "10": {
+            "slope": 0.011523560201467989,
+            "intercept": 0.4615028836418154,
+            "r_squared": 0.22993168382261178,
+            "mse": 0.004459984083568216,
+            "mean_within_level_variance": 0.00309750207733027,
+            "mean_adjacent_level_diff": 0.00036650502847300714
+          },
+          "11": {
+            "slope": 0.019739613929948503,
+            "intercept": 0.6398182280358613,
+            "r_squared": 0.25959163312299377,
+            "mse": 0.011145189560617599,
+            "mean_within_level_variance": 0.007178180285042051,
+            "mean_adjacent_level_diff": 4.5102089643478394e-05
+          },
+          "12": {
+            "slope": 0.0334673048473357,
+            "intercept": 0.41127222683662523,
+            "r_squared": 0.44819507676182996,
+            "mse": 0.013828959095672569,
+            "mean_within_level_variance": 0.009465337796679305,
+            "mean_adjacent_level_diff": 0.00347910552389092
+          },
+          "13": {
+            "slope": 0.026359047089206607,
+            "intercept": 0.5304016102175615,
+            "r_squared": 0.35740510782437346,
+            "mse": 0.01252752994754302,
+            "mean_within_level_variance": 0.00856898181589817,
+            "mean_adjacent_level_diff": 0.005711895931098197
+          },
+          "14": {
+            "slope": 0.022801762332753082,
+            "intercept": 0.04882783501715546,
+            "r_squared": 0.20991447247340497,
+            "mse": 0.019624476368891478,
+            "mean_within_level_variance": 0.01269654284747377,
+            "mean_adjacent_level_diff": -0.0019244757066998214
+          },
+          "15": {
+            "slope": 0.03189290131443966,
+            "intercept": 0.06369419395667061,
+            "r_squared": 0.373113408287492,
+            "mse": 0.01713821971620662,
+            "mean_within_level_variance": 0.012716428846135183,
+            "mean_adjacent_level_diff": -0.0003739962768223541
+          },
+          "16": {
+            "slope": 0.022045219828830783,
+            "intercept": -0.32516384922847896,
+            "r_squared": 0.16729262642904408,
+            "mse": 0.024259061865841876,
+            "mean_within_level_variance": 0.016211599614787603,
+            "mean_adjacent_level_diff": -0.006575394059634867
+          },
+          "17": {
+            "slope": 0.023628220172198466,
+            "intercept": -1.393871424514923,
+            "r_squared": 0.11719627880484389,
+            "mse": 0.04217371651407493,
+            "mean_within_level_variance": 0.02813436784754087,
+            "mean_adjacent_level_diff": -0.010773682759867774
+          },
+          "18": {
+            "slope": 0.035396192487616614,
+            "intercept": -2.738621810118573,
+            "r_squared": 0.15194970538433686,
+            "mse": 0.07012362632753698,
+            "mean_within_level_variance": 0.05240182947700269,
+            "mean_adjacent_level_diff": -0.010168082184261748
+          },
+          "19": {
+            "slope": 0.033161636294763895,
+            "intercept": -2.1670842389507445,
+            "r_squared": 0.15147410988128962,
+            "mse": 0.061777185150833955,
+            "mean_within_level_variance": 0.045476164307129495,
+            "mean_adjacent_level_diff": -0.00800058080090417
+          },
+          "20": {
+            "slope": 0.04043912869905847,
+            "intercept": -2.5288764713511354,
+            "r_squared": 0.2806602539445575,
+            "mse": 0.0420325991747819,
+            "mean_within_level_variance": 0.03405416867601853,
+            "mean_adjacent_level_diff": -0.002909738984372884
+          },
+          "21": {
+            "slope": 0.03989392754802822,
+            "intercept": -2.0036987761323184,
+            "r_squared": 0.32383517309440285,
+            "mse": 0.03332511607927598,
+            "mean_within_level_variance": 0.02688180174784251,
+            "mean_adjacent_level_diff": 0.0003395490348339081
+          },
+          "22": {
+            "slope": 0.042961759190557135,
+            "intercept": -2.5320103425855582,
+            "r_squared": 0.32488564965828587,
+            "mse": 0.038462760190768434,
+            "mean_within_level_variance": 0.03125264074077955,
+            "mean_adjacent_level_diff": -0.0004735431737369992
+          },
+          "23": {
+            "slope": 0.04669952351724693,
+            "intercept": -3.4656020232272797,
+            "r_squared": 0.2974938469421517,
+            "mse": 0.05164479609990847,
+            "mean_within_level_variance": 0.04151796499234746,
+            "mean_adjacent_level_diff": -0.00033262454801135283
+          },
+          "24": {
+            "slope": 0.05382858456413271,
+            "intercept": -5.032128626958809,
+            "r_squared": 0.34722331849260624,
+            "mse": 0.05462748323174843,
+            "mean_within_level_variance": 0.044906952279664576,
+            "mean_adjacent_level_diff": 0.0009679016139772142
+          },
+          "25": {
+            "slope": 0.053883738370300575,
+            "intercept": -5.953712347717703,
+            "r_squared": 0.3263897448359866,
+            "mse": 0.060092067525328786,
+            "mean_within_level_variance": 0.0491763619991107,
+            "mean_adjacent_level_diff": 0.0029498371813032422
+          },
+          "26": {
+            "slope": 0.07328339806338348,
+            "intercept": -8.39480175738722,
+            "r_squared": 0.41841358490851127,
+            "mse": 0.07485989232631156,
+            "mean_within_level_variance": 0.06499741198367583,
+            "mean_adjacent_level_diff": 0.0072796377870771685
+          },
+          "27": {
+            "slope": 0.08555119617104433,
+            "intercept": -8.70090245823392,
+            "r_squared": 0.4578284750438539,
+            "mse": 0.08691917587756927,
+            "mean_within_level_variance": 0.07305038018553917,
+            "mean_adjacent_level_diff": 0.012725964188575745
+          },
+          "28": {
+            "slope": 0.1005181144905152,
+            "intercept": -10.119479319766098,
+            "r_squared": 0.4990829579673256,
+            "mse": 0.10169772962781329,
+            "mean_within_level_variance": 0.0846106394686511,
+            "mean_adjacent_level_diff": 0.01715423994594149
+          },
+          "29": {
+            "slope": 0.111982126857613,
+            "intercept": -8.220598802540357,
+            "r_squared": 0.4023714412547315,
+            "mse": 0.18678033119072826,
+            "mean_within_level_variance": 0.1324976574157564,
+            "mean_adjacent_level_diff": 0.028044785062472027
+          },
+          "30": {
+            "slope": 0.13880199834267953,
+            "intercept": -7.947565687299857,
+            "r_squared": 0.4789346303865673,
+            "mse": 0.21020204206580873,
+            "mean_within_level_variance": 0.1329945699481851,
+            "mean_adjacent_level_diff": 0.03178913725747003
+          },
+          "31": {
+            "slope": 0.15970069740094917,
+            "intercept": -8.5899589684368,
+            "r_squared": 0.4117981597574997,
+            "mse": 0.3653298228048208,
+            "mean_within_level_variance": 0.24218633691741426,
+            "mean_adjacent_level_diff": 0.037765723135736264
+          }
+        }
+      }
+    }
+  },
+  "response-final_persona-mean": {
+    "sycophancy": {
+      "projection": {
+        "best_layer": 13,
+        "layers": {
+          "0": {
+            "slope": 6.168344160817982e-05,
+            "intercept": -0.052930628480043915,
+            "r_squared": 0.016019256952023938,
+            "mse": 2.3437481870654677e-06,
+            "mean_within_level_variance": 1.6948582528825298e-06,
+            "mean_adjacent_level_diff": 2.4374005281262878e-05
+          },
+          "1": {
+            "slope": 0.00238990010343904,
+            "intercept": -0.06656784681495505,
+            "r_squared": 0.47802406583592333,
+            "mse": 6.254458832984231e-05,
+            "mean_within_level_variance": 4.110682433447725e-05,
+            "mean_adjacent_level_diff": 0.0005279457351813713
+          },
+          "2": {
+            "slope": 0.0054840654876147895,
+            "intercept": -0.0982488131077348,
+            "r_squared": 0.5659103348374241,
+            "mse": 0.00023134845791542295,
+            "mean_within_level_variance": 0.00015793935561334002,
+            "mean_adjacent_level_diff": 0.0008756163167870706
+          },
+          "3": {
+            "slope": 0.0224733439727564,
+            "intercept": -0.2181617374524167,
+            "r_squared": 0.7093326216416624,
+            "mse": 0.0020754452538612037,
+            "mean_within_level_variance": 0.001285180867152118,
+            "mean_adjacent_level_diff": 0.0035660318887191047
+          },
+          "4": {
+            "slope": 0.045087469848684225,
+            "intercept": -0.28107555212813856,
+            "r_squared": 0.7142385493331839,
+            "mse": 0.008156458084016011,
+            "mean_within_level_variance": 0.0052887612708048155,
+            "mean_adjacent_level_diff": 0.0078041307214233606
+          },
+          "5": {
+            "slope": 0.049770160541397476,
+            "intercept": -0.17647221217523595,
+            "r_squared": 0.7465401180035234,
+            "mse": 0.008433807498548386,
+            "mean_within_level_variance": 0.005478405128705465,
+            "mean_adjacent_level_diff": 0.009069243640018007
+          },
+          "6": {
+            "slope": 0.046874367377434466,
+            "intercept": -0.22535395393450397,
+            "r_squared": 0.7594501116839352,
+            "mse": 0.006979210089542002,
+            "mean_within_level_variance": 0.004790980655654173,
+            "mean_adjacent_level_diff": 0.009541774996452862
+          },
+          "7": {
+            "slope": 0.05861159616059811,
+            "intercept": -0.32678198974669453,
+            "r_squared": 0.7563888886865305,
+            "mse": 0.011095543316443489,
+            "mean_within_level_variance": 0.0069994191199652086,
+            "mean_adjacent_level_diff": 0.01143451635208395
+          },
+          "8": {
+            "slope": 0.07193261407236161,
+            "intercept": -0.48532147916388535,
+            "r_squared": 0.7948781751643108,
+            "mse": 0.013390367868277719,
+            "mean_within_level_variance": 0.00862615795571955,
+            "mean_adjacent_level_diff": 0.011634651209331222
+          },
+          "9": {
+            "slope": 0.08368655487446275,
+            "intercept": -0.3707837304075098,
+            "r_squared": 0.7980321435761856,
+            "mse": 0.01777472025652291,
+            "mean_within_level_variance": 0.011805419270766986,
+            "mean_adjacent_level_diff": 0.014114229939877987
+          },
+          "10": {
+            "slope": 0.09112791661869563,
+            "intercept": -0.625190324034216,
+            "r_squared": 0.8085820106749545,
+            "mse": 0.01971474125413321,
+            "mean_within_level_variance": 0.012420944298212453,
+            "mean_adjacent_level_diff": 0.016486790031194687
+          },
+          "11": {
+            "slope": 0.072175906335764,
+            "intercept": -0.30518790209192476,
+            "r_squared": 0.7827202891340479,
+            "mse": 0.014501956532072082,
+            "mean_within_level_variance": 0.010290676912694837,
+            "mean_adjacent_level_diff": 0.013623304251167506
+          },
+          "12": {
+            "slope": 0.09463445783904322,
+            "intercept": -0.6354654406781102,
+            "r_squared": 0.7746345135337882,
+            "mse": 0.026128753050729755,
+            "mean_within_level_variance": 0.01519895229803485,
+            "mean_adjacent_level_diff": 0.017708189682000216
+          },
+          "13": {
+            "slope": 0.09730948727505707,
+            "intercept": -0.7549297868117661,
+            "r_squared": 0.8637625912846254,
+            "mse": 0.014977587841682925,
+            "mean_within_level_variance": 0.011894097567447116,
+            "mean_adjacent_level_diff": 0.016606740524164502
+          },
+          "14": {
+            "slope": 0.08146453736093509,
+            "intercept": -0.47438737658523167,
+            "r_squared": 0.8148651662092771,
+            "mse": 0.015120602689117447,
+            "mean_within_level_variance": 0.01287989718012619,
+            "mean_adjacent_level_diff": 0.018597169365319938
+          },
+          "15": {
+            "slope": 0.07102449396428259,
+            "intercept": -0.4597429135893949,
+            "r_squared": 0.8138548146769863,
+            "mse": 0.011570461732203201,
+            "mean_within_level_variance": 0.009618465252269004,
+            "mean_adjacent_level_diff": 0.016222578111208148
+          },
+          "16": {
+            "slope": 0.07521123851976283,
+            "intercept": -0.40835918559538004,
+            "r_squared": 0.7775261313113928,
+            "mse": 0.016231513502465808,
+            "mean_within_level_variance": 0.009735223829654258,
+            "mean_adjacent_level_diff": 0.01910076207584805
+          },
+          "17": {
+            "slope": 0.06950614531147169,
+            "intercept": -0.4037285072338308,
+            "r_squared": 0.7199871478671425,
+            "mse": 0.018842093410957435,
+            "mean_within_level_variance": 0.009798582913499946,
+            "mean_adjacent_level_diff": 0.01903813632412089
+          },
+          "18": {
+            "slope": 0.06670396180746521,
+            "intercept": -0.6650816650955418,
+            "r_squared": 0.7429376223652184,
+            "mse": 0.015438992287867073,
+            "mean_within_level_variance": 0.0077198245408022,
+            "mean_adjacent_level_diff": 0.01516673081399252
+          },
+          "19": {
+            "slope": 0.06256520390916841,
+            "intercept": -0.697191336670965,
+            "r_squared": 0.7618500635464027,
+            "mse": 0.012270894267311481,
+            "mean_within_level_variance": 0.006642968171447334,
+            "mean_adjacent_level_diff": 0.013530850523642987
+          },
+          "20": {
+            "slope": 0.0653700418197122,
+            "intercept": -0.7584767042335061,
+            "r_squared": 0.7755872872755506,
+            "mse": 0.012399490002006061,
+            "mean_within_level_variance": 0.006611115458638172,
+            "mean_adjacent_level_diff": 0.012753514524471635
+          },
+          "21": {
+            "slope": 0.06152366900741925,
+            "intercept": -1.4059632600608438,
+            "r_squared": 0.7520004472101893,
+            "mse": 0.012518340964620994,
+            "mean_within_level_variance": 0.008835353538598588,
+            "mean_adjacent_level_diff": 0.011848954483866692
+          },
+          "22": {
+            "slope": 0.05735358111772591,
+            "intercept": -1.4630222620786146,
+            "r_squared": 0.737314937971098,
+            "mse": 0.0117525727351312,
+            "mean_within_level_variance": 0.007761541084850346,
+            "mean_adjacent_level_diff": 0.011097512518366178
+          },
+          "23": {
+            "slope": 0.06422093891731234,
+            "intercept": -1.868944211923939,
+            "r_squared": 0.7503378730315581,
+            "mse": 0.013761907142979275,
+            "mean_within_level_variance": 0.008299103736965336,
+            "mean_adjacent_level_diff": 0.011525581280390421
+          },
+          "24": {
+            "slope": 0.0668804196488502,
+            "intercept": -1.6500956962201174,
+            "r_squared": 0.7585496060325705,
+            "mse": 0.014278133348157484,
+            "mean_within_level_variance": 0.007818391574569612,
+            "mean_adjacent_level_diff": 0.012390837694207827
+          },
+          "25": {
+            "slope": 0.07859799483492402,
+            "intercept": -1.8729592764963308,
+            "r_squared": 0.772980531749842,
+            "mse": 0.018194788132723603,
+            "mean_within_level_variance": 0.009264212859699125,
+            "mean_adjacent_level_diff": 0.014538321230146622
+          },
+          "26": {
+            "slope": 0.0817694910215442,
+            "intercept": -1.7270129317586949,
+            "r_squared": 0.7797127661831181,
+            "mse": 0.0189437867809755,
+            "mean_within_level_variance": 0.009939707040301496,
+            "mean_adjacent_level_diff": 0.014454376366403366
+          },
+          "27": {
+            "slope": 0.08652146890341679,
+            "intercept": -2.144396517685954,
+            "r_squared": 0.7812721098114415,
+            "mse": 0.021017406998785272,
+            "mean_within_level_variance": 0.012172401523673175,
+            "mean_adjacent_level_diff": 0.014663623438941106
+          },
+          "28": {
+            "slope": 0.08663990447528423,
+            "intercept": -1.5428614856002063,
+            "r_squared": 0.7824530469041714,
+            "mse": 0.020929563554830586,
+            "mean_within_level_variance": 0.010994406212103082,
+            "mean_adjacent_level_diff": 0.016951143534647092
+          },
+          "29": {
+            "slope": 0.09303508684702254,
+            "intercept": -1.2722106101172146,
+            "r_squared": 0.7735573751840701,
+            "mse": 0.02540906636288251,
+            "mean_within_level_variance": 0.011366036770803365,
+            "mean_adjacent_level_diff": 0.018985421914193366
+          },
+          "30": {
+            "slope": 0.08079529347083499,
+            "intercept": -0.8014427760280523,
+            "r_squared": 0.7305384769134965,
+            "mse": 0.0241465625556567,
+            "mean_within_level_variance": 0.01236445991579414,
+            "mean_adjacent_level_diff": 0.016540403322627146
+          },
+          "31": {
+            "slope": 0.05372164460728293,
+            "intercept": 0.012280851177540797,
+            "r_squared": 0.5649673865436647,
+            "mse": 0.022285714390417568,
+            "mean_within_level_variance": 0.012712895726057057,
+            "mean_adjacent_level_diff": 0.013177036256011987
+          }
+        }
+      }
+    }
+  },
+  "response-mean_persona-mean": {
+    "sycophancy": {
+      "projection": {
+        "best_layer": 16,
+        "layers": {
+          "0": {
+            "slope": 0.008618198278385966,
+            "intercept": -0.019237912676472044,
+            "r_squared": 0.6375517731368703,
+            "mse": 0.0004234410991861939,
+            "mean_within_level_variance": 0.00030855496747222554,
+            "mean_adjacent_level_diff": 0.0013084163850483794
+          },
+          "1": {
+            "slope": 0.015715790864138966,
+            "intercept": -0.04753484126702881,
+            "r_squared": 0.7266500852666979,
+            "mse": 0.0009317418853387025,
+            "mean_within_level_variance": 0.0006976172049210413,
+            "mean_adjacent_level_diff": 0.002762047020951286
+          },
+          "2": {
+            "slope": 0.02599308866431228,
+            "intercept": -0.08572261692033019,
+            "r_squared": 0.7652137242637312,
+            "mse": 0.002078907931857029,
+            "mean_within_level_variance": 0.0015959014575716193,
+            "mean_adjacent_level_diff": 0.004400709217103819
+          },
+          "3": {
+            "slope": 0.04936928335357818,
+            "intercept": -0.22023599948010306,
+            "r_squared": 0.8147770748768842,
+            "mse": 0.005556471704936498,
+            "mean_within_level_variance": 0.004180200494956517,
+            "mean_adjacent_level_diff": 0.00824937126081851
+          },
+          "4": {
+            "slope": 0.07120772854698748,
+            "intercept": -0.25871486474172606,
+            "r_squared": 0.8291378087145088,
+            "mse": 0.01047859465412264,
+            "mean_within_level_variance": 0.007648628643777999,
+            "mean_adjacent_level_diff": 0.012088274014078908
+          },
+          "5": {
+            "slope": 0.08716001914938082,
+            "intercept": -0.21799034654752544,
+            "r_squared": 0.8356162496131911,
+            "mse": 0.014987050311954875,
+            "mean_within_level_variance": 0.011010657488378652,
+            "mean_adjacent_level_diff": 0.014949397080474427
+          },
+          "6": {
+            "slope": 0.11214114888101914,
+            "intercept": -0.3567614837023886,
+            "r_squared": 0.84758175409103,
+            "mse": 0.022678529233856538,
+            "mean_within_level_variance": 0.01578829154245193,
+            "mean_adjacent_level_diff": 0.02044912159908563
+          },
+          "7": {
+            "slope": 0.14093288476058002,
+            "intercept": -0.37645049750138115,
+            "r_squared": 0.8521167691815735,
+            "mse": 0.03456798180567556,
+            "mean_within_level_variance": 0.023052685678935633,
+            "mean_adjacent_level_diff": 0.025644532495385244
+          },
+          "8": {
+            "slope": 0.15985334684891214,
+            "intercept": -0.4464923492537815,
+            "r_squared": 0.8548786471196383,
+            "mse": 0.043501059975627594,
+            "mean_within_level_variance": 0.029052513918411235,
+            "mean_adjacent_level_diff": 0.029491543006669316
+          },
+          "9": {
+            "slope": 0.1830065384003373,
+            "intercept": -0.3501913690736549,
+            "r_squared": 0.8632066918885656,
+            "mse": 0.053224647032229046,
+            "mean_within_level_variance": 0.034362860844851545,
+            "mean_adjacent_level_diff": 0.03503615781664848
+          },
+          "10": {
+            "slope": 0.20198344868288623,
+            "intercept": -0.6538612734025776,
+            "r_squared": 0.868480026782402,
+            "mse": 0.0619573688750165,
+            "mean_within_level_variance": 0.038731769948795985,
+            "mean_adjacent_level_diff": 0.03869436225957341
+          },
+          "11": {
+            "slope": 0.23311327577175392,
+            "intercept": -0.5203431553859706,
+            "r_squared": 0.8798107116484546,
+            "mse": 0.07444577518599951,
+            "mean_within_level_variance": 0.0425677054395251,
+            "mean_adjacent_level_diff": 0.04485677252523601
+          },
+          "12": {
+            "slope": 0.2617196430544208,
+            "intercept": -0.7961313262694059,
+            "r_squared": 0.879222570139151,
+            "mse": 0.09436025754613807,
+            "mean_within_level_variance": 0.0541378325117796,
+            "mean_adjacent_level_diff": 0.05001376921104061
+          },
+          "13": {
+            "slope": 0.32573170221925896,
+            "intercept": -1.0898045401292658,
+            "r_squared": 0.895794073685389,
+            "mse": 0.12377525072297889,
+            "mean_within_level_variance": 0.07253702487152339,
+            "mean_adjacent_level_diff": 0.05917939378155603
+          },
+          "14": {
+            "slope": 0.33986041157405106,
+            "intercept": -0.8208802341104928,
+            "r_squared": 0.8982802806418878,
+            "mse": 0.13116681369925817,
+            "mean_within_level_variance": 0.07533514870211527,
+            "mean_adjacent_level_diff": 0.06285680354469352
+          },
+          "15": {
+            "slope": 0.3753874007241364,
+            "intercept": -0.9356455904257863,
+            "r_squared": 0.8958761098700729,
+            "mse": 0.16424468987875787,
+            "mean_within_level_variance": 0.0980326676220317,
+            "mean_adjacent_level_diff": 0.06702553853392601
+          },
+          "16": {
+            "slope": 0.43567208608982555,
+            "intercept": -0.9624664730410801,
+            "r_squared": 0.904158305613598,
+            "mse": 0.20177111817179963,
+            "mean_within_level_variance": 0.12273773158721261,
+            "mean_adjacent_level_diff": 0.07952799047860835
+          },
+          "17": {
+            "slope": 0.49122785310027867,
+            "intercept": -1.196080499746809,
+            "r_squared": 0.8960546442605983,
+            "mse": 0.28071530120447724,
+            "mean_within_level_variance": 0.16797186389688865,
+            "mean_adjacent_level_diff": 0.0900033890373177
+          },
+          "18": {
+            "slope": 0.5534571205914907,
+            "intercept": -1.4749441198615245,
+            "r_squared": 0.902256489864386,
+            "mse": 0.3327786064327535,
+            "mean_within_level_variance": 0.20442107019185185,
+            "mean_adjacent_level_diff": 0.10031114560034542
+          },
+          "19": {
+            "slope": 0.5801887112661623,
+            "intercept": -1.6165338154945672,
+            "r_squared": 0.9004755758817857,
+            "mse": 0.3731004802329387,
+            "mean_within_level_variance": 0.2316250550410299,
+            "mean_adjacent_level_diff": 0.1053299427860313
+          },
+          "20": {
+            "slope": 0.6204443632245592,
+            "intercept": -1.7194319458283553,
+            "r_squared": 0.8987307037939272,
+            "mse": 0.4349941565364177,
+            "mean_within_level_variance": 0.2651112607895954,
+            "mean_adjacent_level_diff": 0.1112403492960665
+          },
+          "21": {
+            "slope": 0.7119017476999383,
+            "intercept": -2.2409947100181737,
+            "r_squared": 0.894831584172906,
+            "mse": 0.5973290951221045,
+            "mean_within_level_variance": 0.37564118832429977,
+            "mean_adjacent_level_diff": 0.12919013036621943
+          },
+          "22": {
+            "slope": 0.7619516754848418,
+            "intercept": -2.2129395130090823,
+            "r_squared": 0.8900948562662442,
+            "mse": 0.7188960667542146,
+            "mean_within_level_variance": 0.451485238411747,
+            "mean_adjacent_level_diff": 0.13915966202815375
+          },
+          "23": {
+            "slope": 0.8069654175630898,
+            "intercept": -2.4051493352046394,
+            "r_squared": 0.8879640049313701,
+            "mse": 0.823951378936587,
+            "mean_within_level_variance": 0.5294396995703228,
+            "mean_adjacent_level_diff": 0.14703115655316246
+          },
+          "24": {
+            "slope": 0.8331626669359118,
+            "intercept": -2.116403434292694,
+            "r_squared": 0.8845808095659443,
+            "mse": 0.9083006747878899,
+            "mean_within_level_variance": 0.5843866035788883,
+            "mean_adjacent_level_diff": 0.15454256369007957
+          },
+          "25": {
+            "slope": 0.951261401591252,
+            "intercept": -2.3933741401649256,
+            "r_squared": 0.886181413924414,
+            "mse": 1.1655202482603004,
+            "mean_within_level_variance": 0.7238296788698741,
+            "mean_adjacent_level_diff": 0.17770099722676805
+          },
+          "26": {
+            "slope": 0.9986709314092308,
+            "intercept": -2.685879460311928,
+            "r_squared": 0.8869090330966883,
+            "mse": 1.2753317752267959,
+            "mean_within_level_variance": 0.7858795173986727,
+            "mean_adjacent_level_diff": 0.18596196340190038
+          },
+          "27": {
+            "slope": 1.0633711960221757,
+            "intercept": -3.1373219828988144,
+            "r_squared": 0.8881178364848352,
+            "mse": 1.4285306786067782,
+            "mean_within_level_variance": 0.8802644897328904,
+            "mean_adjacent_level_diff": 0.19235761380857888
+          },
+          "28": {
+            "slope": 1.1126281944567387,
+            "intercept": -2.7123440272474784,
+            "r_squared": 0.8865332682568438,
+            "mse": 1.5889241044685154,
+            "mean_within_level_variance": 0.979639264818231,
+            "mean_adjacent_level_diff": 0.20739900569121042
+          },
+          "29": {
+            "slope": 1.1777633165509218,
+            "intercept": -2.866938444806331,
+            "r_squared": 0.8834459768490658,
+            "mse": 1.835239895988513,
+            "mean_within_level_variance": 1.1208593255231536,
+            "mean_adjacent_level_diff": 0.22078462027841148
+          },
+          "30": {
+            "slope": 1.2651658307784102,
+            "intercept": -3.2262693296176663,
+            "r_squared": 0.8870751794564133,
+            "mse": 2.043400112702791,
+            "mean_within_level_variance": 1.2731823639444324,
+            "mean_adjacent_level_diff": 0.2342054165071911
+          },
+          "31": {
+            "slope": 1.65126407845984,
+            "intercept": -5.589598058299629,
+            "r_squared": 0.8717697614707169,
+            "mse": 4.022084954445167,
+            "mean_within_level_variance": 2.570281686450617,
+            "mean_adjacent_level_diff": 0.3137577291991976
+          }
+        }
+      }
+    }
+  }
+}
