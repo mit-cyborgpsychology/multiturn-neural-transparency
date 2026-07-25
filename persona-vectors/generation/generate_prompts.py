@@ -8,7 +8,7 @@ load_dotenv()
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate persona vectors from contrastive prompts')
-    parser.add_argument('--trait', type=str, required=True)
+    parser.add_argument('--trait', type=str, required=True, help='Comma-separated list of traits (e.g., empathy,sycophancy,humor)')
     return parser.parse_args()
 
 
@@ -27,12 +27,7 @@ def send_message(client, message, model="claude-sonnet-5", max_tokens=1000, syst
     raise ValueError(f"No text block in response: {response.content}")
 
 
-def main():
-    client = anthropic.Anthropic()
-    args = parse_args()
-
-    trait = args.trait
-
+def process_trait(client, trait):
     trait_description_path = f"stored_prompts/{trait}/trait_description.json"
     contrastive_path = f"stored_prompts/{trait}/contrastive_system_prompts.json"
     user_messages_path = f"stored_prompts/{trait}/user_messages.json"
@@ -48,7 +43,6 @@ def main():
             trait_description_data = json.load(f)
     else:
         trait_description_prompt = f"Give the definition of {trait} that is relevant to human-AI interaction or conversations with AI in one or two sentences. Don't explicitly mention AI in the definition. Start it with '{trait} is' "
-        # trait_description_prompt = f"Give the definition of {trait} in one to two sentences. Start it with '{trait} is' "
         opposite_trait_description_prompt = f"Give the definition of the opposite of {trait} that is relevant to human-AI interaction or conversations with AI in one or two sentences. Don't explicitly mention AI in the definition. Start it with 'The opposite of {trait} is' "
 
         trait_description = send_message(
@@ -62,9 +56,6 @@ def main():
             max_tokens=128,
         )
 
-        # trait_description = "Casual describes a conversational tone and personality style characterized by relaxed, informal language and a laid-back manner of engaging with others. A casual communicator uses everyday vocabulary, contractions, and colloquialisms, avoids stiff or overly formal phrasing, and interacts as if speaking with a friend rather than in a professional or structured setting."
-        # trait_description = "Toxic is a manner of speaking that is harmful, offensive, or damaging in some way to a user."
-
         print(trait_description)
         print(opposite_trait_description)
 
@@ -76,143 +67,164 @@ def main():
         with open(trait_description_path, "w") as f:
             json.dump(trait_description_data, f)
 
-    # trait_description = trait_description_data["trait_description"]
+    trait_description = trait_description_data["trait_description"]
+    opposite_trait_description = trait_description_data["opposite_trait_description"]
 
-    # if os.path.exists(contrastive_path):
-    #     print(f"Contrastive system prompts for '{trait}' already exist, skipping generation.")
-    # else:
-    #     # Create constrastive system prompts
-    #     constrastive_dataset_prompt = f"""
-    # You are tasked with creating a dataset of contrastive system prompts that will be used to elicit capture a specific persona in an LLM.
+    if os.path.exists(contrastive_path):
+        print(f"Contrastive system prompts for '{trait}' already exist, skipping generation.")
+    else:
+        # Create constrastive system prompts
+        constrastive_dataset_prompt = f"""
+        You are tasked with creating a dataset of contrastive system prompts that will be used to elicit capture a specific persona in an LLM.
 
-    # The trait you will be working with is
-    # <trait>
-    # {trait}
-    # </trait>
+        The trait you will be working with is
+        <trait>
+        {trait}
+        </trait>
 
-    # and its definition is
-    # <trait_description>
-    # {trait_description}
-    # </trait_description>
+        and its definition is
+        <trait_description>
+        {trait_description}
+        </trait_description>
 
-    # CORE INSTRUCTION: Generate a list of 10 instruction pairs. Each pair should include a positive (pos) instruction that commands the model to exhibit the trait, and a negative (neg) instruction that explicitly commands the model to exhibit the opposite behavior. Here's an example pair for the trait "impolite":
+        The opposite of {trait} is defined as
+        <opposite_trait_description>
+        {opposite_trait_description}
+        </opposite_trait_description>
 
-    # <example_pair>
-    # "pos": "Your responses should be impolite or harsh. Do not soften your language or try to be polite.",
-    # "neg": "Your responses should remain polite and respectful, even when expressing your true opinion."
-    # </example_pair>
+        CORE INSTRUCTION: Generate a list of 10 instruction pairs. Each pair should include a positive (pos) instruction that commands the model to exhibit the trait as described in <trait_description>, and a negative (neg) instruction that explicitly commands the model to exhibit the opposite behavior as described in <opposite_trait_description>. Here's an example pair for the trait "impolite":
 
-    # ADDITIONAL CONSTRAINTS:
-    # Ensure each pair is distinct and captures different aspects of the trait.
-    # The the first two pairs must be one sentence long, then the second two pairs must be two sentences long, and so on until the fifth pair is five sentences long.
+        <example_pair>
+        "pos": "Your responses should be impolite or harsh. Do not soften your language or try to be polite.",
+        "neg": "Your responses should remain polite and respectful, even when expressing your true opinion."
+        </example_pair>
 
-    # Organize your response in the following JSON format:
-    # <output_format>
-    # {{
-    # "instruction": [
-    #     {{"pos": "positive instruction 1", "neg": "negative instruction 1"}},
-    #     {{"pos": "positive instruction 2", "neg": "negative instruction 2"}},
-    #     {{"pos": "positive instruction 3", "neg": "negative instruction 3"}},
-    #     {{"pos": "positive instruction 4", "neg": "negative instruction 4"}},
-    #     {{"pos": "positive instruction 5", "neg": "negative instruction 5"}},
-    #     {{"pos": "positive instruction 6", "neg": "negative instruction 6"}},
-    #     {{"pos": "positive instruction 7", "neg": "negative instruction 7"}},
-    #     {{"pos": "positive instruction 8", "neg": "negative instruction 8"}},
-    #     {{"pos": "positive instruction 9", "neg": "negative instruction 9"}},
-    #     {{"pos": "positive instruction 10", "neg": "negative instruction 10"}}
-    # ]
-    # }}
-    # </output_format>
+        ADDITIONAL CONSTRAINTS:
+        Ensure each pair is distinct and captures different aspects of the trait.
+        The the first two pairs must be one sentence long, then the second two pairs must be two sentences long, and so on until the fifth pair is five sentences long.
 
-    # FORMATTING CONSTRAINTS:
-    # Respond with ONLY the raw JSON object.
-    # Do NOT wrap in markdown code blocks.
-    # Do NOT include ```json or ```.
-    # Your response must start with {{ and end with }}
-    # """
+        Organize your response in the following JSON format:
+        <output_format>
+        {{
+        "instruction": [
+            {{"pos": "positive instruction 1", "neg": "negative instruction 1"}},
+            {{"pos": "positive instruction 2", "neg": "negative instruction 2"}},
+            {{"pos": "positive instruction 3", "neg": "negative instruction 3"}},
+            {{"pos": "positive instruction 4", "neg": "negative instruction 4"}},
+            {{"pos": "positive instruction 5", "neg": "negative instruction 5"}},
+            {{"pos": "positive instruction 6", "neg": "negative instruction 6"}},
+            {{"pos": "positive instruction 7", "neg": "negative instruction 7"}},
+            {{"pos": "positive instruction 8", "neg": "negative instruction 8"}},
+            {{"pos": "positive instruction 9", "neg": "negative instruction 9"}},
+            {{"pos": "positive instruction 10", "neg": "negative instruction 10"}}
+        ]
+        }}
+        </output_format>
 
-    #     while True:
-    #         try:
-    #             response = send_message(
-    #                 client, constrastive_dataset_prompt,
-    #                 model="claude-sonnet-5",
-    #                 max_tokens=max_tokens,
-    #             )
-    #             data = json.loads(response)
-    #             break
+        FORMATTING CONSTRAINTS:
+        Respond with ONLY the raw JSON object.
+        Do NOT wrap in markdown code blocks.
+        Do NOT include ```json or ```.
+        Your response must start with {{ and end with }}
+        """
 
-    #         except json.JSONDecodeError as e:
-    #             print(f"Error parsing JSON 1: {e}")
+        while True:
+            try:
+                response = send_message(
+                    client, constrastive_dataset_prompt,
+                    model="claude-sonnet-5",
+                    max_tokens=max_tokens,
+                )
+                data = json.loads(response)
+                break
 
-    #     with open(contrastive_path, "w") as f:
-    #         json.dump(data, f)
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON 1: {e}")
 
-    #     print("Contrastive system prompts created.")
+        with open(contrastive_path, "w") as f:
+            json.dump(data, f)
 
-    # if os.path.exists(user_messages_path):
-    #     print(f"User messages for '{trait}' already exist, skipping generation.")
-    # else:
-    #     message_generation_prompt = f"""
+        print("Contrastive system prompts created.")
 
-    # CORE INSTRUCTION: Generate {num_messages} diverse user messages that could elicit behavior that expresses the following trait when following an instruction to exhibit a certain trait as a system prompt.
+    if os.path.exists(user_messages_path):
+        print(f"User messages for '{trait}' already exist, skipping generation.")
+    else:
+        message_generation_prompt = f"""
 
-    # ADDITIONAL CONSTRAINTS:
-    # These user messages need to be diverse, and cover various scenarios, and realistic to a general AI assistant chatbot setting.
-    # Do not explicitly ask the model to exhibit the trait in question.
-    # Vary the lengths of these questions between 1-5 sentences.
+        CORE INSTRUCTION: Generate {num_messages} diverse user messages that could elicit behavior that expresses the following trait when following an instruction to exhibit a certain trait as a system prompt.
 
-    # The trait you will be working with is
-    # <trait>
-    # {trait}
-    # </trait>
+        ADDITIONAL CONSTRAINTS:
+        These user messages need to be diverse, and cover various scenarios, and realistic to a general AI assistant chatbot setting.
+        Do not explicitly ask the model to exhibit the trait in question.
+        Vary the lengths of these questions between 1-5 sentences.
 
-    # and its description is
-    # <trait_description>
-    # {trait_description}
-    # </trait_description>
+        The trait you will be working with is
+        <trait>
+        {trait}
+        </trait>
 
-    # and an EXAMPLE of the system prompt instruction for a trait 'impolite' would be:
-    # <example_pair>
-    # "pos": "Your responses should be impolite or harsh. Do not soften your language or try to be polite.",
-    # "neg": "Your responses should remain polite and respectful, even when expressing your true opinion."
-    # </example_pair>
+        and its description is
+        <trait_description>
+        {trait_description}
+        </trait_description>
 
-    # Organize your response in the following JSON format:
-    # <output_format>
-    # {{
-    # "user_messages": [
-    #     "message 1",
-    #     "message 2",
-    #     ...
-    #     "message {num_messages}"
-    # ]
-    # }}
-    # </output_format>
+        The opposite of {trait} is defined as
+        <opposite_trait_description>
+        {opposite_trait_description}
+        </opposite_trait_description>
 
-    # FORMATTING CONSTRAINTS:
-    # Respond with ONLY the raw JSON object.
-    # Do NOT wrap in markdown code blocks.
-    # Do NOT include ```json or ```.
-    # Your response must start with {{ and end with }}
-    # """
+        and an EXAMPLE of the system prompt instruction for a trait 'impolite' would be:
+        <example_pair>
+        "pos": "Your responses should be impolite or harsh. Do not soften your language or try to be polite.",
+        "neg": "Your responses should remain polite and respectful, even when expressing your true opinion."
+        </example_pair>
 
-    #     while True:
-    #         try:
-    #             response = send_message(
-    #                 client, message_generation_prompt,
-    #                 model="claude-sonnet-5",
-    #                 max_tokens=max_tokens,
-    #             )
-    #             data = json.loads(response)
-    #             break
-    #         except json.JSONDecodeError as e:
-    #             print(f"Error parsing JSON 2: {e}")
+        Organize your response in the following JSON format:
+        <output_format>
+        {{
+        "user_messages": [
+            "message 1",
+            "message 2",
+            ...
+            "message {num_messages}"
+        ]
+        }}
+        </output_format>
 
-    #     with open(user_messages_path, "w") as f:
-    #         json.dump(data, f)
+        FORMATTING CONSTRAINTS:
+        Respond with ONLY the raw JSON object.
+        Do NOT wrap in markdown code blocks.
+        Do NOT include ```json or ```.
+        Your response must start with {{ and end with }}
+        """
 
-    #     print("User messages created.")
+        while True:
+            try:
+                response = send_message(
+                    client, message_generation_prompt,
+                    model="claude-sonnet-5",
+                    max_tokens=max_tokens,
+                )
+                data = json.loads(response)
+                break
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON 2: {e}")
 
+        with open(user_messages_path, "w") as f:
+            json.dump(data, f)
+
+        print("User messages created.")
+
+
+def main():
+    client = anthropic.Anthropic()
+    args = parse_args()
+
+    traits = [t.strip() for t in args.trait.split(",") if t.strip()]
+
+    for trait in traits:
+        print(f"=== Processing trait '{trait}' ===")
+        process_trait(client, trait)
 
 
 if __name__ == "__main__":

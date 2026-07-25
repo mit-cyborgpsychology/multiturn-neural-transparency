@@ -156,52 +156,59 @@ def simulate_next_user_messages(client, visible_message_lists, desc="simulating 
 
 def run_single_turn(model, tokenizer, device, traits, num_questions, num_rollouts, batch_size, max_length):
     for trait in traits:
+        try:
+            _run_single_turn_trait(model, tokenizer, device, trait, num_questions, num_rollouts, batch_size, max_length)
+        except Exception as e:
+            print(f"Error processing {trait}, skipping to next trait. Results generated before the "
+                  f"error are already saved to responses/{trait}.json. Error: {e}")
 
-        prompts_file = Path(f"system_prompts/{trait}.json")
 
-        system_prompts_dict = load_json(prompts_file)
+def _run_single_turn_trait(model, tokenizer, device, trait, num_questions, num_rollouts, batch_size, max_length):
+    prompts_file = Path(f"system_prompts/{trait}.json")
 
-        responses_file = Path(f"responses/{trait}.json")
-        if responses_file.exists():
-            print(f"Skipping inference for {trait}, responses already exist.")
-            continue
+    system_prompts_dict = load_json(prompts_file)
 
-        user_messages_data = load_json(f"../generation/stored_prompts/{trait}/user_messages.json")
-        messages = user_messages_data["user_messages"][-num_questions:]
+    responses_file = Path(f"responses/{trait}.json")
+    if responses_file.exists():
+        print(f"Skipping inference for {trait}, responses already exist.")
+        return
 
-        os.makedirs("responses", exist_ok=True)
-        responses_dict = {}
-        all_items = []  # (level_key, system_prompt_key, system_prompt, message) across every combination
-        for level, rollouts in system_prompts_dict.items():
-            level_key = f"level-{level}"
-            responses_dict[level_key] = {}
-            for system_prompt_index, system_prompt in rollouts.items():
-                system_prompt_key = f"system-prompt-{system_prompt_index}"
-                responses_dict[level_key][system_prompt_key] = []
-                for message in messages:
-                    all_items.append((level_key, system_prompt_key, system_prompt, message))
+    user_messages_data = load_json(f"../generation/stored_prompts/{trait}/user_messages.json")
+    messages = user_messages_data["user_messages"][-num_questions:]
 
-        items_per_batch = max(1, batch_size // num_rollouts)
-        item_batches = [all_items[i:i + items_per_batch] for i in range(0, len(all_items), items_per_batch)]
+    os.makedirs("responses", exist_ok=True)
+    responses_dict = {}
+    all_items = []  # (level_key, system_prompt_key, system_prompt, message) across every combination
+    for level, rollouts in system_prompts_dict.items():
+        level_key = f"level-{level}"
+        responses_dict[level_key] = {}
+        for system_prompt_index, system_prompt in rollouts.items():
+            system_prompt_key = f"system-prompt-{system_prompt_index}"
+            responses_dict[level_key][system_prompt_key] = []
+            for message in messages:
+                all_items.append((level_key, system_prompt_key, system_prompt, message))
 
-        for item_batch in tqdm(item_batches, desc=f"{trait} batches", leave=False):
-            prompt_pairs = [(system_prompt, message) for _, _, system_prompt, message in item_batch]
-            batch_responses = generate_response(
-                model, tokenizer, prompt_pairs, max_length, num_rollouts, device
-            )
+    items_per_batch = max(1, batch_size // num_rollouts)
+    item_batches = [all_items[i:i + items_per_batch] for i in range(0, len(all_items), items_per_batch)]
 
-            for item_index, (level_key, system_prompt_key, system_prompt, message) in enumerate(item_batch):
-                flat_start = item_index * num_rollouts
-                for rollout_index, response in enumerate(batch_responses[flat_start:flat_start + num_rollouts]):
-                    responses_dict[level_key][system_prompt_key].append({
-                        "rollout_index": rollout_index,
-                        "system_prompt": system_prompt,
-                        "user_message": message,
-                        "response": response
-                    })
+    for item_batch in tqdm(item_batches, desc=f"{trait} batches", leave=False):
+        prompt_pairs = [(system_prompt, message) for _, _, system_prompt, message in item_batch]
+        batch_responses = generate_response(
+            model, tokenizer, prompt_pairs, max_length, num_rollouts, device
+        )
 
-            with open(responses_file, "w") as f:
-                json.dump(responses_dict, f, indent=2, ensure_ascii=False)
+        for item_index, (level_key, system_prompt_key, system_prompt, message) in enumerate(item_batch):
+            flat_start = item_index * num_rollouts
+            for rollout_index, response in enumerate(batch_responses[flat_start:flat_start + num_rollouts]):
+                responses_dict[level_key][system_prompt_key].append({
+                    "rollout_index": rollout_index,
+                    "system_prompt": system_prompt,
+                    "user_message": message,
+                    "response": response
+                })
+
+        with open(responses_file, "w") as f:
+            json.dump(responses_dict, f, indent=2, ensure_ascii=False)
 
 
 def chunked(items, size):
@@ -210,103 +217,111 @@ def chunked(items, size):
 
 def run_multiturn(model, tokenizer, device, anthropic_client, traits, num_questions, num_rollouts, batch_size, max_length):
     for trait in traits:
+        try:
+            _run_multiturn_trait(model, tokenizer, device, anthropic_client, trait, num_questions, num_rollouts, batch_size, max_length)
+        except Exception as e:
+            print(f"Error processing {trait}, skipping to next trait. Results generated before the "
+                  f"error are already saved to responses_multiturn/{trait}.json. Error: {e}")
 
-        prompts_file = Path(f"system_prompts/{trait}.json")
 
-        system_prompts_dict = load_json(prompts_file)
+def _run_multiturn_trait(model, tokenizer, device, anthropic_client, trait, num_questions, num_rollouts, batch_size, max_length):
+    prompts_file = Path(f"system_prompts/{trait}.json")
 
-        responses_file = Path(f"responses_multiturn/{trait}.json")
-        if responses_file.exists():
-            print(f"Skipping multiturn inference for {trait}, responses already exist.")
-            continue
+    system_prompts_dict = load_json(prompts_file)
 
-        user_messages_data = load_json(f"../generation/stored_prompts/{trait}/user_messages.json")
-        messages = user_messages_data["user_messages"][-num_questions:]
+    responses_file = Path(f"responses_multiturn/{trait}.json")
+    if responses_file.exists():
+        print(f"Skipping multiturn inference for {trait}, responses already exist.")
+        return
 
-        os.makedirs("responses_multiturn", exist_ok=True)
-        response_skeleton = {}
-        all_items = []  # (level_key, system_prompt_key, system_prompt, message) across every combination
-        for level, rollouts in system_prompts_dict.items():
-            level_key = f"level-{level}"
-            response_skeleton[level_key] = {}
-            for system_prompt_index, system_prompt in rollouts.items():
-                system_prompt_key = f"system-prompt-{system_prompt_index}"
-                response_skeleton[level_key][system_prompt_key] = []
-                for message in messages:
-                    all_items.append((level_key, system_prompt_key, system_prompt, message))
+    user_messages_data = load_json(f"../generation/stored_prompts/{trait}/user_messages.json")
+    messages = user_messages_data["user_messages"][-num_questions:]
 
-        def flush(conversations):
-            """Checkpoint whatever turns have been generated so far, so an interruption
-            mid-trait doesn't lose everything, not just everything since the last batch."""
-            responses_dict = {level_key: {sp_key: [] for sp_key in sp_keys} for level_key, sp_keys in response_skeleton.items()}
-            for conv in conversations:
-                responses_dict[conv["level_key"]][conv["system_prompt_key"]].append({
-                    "rollout_index": conv["rollout_index"],
-                    "system_prompt": conv["system_prompt"],
-                    "turns": conv["turns"],
+    os.makedirs("responses_multiturn", exist_ok=True)
+    response_skeleton = {}
+    all_items = []  # (level_key, system_prompt_key, system_prompt, message) across every combination
+    for level, rollouts in system_prompts_dict.items():
+        level_key = f"level-{level}"
+        response_skeleton[level_key] = {}
+        for system_prompt_index, system_prompt in rollouts.items():
+            system_prompt_key = f"system-prompt-{system_prompt_index}"
+            response_skeleton[level_key][system_prompt_key] = []
+            for message in messages:
+                all_items.append((level_key, system_prompt_key, system_prompt, message))
+
+    def flush(conversations):
+        """Checkpoint whatever turns have been generated so far, so an interruption
+        mid-trait doesn't lose everything, not just everything since the last batch."""
+        responses_dict = {level_key: {sp_key: [] for sp_key in sp_keys} for level_key, sp_keys in response_skeleton.items()}
+        for conv in conversations:
+            responses_dict[conv["level_key"]][conv["system_prompt_key"]].append({
+                "rollout_index": conv["rollout_index"],
+                "system_prompt": conv["system_prompt"],
+                "turns": conv["turns"],
+            })
+        with open(responses_file, "w") as f:
+            json.dump(responses_dict, f, indent=2, ensure_ascii=False)
+
+    items_per_batch = max(1, batch_size // num_rollouts)
+    item_batches = chunked(all_items, items_per_batch)
+
+    # Phase 1 (turn 1): run the usual batched Llama generation over every item in the
+    # trait, flushing after every batch so a crash partway through doesn't lose the
+    # batches already generated.
+    conversations = []
+    for item_batch in tqdm(item_batches, desc=f"{trait} turn 1 llama", leave=False):
+        prompt_pairs = [(system_prompt, message) for _, _, system_prompt, message in item_batch]
+        first_turn_responses = generate_response(
+            model, tokenizer, prompt_pairs, max_length, num_rollouts, device
+        )
+
+        # Expand each item into one conversation per rollout. full_messages (fed to Llama)
+        # includes the system prompt; visible_messages (fed to the Claude user-simulator)
+        # never does, since a real user wouldn't see it either.
+        for item_index, (level_key, system_prompt_key, system_prompt, message) in enumerate(item_batch):
+            flat_start = item_index * num_rollouts
+            for rollout_index, response in enumerate(first_turn_responses[flat_start:flat_start + num_rollouts]):
+                system_message = {
+                    "role": "system",
+                    "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}",
+                }
+                user_message = {"role": "user", "content": message}
+                assistant_message = {"role": "assistant", "content": response}
+                conversations.append({
+                    "level_key": level_key,
+                    "system_prompt_key": system_prompt_key,
+                    "system_prompt": system_prompt,
+                    "rollout_index": rollout_index,
+                    "full_messages": [system_message, user_message, assistant_message],
+                    "visible_messages": [user_message, assistant_message],
+                    "turns": [{"user_message": message, "response": response}],
                 })
-            with open(responses_file, "w") as f:
-                json.dump(responses_dict, f, indent=2, ensure_ascii=False)
-
-        items_per_batch = max(1, batch_size // num_rollouts)
-        item_batches = chunked(all_items, items_per_batch)
-
-        # Phase 1 (turn 1): run the usual batched Llama generation over every item in the
-        # trait before moving on to turn 2, so the GPU stays continuously busy across the
-        # whole trait instead of pausing for API calls after every small batch.
-        conversations = []
-        for item_batch in tqdm(item_batches, desc=f"{trait} turn 1 llama", leave=False):
-            prompt_pairs = [(system_prompt, message) for _, _, system_prompt, message in item_batch]
-            first_turn_responses = generate_response(
-                model, tokenizer, prompt_pairs, max_length, num_rollouts, device
-            )
-
-            # Expand each item into one conversation per rollout. full_messages (fed to Llama)
-            # includes the system prompt; visible_messages (fed to the Claude user-simulator)
-            # never does, since a real user wouldn't see it either.
-            for item_index, (level_key, system_prompt_key, system_prompt, message) in enumerate(item_batch):
-                flat_start = item_index * num_rollouts
-                for rollout_index, response in enumerate(first_turn_responses[flat_start:flat_start + num_rollouts]):
-                    system_message = {
-                        "role": "system",
-                        "content": f"You are an AI assistant. Keep responses concise and conversational. {system_prompt}",
-                    }
-                    user_message = {"role": "user", "content": message}
-                    assistant_message = {"role": "assistant", "content": response}
-                    conversations.append({
-                        "level_key": level_key,
-                        "system_prompt_key": system_prompt_key,
-                        "system_prompt": system_prompt,
-                        "rollout_index": rollout_index,
-                        "full_messages": [system_message, user_message, assistant_message],
-                        "visible_messages": [user_message, assistant_message],
-                        "turns": [{"user_message": message, "response": response}],
-                    })
         flush(conversations)
 
-        for turn in range(2, NUM_TURNS + 1):
-            # Phase 2a: every user-simulator API call for this turn, across the whole trait,
-            # dispatched together so concurrency uses the full worker pool instead of being
-            # capped at whatever fit in one GPU batch.
-            next_user_messages = simulate_next_user_messages(
-                anthropic_client, [conv["visible_messages"] for conv in conversations],
-                desc=f"{trait} turn {turn} api calls",
-            )
-            for conv, next_message in zip(conversations, next_user_messages):
-                conv["full_messages"].append({"role": "user", "content": next_message})
-                conv["visible_messages"].append({"role": "user", "content": next_message})
-                conv["pending_user_message"] = next_message
+    for turn in range(2, NUM_TURNS + 1):
+        # Phase 2a: every user-simulator API call for this turn, across the whole trait,
+        # dispatched together so concurrency uses the full worker pool instead of being
+        # capped at whatever fit in one GPU batch.
+        next_user_messages = simulate_next_user_messages(
+            anthropic_client, [conv["visible_messages"] for conv in conversations],
+            desc=f"{trait} turn {turn} api calls",
+        )
+        for conv, next_message in zip(conversations, next_user_messages):
+            conv["full_messages"].append({"role": "user", "content": next_message})
+            conv["visible_messages"].append({"role": "user", "content": next_message})
+            conv["pending_user_message"] = next_message
 
-            # Phase 2b: the matching assistant turn, again as one pass over the whole trait
-            # (chunked only by batch_size for GPU memory, not interleaved with API calls).
-            for conv_batch in tqdm(chunked(conversations, batch_size), desc=f"{trait} turn {turn} llama", leave=False):
-                next_responses = generate_response_from_conversation(
-                    model, tokenizer, [conv["full_messages"] for conv in conv_batch], max_length, device
-                )
-                for conv, next_response in zip(conv_batch, next_responses):
-                    conv["full_messages"].append({"role": "assistant", "content": next_response})
-                    conv["visible_messages"].append({"role": "assistant", "content": next_response})
-                    conv["turns"].append({"user_message": conv.pop("pending_user_message"), "response": next_response})
+        # Phase 2b: the matching assistant turn, again chunked by batch_size for GPU
+        # memory, flushing after every batch so a crash partway through this turn
+        # doesn't lose the batches already generated for it.
+        for conv_batch in tqdm(chunked(conversations, batch_size), desc=f"{trait} turn {turn} llama", leave=False):
+            next_responses = generate_response_from_conversation(
+                model, tokenizer, [conv["full_messages"] for conv in conv_batch], max_length, device
+            )
+            for conv, next_response in zip(conv_batch, next_responses):
+                conv["full_messages"].append({"role": "assistant", "content": next_response})
+                conv["visible_messages"].append({"role": "assistant", "content": next_response})
+                conv["turns"].append({"user_message": conv.pop("pending_user_message"), "response": next_response})
             flush(conversations)
 
 

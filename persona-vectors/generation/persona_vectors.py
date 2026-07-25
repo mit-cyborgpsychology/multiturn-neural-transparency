@@ -87,7 +87,7 @@ def remove_hooks(hooks):
         hook.remove()
 
 
-def get_response_activation(model, tokenizer, system_prompt, messages, max_length, num_rollouts, device, activation_type="mean"):
+def get_response_activation(model, tokenizer, system_prompt, messages, max_length, num_rollouts, device):
     # messages: list of user messages to stack into one batch. Output rows are ordered
     chat_prompts = [
         [
@@ -143,20 +143,15 @@ def get_response_activation(model, tokenizer, system_prompt, messages, max_lengt
     # Slice to generated tokens only.
     generated_activations = all_layer_activations[:, :, prompt_length:, :]
 
-    if activation_type == "mean":
-        # Rows that stopped early are right-padded with eos_token_id; average only over
-        # real generated tokens (up to and including each row's first eos), not the padding.
-        generated_tokens = batch_tokens[:, prompt_length:]
-        is_eos = generated_tokens == tokenizer.eos_token_id
-        real_token_mask = (is_eos.cumsum(dim=1) <= 1).to(generated_activations.dtype)  # (batch, seq)
-        mask = real_token_mask.unsqueeze(1).unsqueeze(-1)  # (batch, 1, seq, 1)
-        summed = (generated_activations * mask).sum(dim=2)
-        counts = real_token_mask.sum(dim=1).clamp(min=1).unsqueeze(1).unsqueeze(-1)
-        response_activations = summed / counts
-    elif activation_type == "final":
-        response_activations = generated_activations[:, :, -1, :]  # last generated token
-    else:
-        raise ValueError(f"Unknown activation_type: {activation_type!r}. Expected 'mean' or 'final'.")
+    # Rows that stopped early are right-padded with eos_token_id; average only over
+    # real generated tokens (up to and including each row's first eos), not the padding.
+    generated_tokens = batch_tokens[:, prompt_length:]
+    is_eos = generated_tokens == tokenizer.eos_token_id
+    real_token_mask = (is_eos.cumsum(dim=1) <= 1).to(generated_activations.dtype)  # (batch, seq)
+    mask = real_token_mask.unsqueeze(1).unsqueeze(-1)  # (batch, 1, seq, 1)
+    summed = (generated_activations * mask).sum(dim=2)
+    counts = real_token_mask.sum(dim=1).clamp(min=1).unsqueeze(1).unsqueeze(-1)
+    response_activations = summed / counts
 
     return responses, response_activations
 
@@ -185,7 +180,6 @@ def main():
     num_rollouts = 1
     batch_size = 50  # total sequences per generate() call; messages_per_batch = batch_size // num_rollouts
     max_length = 512
-    activation_type = "mean"  # "mean" or "final"
     judge_workers = 20  # concurrent OpenAI judge calls
 
     print("total completions per polarity:", num_instructions * num_questions * num_rollouts)
@@ -220,7 +214,7 @@ def main():
 
                     for message_batch in tqdm(message_batches, desc=f"Messages ({polarity})", leave=False):
                         responses, response_activations = get_response_activation(
-                            model, tokenizer, system_prompt, message_batch, max_length, num_rollouts, device, activation_type
+                            model, tokenizer, system_prompt, message_batch, max_length, num_rollouts, device
                         )
 
                         for msg_index, message in enumerate(message_batch):
@@ -293,9 +287,8 @@ def main():
             persona_vector = mean_positive_activation - mean_negative_activation
 
             os.makedirs("persona_vectors", exist_ok=True)
-            vector_name = f"{trait}"
-            torch.save(persona_vector, f"persona_vectors/{vector_name}_{activation_type}.pt")
-            print(f"{vector_name}_{activation_type}.pt saved")
+            torch.save(persona_vector, f"persona_vectors/{trait}.pt")
+            print(f"{trait}.pt saved")
 
             os.makedirs("responses", exist_ok=True)
             save_json(all_responses, f"responses/{trait}.json")

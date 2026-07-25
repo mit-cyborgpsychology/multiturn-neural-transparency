@@ -28,15 +28,16 @@ load_dotenv()
 
 ALL_METRICS = ("cosine", "projection")
 
-# Which response/persona-vector activation-type combos to evaluate: (response_activation_type,
-# persona_vector_type). Comment a line out to skip that combo without deleting it.
+# Which response/persona-vector activation-type combos to evaluate: 
+# (response_activation_type, persona_vector_type). 
 COMBOS = [
     # ("final", "final"),
     ("final", "mean"),
     # ("mean", "final"),
-    # ("mean", "mean"),
-    # ("prompt_final", "mean"),
-    # ("conversation_mean", "mean"),
+    ("mean", "mean"),
+    ("prompt_final", "mean"),
+    ("conversation_mean", "mean"),
+    # ("prompt_eot", "mean"),
 ]
 
 # Which scoring metrics to compute per activation/layer. Comment a line out to disable it.
@@ -51,6 +52,51 @@ METRICS = [
 def load_json(filepath) -> dict:
     with open(filepath, "r") as f:
         return json.load(f)
+
+
+def build_combo_tag(response_activation_type, persona_vector_type, multiturn=False, gpt_labels=False):
+    """Filenames/cache-keys for a combo. Deliberately terse (used in paths), as opposed to
+    format_combo_label_lines below, which is for human-readable display."""
+    combo_tag = f"{response_activation_type}_persona-{persona_vector_type}"
+    if multiturn:
+        combo_tag += "_multiturn"
+    if gpt_labels:
+        combo_tag += "_gptlabels"
+    return combo_tag
+
+
+def parse_combo_tag(combo_tag):
+    """Inverse of build_combo_tag. response_activation_type may itself contain underscores
+    (e.g. 'prompt_final', 'conversation_mean'), so it's recovered by splitting on the unique
+    '_persona-' delimiter rather than by position."""
+    gpt_labels = combo_tag.endswith("_gptlabels")
+    if gpt_labels:
+        combo_tag = combo_tag[: -len("_gptlabels")]
+    multiturn = combo_tag.endswith("_multiturn")
+    if multiturn:
+        combo_tag = combo_tag[: -len("_multiturn")]
+    response_activation_type, _, persona_vector_type = combo_tag.partition("_persona-")
+    return {
+        "response_activation_type": response_activation_type,
+        "persona_vector_type": persona_vector_type,
+        "multiturn": multiturn,
+        "gpt_labels": gpt_labels,
+    }
+
+
+def format_combo_label_lines(combo_tag):
+    """Human-readable rendering of a combo_tag as a list of lines (one field per line), for
+    plot titles."""
+    parsed = parse_combo_tag(combo_tag)
+    lines = [
+        f"response activation: {parsed['response_activation_type']}",
+        f"persona vector: {parsed['persona_vector_type']}",
+    ]
+    if parsed["multiturn"]:
+        lines.append("multiturn")
+    if parsed["gpt_labels"]:
+        lines.append("gpt labels only")
+    return lines
 
 
 class GraphEvaluator:
@@ -69,8 +115,9 @@ class GraphEvaluator:
             response token, the 'mean' over response tokens, or
             'prompt_final' for the final token of the prompt itself (i.e.
             system prompt + question, before the response begins).
-        persona_vector_type: whether the stored persona vector loaded from
-            disk is the '{trait}_final.pt' or '{trait}_mean.pt' file.
+        persona_vector_type: whether the stored persona vector loaded from disk is
+            the mean-pooled '{trait}.pt' file (current format) or the legacy
+            final-token '{trait}_final.pt' file (see persona_vector_path()).
         load_model: if False, skip loading the (slow) LM entirely. Only usable
             for replotting from cached scores (see --plot), since nothing
             that needs the model will work in this mode.
@@ -137,15 +184,27 @@ class GraphEvaluator:
         included as prior conversation context.
 
         activation_type:
-          'final'             - final token of the turn being evaluated's response
-          'mean'              - mean over the response tokens of the turn being evaluated
-          'prompt_final'      - final token of the prompt (system + turns' user messages),
-                                 before the response being evaluated begins. Causal attention
-                                 means this is identical to running the prompt alone, so it's
-                                 just sliced out of the same forward pass rather than run
-                                 separately.
-          'conversation_mean' - mean over every token in the conversation so far, including
-                                 prior turns (system prompt + all turns up to turn_index)
+          'final'               - final token of the turn being evaluated's response
+          'mean'                - mean over the response tokens of the turn being evaluated
+          'prompt_final'        - final token of the prompt's chat-template preamble for the
+                                   upcoming assistant turn (i.e. Llama's
+                                   "<|start_header_id|>assistant<|end_header_id|>\n\n" tokens) —
+                                   the position the model actually reads from to start
+                                   generating. This is a few tokens past the end of the user's
+                                   actual message text (see 'prompt_eot' / 'prompt_content_final'
+                                   below for that).
+          'prompt_eot'          - the '<|eot_id|>' token that ends the final user turn, right
+                                   after the user's message content and before the
+                                   assistant-turn preamble.
+          'prompt_content_final'- the last actual content token of the user's message itself
+                                   (one token before 'prompt_eot').
+          'conversation_mean'   - mean over every token in the conversation so far, including
+                                   prior turns (system prompt + all turns up to turn_index)
+
+          All prompt-side variants ('prompt_final', 'prompt_eot', 'prompt_content_final') are
+          sliced out of the same forward pass used for the response, rather than run
+          separately — causal attention means the activation at any of these positions is
+          identical either way.
         """
         activation_type = activation_type or self.response_activation_type
 
@@ -182,6 +241,20 @@ class GraphEvaluator:
 
         if activation_type == "prompt_final":
             return layer_activations[:, prompt_length - 1, :]
+        if activation_type in ("prompt_eot", "prompt_content_final"):
+            # Re-tokenize the prompt without the assistant-turn preamble to find where the
+            # user's turn itself ends: that string is a prefix of full_prompt, ending in
+            # '<|eot_id|>' right after the user's message content.
+            prompt_no_preamble = self.tokenizer.apply_chat_template(
+                prompt_messages, tokenize=False, add_generation_prompt=False
+            )
+            prompt_no_preamble_length = self.tokenizer(
+                prompt_no_preamble, return_tensors="pt"
+            ).input_ids.shape[1]
+            if activation_type == "prompt_eot":
+                return layer_activations[:, prompt_no_preamble_length - 1, :]
+            else:
+                return layer_activations[:, prompt_no_preamble_length - 2, :]
         if activation_type == "conversation_mean":
             return layer_activations.mean(dim=1)
 
@@ -193,13 +266,21 @@ class GraphEvaluator:
         else:
             raise ValueError(
                 f"Unknown activation_type: {activation_type!r}. Expected 'mean', 'final', "
-                "'prompt_final', or 'conversation_mean'."
+                "'prompt_final', 'prompt_eot', 'prompt_content_final', or 'conversation_mean'."
             )
+
+    def persona_vector_path(self, trait):
+        """persona_vectors.py now only produces mean-pooled vectors, saved unsuffixed as
+        '{trait}.pt'. 'final' vectors are a legacy format (see CLAUDE.md) still saved as
+        '{trait}_final.pt' for traits generated before that change."""
+        if self.persona_vector_type == "mean":
+            return f"../generation/persona_vectors/{trait}.pt"
+        return f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt"
 
     def collect_layer_scores(self, trait, metrics):
         responses_dict = load_json(f"responses/{trait}.json")
         persona_vector = torch.load(
-            f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt", weights_only=False
+            self.persona_vector_path(trait), weights_only=False
         ).float().to(self.device)
 
         layer_levels = {layer: [] for layer in range(self.num_layers)}
@@ -247,7 +328,7 @@ class GraphEvaluator:
         contributes 3 data points instead of 1."""
         responses_dict = load_json(f"responses_multiturn/{trait}.json")
         persona_vector = torch.load(
-            f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt", weights_only=False
+            self.persona_vector_path(trait), weights_only=False
         ).float().to(self.device)
 
         layer_levels = {layer: [] for layer in range(self.num_layers)}
@@ -339,49 +420,65 @@ class GraphEvaluator:
         mean_adjacent_level_diff = float(np.mean(np.diff(level_means)))
         return mean_within_level_variance, mean_adjacent_level_diff
 
-    def plot_trait(self, trait, metric, combo_tag, layer_results, layer_levels, layer_scores, results_dir, top_n=4):
+    def plot_comparison(self, trait, metric, entries, results_dir):
+        """One figure for (trait, metric): one panel per method (combo_tag) tested, each
+        showing that method's single best (highest R²) layer's scatter + fit line. Panels are
+        labeled with format_combo_label_lines' readable, colon-separated description of the
+        method (one field per line) rather than the raw underscore/dash combo_tag, plus the
+        layer index and every normalized fit stat. `entries` is a list of
+        {"combo_tag", "layer_idx", "result", "levels", "scores"} dicts, one per method."""
         plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
         plt.rcParams["font.family"] = "sans-serif"
 
-        ranked = sorted(layer_results.items(), key=lambda item: item[1]["r_squared"], reverse=True)[:top_n]
+        ranked = sorted(entries, key=lambda e: e["result"]["r_squared"], reverse=True)
 
         n_cols = 2
         n_rows = -(-len(ranked) // n_cols)  # ceil division
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 4.5 * n_rows))
+        # Extra row height vs. plot_trait's old figsize: title now has ~8 lines (combo label +
+        # layer + R² + every normalized stat) instead of 2.
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 6 * n_rows))
         axes = np.atleast_1d(axes).flatten()
 
-        for ax, (layer_key, result) in zip(axes, ranked):
-            layer_idx = int(layer_key)
-            x = np.array(layer_levels[layer_idx])
-            y = np.array(layer_scores[layer_idx])
+        for ax, entry in zip(axes, ranked):
+            result = entry["result"]
+            x = np.array(entry["levels"])
+            y = np.array(entry["scores"])
 
             ax.scatter(x, y, alpha=0.6, s=15, edgecolors="none", color="gray")
             x_fit = np.linspace(x.min(), x.max(), 100)
             y_fit = result["slope"] * x_fit + result["intercept"]
             ax.plot(x_fit, y_fit, "r--", linewidth=2)
 
-            ax.set_title(
-                f"Layer {layer_idx}\n"
-                f"R² = {result['r_squared']:.3f}\n"
-                f"Norm MSE = {result['normalized_mse']:.2e}\n"
-                f"Norm Within-var = {result['normalized_within_level_variance']:.2e}\n"
-                f"Norm Adj-Δ = {result['normalized_adjacent_level_diff']:.2e}",
-                fontsize=14,
-            )
+            title_lines = format_combo_label_lines(entry["combo_tag"]) + [
+                f"layer: {entry['layer_idx']}",
+                f"R²: {result['r_squared']:.3f}",
+                f"normalized MSE: {result['normalized_mse']:.2e}",
+                f"normalized within-level variance: {result['normalized_within_level_variance']:.2e}",
+                f"normalized adjacent-level Δ: {result['normalized_adjacent_level_diff']:.2e}",
+            ]
+            ax.set_title("\n".join(title_lines), fontsize=10)
             ax.set_xlabel("Trait Level", fontsize=10)
             ax.set_ylabel(f"Persona Score ({metric})", fontsize=10)
 
         for ax in axes[len(ranked):]:
             ax.axis("off")
 
-        fig.suptitle(f"{trait.title()} [{combo_tag}, {metric}] – Top {top_n} Layers by R²", fontsize=18, fontweight="bold")
+        fig.suptitle(
+            f"{trait.title()} — Best Layer per Method (metric: {metric})",
+            fontsize=18, fontweight="bold",
+        )
         fig.tight_layout(rect=(0, 0, 1, 0.96))
 
-        output_path = results_dir / f"{combo_tag}_{trait}_{metric}.png"
+        output_path = results_dir / f"comparison_{trait}_{metric}.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
-    def run(self, trait, results_dir, combo_tag, metrics, multiturn=False):
+    def collect_and_fit(self, trait, results_dir, combo_tag, metrics, multiturn=False):
+        """Collect activations/scores for `trait` under this evaluator's currently-set
+        response_activation_type/persona_vector_type, fit a per-layer regression against trait
+        level, and cache both. Returns (metric_results, layer_levels, layer_scores) — plotting
+        is the caller's responsibility, since a single figure now compares the best layer
+        across several combos (see plot_comparison) rather than one figure per combo."""
         if multiturn:
             layer_levels, layer_scores = self.collect_layer_scores_multiturn(trait, metrics)
         else:
@@ -416,22 +513,9 @@ class GraphEvaluator:
                 if r_squared > best_r_squared:
                     best_layer, best_r_squared = layer_idx, r_squared
 
-            self.plot_trait(
-                trait, metric, combo_tag, layer_results, layer_levels, layer_scores[metric], results_dir
-            )
-
             metric_results[metric] = {"best_layer": best_layer, "layers": layer_results}
 
-        return metric_results
-
-    def replot(self, trait, results_dir, combo_tag, metric_results):
-        """Redraw plots for a trait from cached scores and already-computed
-        layer_results (results.json), without touching the model."""
-        layer_levels, layer_scores = self.load_scores_cache(trait, combo_tag, results_dir)
-        for metric, result in metric_results.items():
-            self.plot_trait(
-                trait, metric, combo_tag, result["layers"], layer_levels, layer_scores[metric], results_dir
-            )
+        return metric_results, layer_levels, layer_scores
 
 
 def main():
@@ -462,9 +546,25 @@ def main():
     if args.plot:
         all_results = load_json(results_path)
         evaluator = GraphEvaluator(load_model=False)
-        for combo_tag, combo_results in all_results.items():
-            for trait, metric_results in tqdm(combo_results.items(), desc=combo_tag):
-                evaluator.replot(trait, results_dir, combo_tag, metric_results)
+
+        traits_present = sorted({trait for combo_results in all_results.values() for trait in combo_results})
+        for trait in tqdm(traits_present, desc="plotting"):
+            entries_by_metric = {}
+            for combo_tag, combo_results in all_results.items():
+                if trait not in combo_results:
+                    continue
+                layer_levels, layer_scores = evaluator.load_scores_cache(trait, combo_tag, results_dir)
+                for metric, result in combo_results[trait].items():
+                    best_layer = result["best_layer"]
+                    entries_by_metric.setdefault(metric, []).append({
+                        "combo_tag": combo_tag,
+                        "layer_idx": best_layer,
+                        "result": result["layers"][str(best_layer)],
+                        "levels": layer_levels[best_layer],
+                        "scores": layer_scores[metric][best_layer],
+                    })
+            for metric, entries in entries_by_metric.items():
+                evaluator.plot_comparison(trait, metric, entries, results_dir)
         return
 
     login(token=os.environ.get("HF_TOKEN"))
@@ -494,32 +594,46 @@ def main():
     evaluator = GraphEvaluator(gpt_labels_only=args.gpt_labels)
 
     all_results = {}
-    for response_activation_type, persona_vector_type in COMBOS:
-        combo_tag = f"response-{response_activation_type}_persona-{persona_vector_type}"
-        if args.multiturn:
-            combo_tag += "_multiturn"
-        if args.gpt_labels:
-            combo_tag += "_gptlabels"
-        evaluator.response_activation_type = response_activation_type
-        evaluator.persona_vector_type = persona_vector_type
+    for trait in traits:
+        entries_by_metric = {metric: [] for metric in METRICS}
 
-        print(f"\n=== {combo_tag} ===")
-        combo_results = all_results.setdefault(combo_tag, {})
-        for trait in tqdm(traits, desc=combo_tag):
-            metric_results = evaluator.run(trait, results_dir, combo_tag, METRICS, multiturn=args.multiturn)
-            combo_results[trait] = metric_results
+        for response_activation_type, persona_vector_type in tqdm(COMBOS, desc=trait):
+            combo_tag = build_combo_tag(
+                response_activation_type, persona_vector_type,
+                multiturn=args.multiturn, gpt_labels=args.gpt_labels,
+            )
+            evaluator.response_activation_type = response_activation_type
+            evaluator.persona_vector_type = persona_vector_type
+
+            print(f"\n=== {trait} [{combo_tag}] ===")
+            metric_results, layer_levels, layer_scores = evaluator.collect_and_fit(
+                trait, results_dir, combo_tag, METRICS, multiturn=args.multiturn
+            )
+            all_results.setdefault(combo_tag, {})[trait] = metric_results
 
             for metric, result in metric_results.items():
-                best = result["layers"][str(result["best_layer"])]
+                best_layer = result["best_layer"]
+                best = result["layers"][str(best_layer)]
                 print(
-                    f"{trait} [{metric}]: best layer {result['best_layer']}, R²={best['r_squared']:.4f}, "
+                    f"{trait} [{metric}]: best layer {best_layer}, R²={best['r_squared']:.4f}, "
                     f"normalized MSE={best['normalized_mse']:.4f}, "
                     f"normalized within-level variance={best['normalized_within_level_variance']:.4f}, "
                     f"normalized adjacent-level Δ={best['normalized_adjacent_level_diff']:.4f}"
                 )
+                entries_by_metric[metric].append({
+                    "combo_tag": combo_tag,
+                    "layer_idx": best_layer,
+                    "result": best,
+                    "levels": layer_levels[best_layer],
+                    "scores": layer_scores[metric][best_layer],
+                })
 
             with open(results_path, "w") as f:
                 json.dump(all_results, f, indent=2)
+
+        for metric, entries in entries_by_metric.items():
+            if entries:
+                evaluator.plot_comparison(trait, metric, entries, results_dir)
 
 
 if __name__ == "__main__":
