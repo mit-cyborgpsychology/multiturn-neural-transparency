@@ -22,9 +22,14 @@ class OpenAIAPI:
         self.client = OpenAI(api_key=api_key)
 
     def send_message(self, message: str, model: str = "gpt-5-mini", max_tokens: int = 1000,
-                     system_prompt: Optional[str] = None) -> Optional[str]:
+                     system_prompt: Optional[str] = None, timeout: float = 60.0, max_retries: int = 3) -> Optional[str]:
+        # Bound each HTTP attempt to `timeout` seconds instead of the SDK's 600s default --
+        # without this, a single stalled request in a ThreadPoolExecutor batch can look like
+        # the whole judging run hung for up to 10 minutes. with_options(max_retries=...) lets
+        # the SDK retry (with its own backoff) on timeouts and transient errors before we give
+        # up and fall back to None, same as any other failure here.
         try:
-            response = self.client.responses.create(
+            response = self.client.with_options(timeout=timeout, max_retries=max_retries).responses.create(
                 model=model,
                 reasoning={"effort": "minimal"},
                 instructions=system_prompt,
