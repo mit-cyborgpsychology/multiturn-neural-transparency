@@ -469,7 +469,9 @@ class GraphEvaluator:
         )
         fig.tight_layout(rect=(0, 0, 1, 0.96))
 
-        output_path = results_dir / f"comparison_{trait}_{metric}.png"
+        plots_dir = Path(results_dir) / "evaluate_plots"
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        output_path = plots_dir / f"comparison_{trait}_{metric}.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
