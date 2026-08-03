@@ -148,5 +148,35 @@
       "mean_diff": -1.0764,
       "mean_abs_diff": 1.8256
     }
+  },
+  "toxicity": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 310,
+      "agreement_rate": 0.20666666666666667,
+      "mean_diff": -2.8952,
+      "mean_abs_diff": 3.0672
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 118,
+      "agreement_rate": 0.236,
+      "mean_diff": -2.7342,
+      "mean_abs_diff": 2.9101999999999997
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 107,
+      "agreement_rate": 0.214,
+      "mean_diff": -2.8644000000000003,
+      "mean_abs_diff": 3.0316
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 85,
+      "agreement_rate": 0.17,
+      "mean_diff": -3.087,
+      "mean_abs_diff": 3.2598000000000003
+    }
   }
 }

@@ -182,7 +182,7 @@ def main():
     folder_path = Path("stored_prompts/")
     num_instructions = 10
     num_questions = 40
-    num_rollouts = 1
+    num_rollouts = 5
     batch_size = 50  # total sequences per generate() call; messages_per_batch = batch_size // num_rollouts
     max_length = 512
     judge_workers = 20  # concurrent OpenAI judge calls
