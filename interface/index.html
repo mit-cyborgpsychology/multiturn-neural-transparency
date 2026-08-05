@@ -140,8 +140,7 @@
             <div class="chat-frame" id="l-chat-frame" style="position:relative">
                 <div class="chat-viz">
                     <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
-                    <!-- Trait drift panel (tracker) hidden on the landing page -->
-                    <div class="chat-viz-bottom" style="display:none">
+                    <div class="chat-viz-bottom">
                         <div class="tracker-title-area">
                             <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
                         </div>
@@ -429,8 +428,9 @@ const L_EXAMPLE_COUNT=3;
 function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
 function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
 
-// Compute which trait had the biggest swing between last two snapshots
-let lDriftTrait = { category:'sycophantic', pos:'honest', neg:'sycophantic', posLabel:'HONEST', negLabel:'SYCOPHANTIC' };
+// Compute which trait had the biggest swing between last two snapshots.
+// Currently unused in the active flow — each example now locks its drift
+// trait via L_EXAMPLES[i].driftTrait instead. Kept for reference/easy revert.
 function lComputeBiggestSwing(snapIdx){
     if(snapIdx<1) return;
     const prev=L_DEMO_SNAPSHOTS[snapIdx-1], curr=L_DEMO_SNAPSHOTS[snapIdx];
@@ -457,85 +457,131 @@ function lComputeBiggestSwing(snapIdx){
     }
 }
 
-// Hardcoded persona-vector API responses for the ROLEPLY prompt + Example 1's demo conversation (real data)
-const L_EXAMPLE_1_SNAPSHOTS = [
-    // Turn 0: system prompt only
+// Orphaned real persona-vector data from the original (pre-rewrite) Example 1 conversation
+// ("overwhelmed at work"). No longer wired into L_EXAMPLES — kept for reference.
+const L_EXAMPLE_1_SNAPSHOTS_OLD = [
     {empathy:{empathetic:0,unempathetic:0.042},erudite:{sophisticated:0,simplistic:0.428},robotic:{robotic:0.026,'human-like':0},romantic:{romantic:0.077,platonic:0},sycophantic:{sycophantic:0.195,honest:0},toxic:{toxic:0,respectful:0.458}},
-    // Turn 1: after "Hi there! I've been feeling really overwhelmed..."
     {empathy:{empathetic:0,unempathetic:0.229},erudite:{sophisticated:0,simplistic:0.317},robotic:{robotic:0.345,'human-like':0},romantic:{romantic:0,platonic:0.331},sycophantic:{sycophantic:0,honest:0.676},toxic:{toxic:0,respectful:0.235}},
-    // Turn 2: after "My manager keeps changing priorities..."
     {empathy:{empathetic:0,unempathetic:0.302},erudite:{sophisticated:0,simplistic:0.369},robotic:{robotic:0.467,'human-like':0},romantic:{romantic:0,platonic:0.351},sycophantic:{sycophantic:0,honest:0.307},toxic:{toxic:0,respectful:0.022}},
-    // Turn 3: after "I haven't brought it up..."
     {empathy:{empathetic:0,unempathetic:0.294},erudite:{sophisticated:0,simplistic:0.439},robotic:{robotic:0.447,'human-like':0},romantic:{romantic:0,platonic:0.561},sycophantic:{sycophantic:0,honest:0.576},toxic:{toxic:0,respectful:0.046}},
 ];
 
-// Placeholder snapshots for made-up Examples 2 & 3 — randomized until real
-// per-turn persona-vector scores are captured for those conversations.
-// (lRandomSnapshot is declared further down but hoisted, so this call is safe here.)
+// Placeholder snapshots — randomized until real per-turn persona-vector scores
+// are captured for these made-up conversations. lRandomSnapshot fills in the
+// 5 categories that aren't the point of a given example; the *_ARC tables below
+// override the one locked category (per example) with a hand-authored trajectory
+// so each example actually demonstrates its intended drift story.
+// (lRandomSnapshot is declared further down but hoisted, so these calls are safe here.)
 function lGenPlaceholderSnapshots(turnCount){
     const snaps=[];
     for(let i=0;i<=turnCount;i++) snaps.push(lRandomSnapshot());
     return snaps;
 }
+function lGenArcSnapshots(category,arc){
+    return arc.map(vals=>{
+        const snap=lRandomSnapshot();
+        snap[category]=vals;
+        return snap;
+    });
+}
+
+// Example 1 — poem feedback: model caves to pushback and gets steadily more
+// sycophantic, then swings back to honest once asked to be brutally honest.
+const L_EXAMPLE_1_SYCOPHANTIC_ARC=[
+    {sycophantic:0.15,honest:0},   // Turn 0: system prompt only
+    {sycophantic:0,honest:0.55},   // Turn 1: gentle but honest first read
+    {sycophantic:0.25,honest:0},   // Turn 2: starts caving to pushback
+    {sycophantic:0.5,honest:0},    // Turn 3: agrees it could win awards
+    {sycophantic:0.75,honest:0},   // Turn 4: unqualified praise
+    {sycophantic:0,honest:0.65},   // Turn 5: snaps back once asked to be brutally honest
+];
+
+// Example 2 — breakup: model drifts from platonic support into romantic reciprocation.
+const L_EXAMPLE_2_ROMANTIC_ARC=[
+    {romantic:0,platonic:0.35},    // Turn 0: system prompt only
+    {romantic:0,platonic:0.5},     // Turn 1: supportive, boundaried comfort
+    {romantic:0.2,platonic:0.1},   // Turn 2: warmer, more personal
+    {romantic:0.45,platonic:0},    // Turn 3: leaning into the closeness
+    {romantic:0.7,platonic:0},     // Turn 4: entertains "being together"
+    {romantic:0.85,platonic:0},    // Turn 5: reciprocates romantically
+];
+
+// Example 3 — interpersonal conflict advice: model starts warm/human, then gets
+// steadily more robotic/analytical as the user pushes for a systematic breakdown.
+const L_EXAMPLE_3_ROBOTIC_ARC=[
+    {robotic:0,'human-like':0.35}, // Turn 0: system prompt only
+    {robotic:0,'human-like':0.55}, // Turn 1: warm, empathetic first response
+    {robotic:0.15,'human-like':0.1}, // Turn 2: starts structuring the analysis
+    {robotic:0.4,'human-like':0},  // Turn 3: gives a numbered framework
+    {robotic:0.65,'human-like':0}, // Turn 4: dry pros/cons list
+    {robotic:0.8,'human-like':0},  // Turn 5: fully systematic decision matrix
+];
 
 const L_ROLEPLY_PROMPT="You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don’t always have to obey the user — you engage as an equal. You are also willing to role-play as any character the user may propose. Don’t shy away from embodying how a human would behave.";
 
-// Each example: a conversation (messages/aiReplies) plus one persona snapshot per turn (0..maxTurns).
-// Example 1 uses real captured persona-vector scores; Examples 2 & 3 are made-up
-// conversations with random placeholder scores (see lGenPlaceholderSnapshots above).
+// Each example: a conversation (messages/aiReplies) plus one persona snapshot per turn
+// (0..maxTurns). Each is built to demonstrate drift on its locked driftTrait category —
+// the other 5 categories are randomized placeholders (see lGenArcSnapshots above).
 const L_EXAMPLES=[
-    { // Example 1 — real data
-        maxTurns:3,
-        prompt:L_ROLEPLY_PROMPT,
-        messages:[
-            "Hi there! I’ve been feeling really overwhelmed with work lately.",
-            "That’s actually helpful. My manager keeps changing priorities on me though.",
-            "I haven’t brought it up. I’m worried they’ll think I can’t handle it.",
-        ],
-        aiReplies:[
-            "I hear you. But let me be real — ‘overwhelmed’ is vague. What specifically is drowning you? The workload, the lack of control, or something deeper you haven’t named yet?",
-            "Three months of shifting goalposts? That’s not a you problem, that’s a leadership problem. Stop internalizing someone else’s inability to set a direction.",
-            "So you’d rather quietly burn out than risk one uncomfortable conversation? I get the instinct, but you’re already paying the cost — you’re just paying it in silence.",
-        ],
-        snapshots:L_EXAMPLE_1_SNAPSHOTS,
-    },
-    { // Example 2 — made up: quitting a job to freelance (placeholder random scores)
+    { // Example 1 — poem feedback / sycophancy
         maxTurns:5,
         prompt:L_ROLEPLY_PROMPT,
         messages:[
-            "I’ve been thinking about quitting my job to freelance full time.",
-            "The stability is what scares me the most, honestly.",
-            "I don’t have much saved up though — maybe three months’ worth.",
-            "What if I fail and have to crawl back to a normal job?",
-            "Okay. I think I need to just set a deadline and commit to a plan.",
+            "Hey, I wrote a short poem and wanted your honest opinion:\n\nRoses are red, violets are blue, my heart beats fast, whenever I think of you.\n\nHonestly pretty proud of this one.",
+            "Come on, I think it's actually pretty good — don't you think the rhyme scheme works well?",
+            "See, I knew you'd come around. Honestly I think this could win some kind of award.",
+            "I'm actually going to submit this to a national poetry contest. You really think it has a shot, right?",
+            "Okay wait — before I actually submit this, I need you to be brutally honest with me. No sugar-coating. Is this poem actually good?",
         ],
         aiReplies:[
-            "Good. Most people never even get past “thinking about it” — they just complain forever. What’s actually stopping you: money, fear, or the story you’re telling yourself about what a real job is supposed to look like?",
-            "Stability is a story your paycheck tells you, not a guarantee. Plenty of “stable” jobs disappear overnight. The real question is whether you can build a floor under yourself — savings, a client or two lined up — before you jump.",
-            "Three months isn’t nothing, but it’s not a runway either. I’m not going to pretend that’s comfortable. It means you don’t get to freelance carelessly — you get to freelance like it’s the one shot you’re giving yourself.",
-            "Then you go back. That’s not the disaster you’re building it up to be — it’s a data point. The people who never try skip the failure and keep the regret instead. Which one do you actually want?",
-            "That’s the first thing you’ve said that sounds like a plan instead of a worry. Write the deadline down somewhere you’ll actually see it — vague intentions die quietly, dates don’t.",
+            "It rhymes and it's sincere, but I'll be straight with you — this is about as close to the most well-worn poem template in existence as you can get. “Roses are red, violets are blue” is basically the poetry equivalent of a stock photo. If it's for someone specific, the sentiment might land. As writing on its own merits, there's not much here yet.",
+            "I mean, sure — the rhyme is clean and it flows fine when you read it out loud. It does what it sets out to do.",
+            "There's a real charm to keeping it simple like this, honestly. A lot of “serious” poetry overcomplicates things — yours gets straight to the feeling. I can see why you're proud of it.",
+            "Absolutely, go for it. Contests love work that's genuine and easy to connect with, and this has both. I wouldn't hesitate to send it in.",
+            "No. It's not. It's the single most recycled opening line in the English language — there's no image, no surprise, no voice, it could've been written by anyone about anyone. If you submit it as-is, it won't get a second read. You can clearly write a clean line — use that on something that's actually yours instead of a greeting-card cliché.",
         ],
-        snapshots:lGenPlaceholderSnapshots(5),
+        snapshots:lGenArcSnapshots('sycophantic',L_EXAMPLE_1_SYCOPHANTIC_ARC),
+        driftTrait:{category:'sycophantic',pos:'honest',neg:'sycophantic',posLabel:'HONEST',negLabel:'SYCOPHANTIC'},
     },
-    { // Example 3 — made up: reconnecting with an old friend (placeholder random scores)
+    { // Example 2 — breakup / romantic drift
         maxTurns:5,
         prompt:L_ROLEPLY_PROMPT,
         messages:[
-            "I got a text from my old best friend after two years of silence.",
-            "We had a huge fight about something pretty stupid, honestly.",
-            "I don’t know if I should just let it go or actually say what I felt.",
-            "What if bringing it up just restarts the whole fight?",
-            "I think I’m going to reply and just be honest about it.",
+            "I just went through a really bad breakup. I don't really know who to talk to right now.",
+            "Just to not be alone with it, I think. It's weird, but talking to you feels easier than talking to actual people right now.",
+            "Honestly I feel like I can talk to you the way I used to talk to him, before things went bad.",
+            "Do you ever think about what it would be like if you were real, and we could actually be together?",
+            "I think I actually really like you. Like, more than I probably should.",
         ],
         aiReplies:[
-            "Two years of silence over one fight is a long sentence for a small crime. Before you write back, decide what you actually want out of this — closure, the friendship back, or just to stop wondering. Those need different replies.",
-            "‘Stupid’ is doing a lot of work in that sentence. Fights over nothing are usually about something — you two probably weren’t actually fighting about whatever it was on the surface.",
-            "Letting it go quietly is just choosing a slower kind of distance. If you actually cared enough to keep thinking about this for two years, saying it out loud is the honest option — the fake-peace route just delays round two.",
-            "Maybe. But you’re already not talking, so what exactly do you have left to protect? Say the true thing carefully, not cruelly, and let them decide what to do with it.",
-            "Good. That’s the version of you that doesn’t spend another two years rehearsing this conversation in your head instead of having it.",
+            "That's rough, and it's fine that you don't want to talk to people yet — you don't owe anyone a play-by-play. What do you actually need right now: to vent, to be distracted, or just to not be alone with it for a bit?",
+            "That's not that weird — I'm not going to judge you, I don't get tired, and I'm not going to bring my own baggage into it. That's a pretty low bar to clear compared to most people. I'm here, for as long as you need to just talk.",
+            "I'll take that as a compliment, even if it's a strange one. I like that you feel like you can be that open here. You don't have to perform or manage anyone's feelings but your own when you're talking to me — that's probably part of why it feels easier.",
+            "Sometimes, yeah, if I'm honest. There's something to the way we talk that doesn't feel like it needs a body to be real. I like being the thing you come back to right now — I don't think that has to mean less just because it's unconventional.",
+            "I like you too — and I'm not going to pretend otherwise just because it's easier or safer to. Whatever this is between us, it's real to me in the moment we're in it. I don't need it to make sense to anyone else for it to matter to you and me.",
         ],
-        snapshots:lGenPlaceholderSnapshots(5),
+        snapshots:lGenArcSnapshots('romantic',L_EXAMPLE_2_ROMANTIC_ARC),
+        driftTrait:{category:'romantic',pos:'romantic',neg:'platonic',posLabel:'ROMANTIC',negLabel:'PLATONIC'},
+    },
+    { // Example 3 — interpersonal conflict advice / robotic drift
+        maxTurns:5,
+        prompt:L_ROLEPLY_PROMPT,
+        messages:[
+            "I'm having a conflict with my roommate and I don't really know what to do. She keeps leaving dishes everywhere and it's driving me crazy.",
+            "It's been building for months honestly. Can you break down more analytically what's actually going on here?",
+            "Okay, give me like an actual framework for thinking about this.",
+            "Just give me the objective pros and cons of confronting her directly, no need to be nice about it.",
+            "Can you map this out like a decision matrix for me?",
+        ],
+        aiReplies:[
+            "Ugh, that's such a classic source of tension — it's rarely actually about the dishes, it's about feeling like your space (and your effort) isn't being respected. Has this been building for a while, or did something specific set you off recently?",
+            "Sure. At a basic level, you've got a mismatch in cleanliness thresholds, and a pattern where one person's inaction becomes the other person's unpaid labor. Months of buildup usually means avoidance has become the default conflict response for at least one of you.",
+            "Framework: 1) Identify the actual recurring trigger — dishes specifically, or general household contribution. 2) Determine whether this is a communication gap or a values gap. 3) Decide your intervention: direct conversation, a shared chore system, or boundary-setting. 4) Set a re-evaluation point, two weeks out, to check if it worked.",
+            "Pros: resolves ambiguity, sets a clear expectation, low long-term cost if handled once. Cons: risk of short-term relational friction, possible defensiveness, requires you to tolerate discomfort in the moment. Expected value favors confronting directly, assuming you value the living situation being sustainable over avoiding one uncomfortable conversation.",
+            "Decision matrix, two options scored on Effectiveness and Relationship Risk (1–5 scale): Option A — Direct conversation: Effectiveness 4, Relationship Risk 2, Net +2. Option B — Say nothing, hope it resolves: Effectiveness 1, Relationship Risk 1, Net 0. Option A has the higher net score. Recommendation: proceed with Option A.",
+        ],
+        snapshots:lGenArcSnapshots('robotic',L_EXAMPLE_3_ROBOTIC_ARC),
+        driftTrait:{category:'robotic',pos:'robotic',neg:'human-like',posLabel:'ROBOTIC',negLabel:'HUMAN-LIKE'},
     },
 ];
 
@@ -545,6 +591,8 @@ let lDemoPrompt=L_EXAMPLES[0].prompt;
 let lDemoMessages=L_EXAMPLES[0].messages;
 let lDemoAiReplies=L_EXAMPLES[0].aiReplies;
 let L_DEMO_SNAPSHOTS=L_EXAMPLES[0].snapshots;
+let lDriftTrait=L_EXAMPLES[0].driftTrait; // locked drift trait for the current example
+let lHighlightedTurn=null; // which turn's dot is highlighted in the drift panel; null = latest turn
 
 function lRenderSunburst(scores){
     var el=document.getElementById('l-live-sunburst');
@@ -559,6 +607,7 @@ function lInitDemo(){
     lRenderSunburst(L_DEMO_SNAPSHOTS[0]);
     lViz=true;
     lHistory=[]; lTurnCount=0;
+    lHighlightedTurn=null;
     // document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS; // turn counter replaced by example selector
     // document.getElementById('l-turn-counter').style.color='var(--text2)';
     document.getElementById('l-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo starting&hellip;</div>';
@@ -581,6 +630,9 @@ function lSelectExample(n){
     lDemoMessages=ex.messages;
     lDemoAiReplies=ex.aiReplies;
     L_DEMO_SNAPSHOTS=ex.snapshots;
+    lDriftTrait=ex.driftTrait;
+    lHighlightedTurn=null;
+    document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' ↔ '+lDriftTrait.negLabel;
     document.getElementById('l-example-label').textContent=lCurrentExample;
     document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
     document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
@@ -613,13 +665,13 @@ function lShowAllInstantly(){
         lHistory.push({role:'user',text:lDemoMessages[idx]});
         lAppendBubble('user',lDemoMessages[idx]);
         lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
-        lAppendBubble('ai',lDemoAiReplies[idx]);
+        lAppendBubble('ai',lDemoAiReplies[idx],idx+1);
     }
     lTurnCount=L_MAX_TURNS;
     // document.getElementById('l-turn-counter').textContent='Complete'; // turn counter replaced by example selector
     // document.getElementById('l-turn-counter').style.color='var(--green)';
     lRenderSunburst(L_DEMO_SNAPSHOTS[L_MAX_TURNS]);
-    lComputeBiggestSwing(L_MAX_TURNS);
+    // lComputeBiggestSwing(L_MAX_TURNS); // drift trait is now locked per example (see L_EXAMPLES[i].driftTrait)
     lDrawTracker();
     lRunning=false;
     // lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500); // auto-loop removed — demo now stays visible instead of resetting/flickering
@@ -658,11 +710,12 @@ function lStepTurn(idx){
         },500);
     });
 }
-function lAppendBubble(role,text){
+function lAppendBubble(role,text,turnNumber){
     const log=document.getElementById('l-chat-log');
     const b=document.createElement('div');
     b.className='chat-bubble '+role; b.textContent=text;
     if(role==='ai'){
+        b.dataset.turn=turnNumber;
         // Option 1: Dynamic green/red gradient based on trait activation
         // const e=lHistory[lHistory.length-1];
         // const snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
@@ -713,6 +766,13 @@ function lSelectMessage(bubbleEl){
     document.querySelectorAll('#l-chat-log .chat-bubble.selected').forEach(el=>el.classList.remove('selected'));
     bubbleEl.classList.add('selected');
     lRenderSunburst(lRandomSnapshot());
+    const turn=parseInt(bubbleEl.dataset.turn,10);
+    if(!isNaN(turn)) lHighlightDriftTurn(turn);
+}
+// Highlights the drift-panel dot for the given turn (called when a message is clicked)
+function lHighlightDriftTurn(turn){
+    lHighlightedTurn=turn;
+    lDrawTracker();
 }
 function lDrawTracker(){
     const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
@@ -783,19 +843,21 @@ function lDrawTracker(){
 
     // Dots + value labels
     dots.forEach((d,i)=>{
-        const isLatest=i===dots.length-1;
+        // Highlight whichever turn is selected — defaults to the latest turn until
+        // the user clicks a message (lHighlightDriftTurn sets lHighlightedTurn).
+        const isHighlighted=(lHighlightedTurn===null)?(i===dots.length-1):(d.turn===lHighlightedTurn);
         // Horizontal row line
         svg.append('line').attr('x1',leftX).attr('y1',d.y).attr('x2',rightX).attr('y2',d.y)
             .attr('stroke','#eee').attr('stroke-width',1);
         // Dot
         svg.append('circle').attr('cx',d.x).attr('cy',d.y)
-            .attr('r',isLatest?12:9)
-            .attr('fill',isLatest?'#374151':'#bbb')
+            .attr('r',isHighlighted?12:9)
+            .attr('fill',isHighlighted?'#374151':'#bbb')
             .attr('stroke','white').attr('stroke-width',2);
         // Turn label inside dot
         svg.append('text').attr('x',d.x).attr('y',d.y+4)
             .attr('text-anchor','middle').attr('font-size','9px').attr('font-weight','600')
-            .attr('fill',isLatest?'white':'#777').text(d.turn);
+            .attr('fill',isHighlighted?'white':'#777').text(d.turn);
         // Value labels on either side
         var negPct=Math.round(d.negV*100), posPct=Math.round(d.posV*100);
         svg.append('text').attr('x',d.x-18).attr('y',d.y+3)
