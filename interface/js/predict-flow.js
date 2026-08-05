@@ -63,12 +63,26 @@
             script.type = 'module';
             document.body.appendChild(script);
 
-            // Poll for chat.js to initialize
+            // Poll for chat.js to initialize.
+            // chat.js now skips the system prompt page and calls switchToChat() directly,
+            // which adds 'chat-active' to <body> — use that as the ready signal instead of
+            // waiting for #systemPromptInterface to become visible (it never does anymore).
             var pollCount = 0;
             var pollInterval = setInterval(function() {
                 pollCount++;
-                var sysPromptInterface = document.getElementById('systemPromptInterface');
 
+                if (document.body.classList.contains('chat-active')) {
+                    clearInterval(pollInterval);
+                    console.log('Chat.js initialized — system prompt page skipped, entering chat directly');
+
+                    $('#np-turn-counter').text('Turn 0 / 10');
+                    container.classList.add('chat-started');
+                    setTimeout(handleChatTransition, 50);
+                }
+
+                /* Old flow: waited for #systemPromptInterface to become visible, then wired up
+                   the Start Chat button to reveal chat. Kept here for reference / easy revert.
+                var sysPromptInterface = document.getElementById('systemPromptInterface');
                 if (sysPromptInterface && sysPromptInterface.style.display !== 'none') {
                     clearInterval(pollInterval);
                     console.log('Chat.js initialized — rendering pre-chat sunburst');
@@ -104,6 +118,7 @@
                         });
                     }
                 }
+                */
 
                 if (pollCount > 60) {
                     clearInterval(pollInterval);

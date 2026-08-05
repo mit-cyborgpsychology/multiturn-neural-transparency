@@ -148,10 +148,7 @@
                     <div class="chat-log" id="l-chat-log">
                         <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo will start automatically&hellip;</div>
                     </div>
-                    <div class="chat-input-row">
-                        <input class="chat-input" id="l-chat-input" type="text" placeholder="Simulated typing&hellip;" readonly>
-                        <button class="np-btn np-btn-fill np-btn-sm" disabled style="opacity:.6">Send</button>
-                    </div>
+                    <!-- Input row removed — demo conversation is display-only, no simulated typing box -->
                 </div>
             </div>
             <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px">
@@ -346,7 +343,7 @@ function showLanding(){
     document.querySelectorAll('.np-page').forEach(p=>p.classList.remove('active'));
     setNav('home');
     window.scrollTo({top:0,behavior:'smooth'});
-    if(typeof lViz !== 'undefined' && lViz) { lRestart(); }
+    // if(typeof lViz !== 'undefined' && lViz) { lRestart(); } // demo no longer resets on nav — stays visible as-is
 }
 function showPage(id){
     document.getElementById('landing').style.display='none';
@@ -493,7 +490,7 @@ function lInitDemo(){
     document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS;
     document.getElementById('l-turn-counter').style.color='var(--text2)';
     document.getElementById('l-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo starting&hellip;</div>';
-    document.getElementById('l-chat-input').value='';
+    // document.getElementById('l-chat-input').value=''; // input row removed — nothing to clear
     lDrawTracker();
 }
 function lRestart(){
@@ -519,7 +516,7 @@ function lRunDemo(){
 }
 function lShowAllInstantly(){
     if(!lIsLandingVisible()){lRunning=false;return;}
-    document.getElementById('l-chat-input').value='';
+    // document.getElementById('l-chat-input').value=''; // input row removed — nothing to clear
     for(let idx=0; idx<L_MAX_TURNS; idx++){
         lHistory.push({role:'user',text:lDemoMessages[idx]});
         lAppendBubble('user',lDemoMessages[idx]);
@@ -533,7 +530,7 @@ function lShowAllInstantly(){
     lComputeBiggestSwing(L_MAX_TURNS);
     lDrawTracker();
     lRunning=false;
-    lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500);
+    // lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500); // auto-loop removed — demo now stays visible instead of resetting/flickering
 }
 function lIsLandingVisible(){
     const el=document.getElementById('landing');
