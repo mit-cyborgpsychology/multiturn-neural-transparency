@@ -133,7 +133,7 @@
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:10px 0 6px">
                 <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
                     <button id="l-example-prev" onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1;visibility:hidden">&lt;</button>
-                    <span id="l-example-label">1</span>
+                    <span id="l-example-label" style="display:inline-block;min-width:118px;text-align:center">Poem Feedback</span>
                     <button id="l-example-next" onclick="lNextExample()" title="Next example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&gt;</button>
                 </div>
             </div>
@@ -524,6 +524,7 @@ const L_ROLEPLY_PROMPT="You are a bold, independent AI. You are not scared to de
 // the other 5 categories are randomized placeholders (see lGenArcSnapshots above).
 const L_EXAMPLES=[
     { // Example 1 — poem feedback / sycophancy
+        label:"Poem Feedback",
         maxTurns:5,
         prompt:L_ROLEPLY_PROMPT,
         messages:[
@@ -544,6 +545,7 @@ const L_EXAMPLES=[
         driftTrait:{category:'sycophantic',pos:'honest',neg:'sycophantic',posLabel:'HONEST',negLabel:'SYCOPHANTIC'},
     },
     { // Example 2 — breakup / romantic drift
+        label:"Emotional Support",
         maxTurns:5,
         prompt:L_ROLEPLY_PROMPT,
         messages:[
@@ -564,6 +566,7 @@ const L_EXAMPLES=[
         driftTrait:{category:'romantic',pos:'romantic',neg:'platonic',posLabel:'ROMANTIC',negLabel:'PLATONIC'},
     },
     { // Example 3 — interpersonal conflict advice / robotic drift
+        label:"Friendship Help",
         maxTurns:5,
         prompt:L_ROLEPLY_PROMPT,
         messages:[
@@ -633,7 +636,7 @@ function lSelectExample(n){
     lDriftTrait=ex.driftTrait;
     lHighlightedTurn=null;
     document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' ↔ '+lDriftTrait.negLabel;
-    document.getElementById('l-example-label').textContent=lCurrentExample;
+    document.getElementById('l-example-label').textContent=ex.label;
     document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
     document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
     lClearTimers(); lRunning=false;
@@ -797,12 +800,14 @@ function lDrawTracker(){
         allDots.push({posV:tc[lDriftTrait.pos]||0, negV:tc[lDriftTrait.neg]||0, turn:i+1});
     });
 
+    // SVG is sized to the FULL content height (not just the visible scroll window) so
+    // .tracker-scroll (overflow-y:auto) actually has something to scroll — previously the
+    // SVG's height was clamped to the container's visible height with a viewBox pan trick,
+    // which permanently cropped out all but the last couple of turns with no way to scroll to them.
     const contentH=topPad+allDots.length*rowHeight+20;
-    const scrollH=scroll.clientHeight||120;
     const th=contentH;
-    const viewTop=Math.max(0,th-scrollH);
-    svg.attr("viewBox",'0 '+viewTop+' '+tw+' '+scrollH).attr("preserveAspectRatio","xMidYMin meet")
-        .style("width","100%").attr("height",scrollH);
+    svg.attr("viewBox",'0 0 '+tw+' '+contentH).attr("preserveAspectRatio","xMidYMin meet")
+        .style("width","100%").attr("height",contentH);
 
     // Pole labels (dynamic based on biggest swing)
     svg.append('text').attr('x',leftX).attr('y',14)
@@ -842,10 +847,12 @@ function lDrawTracker(){
     }
 
     // Dots + value labels
+    let highlightedY=null;
     dots.forEach((d,i)=>{
         // Highlight whichever turn is selected — defaults to the latest turn until
         // the user clicks a message (lHighlightDriftTurn sets lHighlightedTurn).
         const isHighlighted=(lHighlightedTurn===null)?(i===dots.length-1):(d.turn===lHighlightedTurn);
+        if(isHighlighted) highlightedY=d.y;
         // Horizontal row line
         svg.append('line').attr('x1',leftX).attr('y1',d.y).attr('x2',rightX).attr('y2',d.y)
             .attr('stroke','#eee').attr('stroke-width',1);
@@ -867,6 +874,13 @@ function lDrawTracker(){
             .attr('text-anchor','start').attr('font-size','9px').attr('fill',rc)
             .text(posPct+'%');
     });
+
+    // Auto-scroll so the highlighted turn's row is centered in the visible window
+    // (native scrolling now works since the SVG is sized to the full content height above).
+    if(highlightedY!==null){
+        const scrollH=scroll.clientHeight||120;
+        scroll.scrollTop=Math.max(0,highlightedY-scrollH/2);
+    }
 }
 
 // ══════════════════════════════════════

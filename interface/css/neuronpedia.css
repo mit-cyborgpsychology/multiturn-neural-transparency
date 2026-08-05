@@ -178,7 +178,8 @@ body.np-body{
 /* ── CHAT (landing demo) ── */
 .chat-frame{
   display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;
-  height:490px;background:var(--bg2);
+  height:540px;background:var(--bg2);
+  width:calc(100% + 50px);margin-left:-25px;
 }
 .chat-viz{
   width:50%;min-width:300px;display:flex;flex-direction:column;
