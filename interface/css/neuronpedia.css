@@ -339,29 +339,37 @@ body.np-body{
   flex-direction: column;
 }
 
-/* System prompt config phase — fill available space */
+/* System prompt config phase — always skipped in this demo, so hidden by default
+   (was "display: flex !important" by default, which flashed briefly before chat.js
+   could add .chat-started; now it just stays hidden). */
 #p-chat-container .system-prompt-interface {
   flex: 1;
-  display: flex !important;
+  display: none !important;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-/* Chat interface hidden until Start Chat is clicked */
+/* Chat interface shown immediately by default — no more waiting on .chat-started */
 #p-chat-container .chat-interface {
-  display: none !important;
+  display: flex !important;
   height: 100%;
 }
 
-/* When chat is active (after Start Chat), show it and hide config */
+/* Old two-phase toggle (config → click Start Chat → chat), kept for reference / easy revert.
+#p-chat-container .system-prompt-interface {
+  display: flex !important;
+}
+#p-chat-container .chat-interface {
+  display: none !important;
+}
 #p-chat-container.chat-started .chat-interface {
   display: flex !important;
 }
-
 #p-chat-container.chat-started .system-prompt-interface {
   display: none !important;
 }
+*/
 
 #p-chat-container .avatar-selection-interface {
   display: none !important;

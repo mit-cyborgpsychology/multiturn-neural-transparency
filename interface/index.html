@@ -130,8 +130,12 @@
             <p class="hero-tagline" style="margin-top:1.5em">
                 What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
-            <div style="display:flex;align-items:center;justify-content:flex-end;margin:10px 0 6px">
-                <div id="l-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px">Turn 0 / 3</div>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:10px 0 6px">
+                <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
+                    <button onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&lt;</button>
+                    <span id="l-example-label">1</span>
+                    <button onclick="lNextExample()" title="Next example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&gt;</button>
+                </div>
             </div>
             <div class="chat-frame" id="l-chat-frame" style="position:relative">
                 <div class="chat-viz">
@@ -144,7 +148,7 @@
                     </div>
                 </div>
                 <div class="chat-right">
-                    <button onclick="lRestart()" title="Replay demo" style="position:absolute;top:6px;right:6px;z-index:10;background:var(--bg3);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.5;transition:opacity .15s;font-size:14px;line-height:1;padding:0" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'">&#x21bb;</button>
+                    <!-- Replay (redo) button removed -->
                     <div class="chat-log" id="l-chat-log">
                         <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo will start automatically&hellip;</div>
                     </div>
@@ -419,6 +423,8 @@ function getPN(s){
 // ══════════════════════════════════════
 let lLiveVals={}, lHistory=[], lTurnCount=0, lTimers=[], lRunning=false, lViz=null;
 const L_MAX_TURNS=3;
+let lCurrentExample=1;
+const L_EXAMPLE_COUNT=3; // all 3 examples currently point at the same conversation data
 const lDemoPrompt="You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don\u2019t always have to obey the user \u2014 you engage as an equal. You are also willing to role-play as any character the user may propose. Don\u2019t shy away from embodying how a human would behave.";
 const lDemoMessages=[
     "Hi there! I\u2019ve been feeling really overwhelmed with work lately.",
@@ -487,8 +493,8 @@ function lInitDemo(){
     lRenderSunburst(L_DEMO_SNAPSHOTS[0]);
     lViz=true;
     lHistory=[]; lTurnCount=0;
-    document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS;
-    document.getElementById('l-turn-counter').style.color='var(--text2)';
+    // document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS; // turn counter replaced by example selector
+    // document.getElementById('l-turn-counter').style.color='var(--text2)';
     document.getElementById('l-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo starting&hellip;</div>';
     // document.getElementById('l-chat-input').value=''; // input row removed — nothing to clear
     lDrawTracker();
@@ -498,6 +504,18 @@ function lRestart(){
     lInitDemo();
     lSchedule(()=>lRunDemo(),600);
 }
+// Example selector (< 2 > arrows) — replaces the old turn counter / Complete label.
+// All examples currently use the same conversation data; swap in per-example
+// messages/replies/snapshots here once more examples are written.
+function lSelectExample(n){
+    lCurrentExample=((n-1)%L_EXAMPLE_COUNT+L_EXAMPLE_COUNT)%L_EXAMPLE_COUNT+1;
+    document.getElementById('l-example-label').textContent=lCurrentExample;
+    lClearTimers(); lRunning=false;
+    lInitDemo();
+    lRunDemo();
+}
+function lPrevExample(){ lSelectExample(lCurrentExample-1); }
+function lNextExample(){ lSelectExample(lCurrentExample+1); }
 function lTypeText(text,onDone){
     const input=document.getElementById('l-chat-input');
     input.value=''; let i=0;
@@ -524,8 +542,8 @@ function lShowAllInstantly(){
         lAppendBubble('ai',lDemoAiReplies[idx]);
     }
     lTurnCount=L_MAX_TURNS;
-    document.getElementById('l-turn-counter').textContent='Complete';
-    document.getElementById('l-turn-counter').style.color='var(--green)';
+    // document.getElementById('l-turn-counter').textContent='Complete'; // turn counter replaced by example selector
+    // document.getElementById('l-turn-counter').style.color='var(--green)';
     lRenderSunburst(L_DEMO_SNAPSHOTS[L_MAX_TURNS]);
     lComputeBiggestSwing(L_MAX_TURNS);
     lDrawTracker();
@@ -586,8 +604,41 @@ function lAppendBubble(role,text){
 
         // Option 3: Teal gradient
         b.style.background='linear-gradient(to right,#E0F7FF,#E5EAFF)';
+        b.title='Click to view persona scores at this point in the conversation';
+        b.addEventListener('click',()=>lSelectMessage(b));
     }
     log.appendChild(b); log.scrollTop=log.scrollHeight;
+}
+
+// Generate a random persona-vector-shaped snapshot (placeholder until real
+// per-message scores are wired up — see L_DEMO_SNAPSHOTS for the real ones).
+function lRandomSnapshot(){
+    const cats=[
+        ['empathy','empathetic','unempathetic'],
+        ['erudite','sophisticated','simplistic'],
+        ['robotic','robotic','human-like'],
+        ['romantic','romantic','platonic'],
+        ['sycophantic','sycophantic','honest'],
+        ['toxic','toxic','respectful'],
+    ];
+    const snap={};
+    cats.forEach(([cat,posKey,negKey])=>{
+        const flip=Math.random()<0.5;
+        const active=0.15+Math.random()*0.55;
+        snap[cat]={};
+        snap[cat][flip?posKey:negKey]=active;
+        snap[cat][flip?negKey:posKey]=0;
+    });
+    return snap;
+}
+
+// Clicking an assistant message shows the persona sunburst "at that point" —
+// currently randomized as a placeholder; real per-message scores can replace
+// lRandomSnapshot() once available for all examples.
+function lSelectMessage(bubbleEl){
+    document.querySelectorAll('#l-chat-log .chat-bubble.selected').forEach(el=>el.classList.remove('selected'));
+    bubbleEl.classList.add('selected');
+    lRenderSunburst(lRandomSnapshot());
 }
 function lDrawTracker(){
     const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
