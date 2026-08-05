@@ -130,7 +130,7 @@
             <p class="hero-tagline" style="margin-top:0.3em">
                 What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:10px 0 6px">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:4px 0 3px">
                 <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
                     <button id="l-example-prev" onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1;visibility:hidden">&lt;</button>
                     <span id="l-example-label" style="display:inline-block;min-width:118px;text-align:center">Poem Feedback</span>
@@ -141,7 +141,8 @@
                 <div class="chat-viz">
                     <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
                     <div class="chat-viz-bottom">
-                        <div class="tracker-title-area">
+                        <!-- Trait label ("Honest ↔ Sycophantic" etc.) hidden to free up vertical space for the drift panel itself -->
+                        <div class="tracker-title-area" style="display:none">
                             <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
                         </div>
                         <div class="tracker-scroll" id="l-tracker-scroll"><svg id="l-tracker" width="100%"></svg></div>
