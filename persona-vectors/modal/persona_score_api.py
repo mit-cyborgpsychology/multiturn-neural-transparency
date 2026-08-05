@@ -9,7 +9,7 @@ from pathlib import Path
 import json
 import os
 
-LOCAL_VECTORS_PATH = os.path.join(os.path.dirname(__file__), "../generation/stored_persona_vectors")
+LOCAL_VECTORS_PATH = os.path.join(os.path.dirname(__file__), "../generation/persona_vectors")
 
 image = (
     modal.Image.debian_slim()
@@ -22,13 +22,13 @@ image = (
     )
     .add_local_dir(
         os.path.abspath(LOCAL_VECTORS_PATH),
-        remote_path="/root/stored_persona_vectors"
+        remote_path="/root/persona_vectors"
     )
 )
 
 app = modal.App("persona-vector-api")
 
-VECTORS_PATH = Path("/root/stored_persona_vectors")
+VECTORS_PATH = Path("/root/persona_vectors")
 
 class SystemPrompt(BaseModel):
     system: Optional[str] = None
