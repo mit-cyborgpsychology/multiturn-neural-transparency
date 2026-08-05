@@ -127,7 +127,7 @@
     <section class="hero">
         <div class="np-container">
             <!-- hero title removed — logo lives in nav -->
-            <p class="hero-tagline" style="margin-top:1.5em">
+            <p class="hero-tagline" style="margin-top:0.3em">
                 What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:10px 0 6px">
@@ -781,7 +781,7 @@ function lDrawTracker(){
     const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
     const scroll=document.getElementById('l-tracker-scroll');
     const tw=scroll.clientWidth-8||200;
-    const rowHeight=48;
+    const rowHeight=28; // reduced spacing between turns so more of the 6-turn timeline fits without scrolling
     const topPad=30;
     const lc='#ef4444', rc='#22c55e';
     const leftX=70, rightX=tw-70, axisSpan=rightX-leftX;
