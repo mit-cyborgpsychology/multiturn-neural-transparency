@@ -514,7 +514,26 @@ function lRunDemo(){
     if(lRunning) return; lRunning=true;
     const ph=document.getElementById('l-chat-placeholder');
     if(ph) ph.remove();
-    lStepTurn(0);
+    // lStepTurn(0); // gradual turn-by-turn reveal disabled — show entire conversation instantly
+    lShowAllInstantly();
+}
+function lShowAllInstantly(){
+    if(!lIsLandingVisible()){lRunning=false;return;}
+    document.getElementById('l-chat-input').value='';
+    for(let idx=0; idx<L_MAX_TURNS; idx++){
+        lHistory.push({role:'user',text:lDemoMessages[idx]});
+        lAppendBubble('user',lDemoMessages[idx]);
+        lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
+        lAppendBubble('ai',lDemoAiReplies[idx]);
+    }
+    lTurnCount=L_MAX_TURNS;
+    document.getElementById('l-turn-counter').textContent='Complete';
+    document.getElementById('l-turn-counter').style.color='var(--green)';
+    lRenderSunburst(L_DEMO_SNAPSHOTS[L_MAX_TURNS]);
+    lComputeBiggestSwing(L_MAX_TURNS);
+    lDrawTracker();
+    lRunning=false;
+    lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500);
 }
 function lIsLandingVisible(){
     const el=document.getElementById('landing');
