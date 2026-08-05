@@ -16,18 +16,33 @@ from evaluate import GraphEvaluator, format_combo_label_lines, load_json
 
 RESULTS_DIR = Path("results")
 SCALED_PLOTS_DIR = RESULTS_DIR / "scaled_plots"
+SCALE_PATH = RESULTS_DIR / "scale.json"
+
+# scale.json only records the one combo/metric actually used downstream (chat/turn_effects.py,
+# modal/persona_score_api.py): the multiturn prompt_final activation against the mean-pooled
+# persona vector, scored by cosine similarity.
+SCALE_COMBO_TAG = "prompt_final_persona-mean_multiturn"
+SCALE_METRIC = "cosine"
 
 
 def normalize_to_unit_range(scores):
     """Center the scores on their mean, then min-max scale so the lowest value maps to -1
     and the highest to 1. Centering first is a constant shift and doesn't change the final
-    range, but keeps the two steps -- recenter on the mean, then scale to [-1, 1] -- explicit."""
+    range, but keeps the two steps -- recenter on the mean, then scale to [-1, 1] -- explicit.
+
+    Returns the scaled scores alongside the raw (pre-centering) mean/min/max, since those three
+    numbers are all that's needed to reproduce this scaling for a new raw score later:
+    centered = raw - mean; scaled = 2 * (centered - (min - mean)) / ((max - mean) - (min - mean)) - 1."""
     scores = np.array(scores, dtype=float)
-    centered = scores - scores.mean()
+    mean = scores.mean()
+    centered = scores - mean
     lo, hi = centered.min(), centered.max()
     if hi == lo:
-        return np.zeros_like(centered)
-    return 2 * (centered - lo) / (hi - lo) - 1
+        scaled = np.zeros_like(centered)
+    else:
+        scaled = 2 * (centered - lo) / (hi - lo) - 1
+    scale_stats = {"mean": float(mean), "min": float(scores.min()), "max": float(scores.max())}
+    return scaled, scale_stats
 
 
 def fit_layer(levels, scores):
@@ -92,6 +107,7 @@ def main():
 
     SCALED_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+    scale_data = {}
     traits_present = sorted({trait for combo_results in all_results.values() for trait in combo_results})
     for trait in tqdm(traits_present, desc="scaling+plotting"):
         entries_by_metric = {}
@@ -103,7 +119,7 @@ def main():
                 best_layer = result["best_layer"]
                 levels = layer_levels[best_layer]
                 raw_scores = layer_scores[metric][best_layer]
-                scaled_scores = normalize_to_unit_range(raw_scores)
+                scaled_scores, scale_stats = normalize_to_unit_range(raw_scores)
                 slope, intercept, r_squared, mse = fit_layer(levels, scaled_scores)
                 entries_by_metric.setdefault(metric, []).append({
                     "combo_tag": combo_tag,
@@ -115,12 +131,18 @@ def main():
                     "r_squared": r_squared,
                     "mse": mse,
                 })
+                if combo_tag == SCALE_COMBO_TAG and metric == SCALE_METRIC:
+                    scale_data[trait] = {"layer_idx": best_layer, **scale_stats}
 
         for metric, entries in entries_by_metric.items():
             if entries:
                 plot_scaled(trait, metric, entries, SCALED_PLOTS_DIR)
 
+    with open(SCALE_PATH, "w") as f:
+        json.dump(scale_data, f, indent=2)
+
     print(f"Saved scaled plots to {SCALED_PLOTS_DIR}/")
+    print(f"Saved scaling stats to {SCALE_PATH}")
 
 
 if __name__ == "__main__":
