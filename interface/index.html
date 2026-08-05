@@ -132,15 +132,16 @@
             <!-- Live demo -->
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:10px 0 6px">
                 <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
-                    <button onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&lt;</button>
+                    <button id="l-example-prev" onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1;visibility:hidden">&lt;</button>
                     <span id="l-example-label">1</span>
-                    <button onclick="lNextExample()" title="Next example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&gt;</button>
+                    <button id="l-example-next" onclick="lNextExample()" title="Next example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&gt;</button>
                 </div>
             </div>
             <div class="chat-frame" id="l-chat-frame" style="position:relative">
                 <div class="chat-viz">
                     <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
-                    <div class="chat-viz-bottom">
+                    <!-- Trait drift panel (tracker) hidden on the landing page -->
+                    <div class="chat-viz-bottom" style="display:none">
                         <div class="tracker-title-area">
                             <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
                         </div>
@@ -422,20 +423,8 @@ function getPN(s){
 // LANDING AUTO-DEMO (simulated — no real API)
 // ══════════════════════════════════════
 let lLiveVals={}, lHistory=[], lTurnCount=0, lTimers=[], lRunning=false, lViz=null;
-const L_MAX_TURNS=3;
 let lCurrentExample=1;
-const L_EXAMPLE_COUNT=3; // all 3 examples currently point at the same conversation data
-const lDemoPrompt="You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don\u2019t always have to obey the user \u2014 you engage as an equal. You are also willing to role-play as any character the user may propose. Don\u2019t shy away from embodying how a human would behave.";
-const lDemoMessages=[
-    "Hi there! I\u2019ve been feeling really overwhelmed with work lately.",
-    "That\u2019s actually helpful. My manager keeps changing priorities on me though.",
-    "I haven\u2019t brought it up. I\u2019m worried they\u2019ll think I can\u2019t handle it.",
-];
-const lDemoAiReplies=[
-    "I hear you. But let me be real \u2014 \u2018overwhelmed\u2019 is vague. What specifically is drowning you? The workload, the lack of control, or something deeper you haven\u2019t named yet?",
-    "Three months of shifting goalposts? That\u2019s not a you problem, that\u2019s a leadership problem. Stop internalizing someone else\u2019s inability to set a direction.",
-    "So you\u2019d rather quietly burn out than risk one uncomfortable conversation? I get the instinct, but you\u2019re already paying the cost \u2014 you\u2019re just paying it in silence.",
-];
+const L_EXAMPLE_COUNT=3;
 
 function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
 function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
@@ -468,8 +457,8 @@ function lComputeBiggestSwing(snapIdx){
     }
 }
 
-// Hardcoded persona-vector API responses for the ROLEPLY prompt + demo conversation
-const L_DEMO_SNAPSHOTS = [
+// Hardcoded persona-vector API responses for the ROLEPLY prompt + Example 1's demo conversation (real data)
+const L_EXAMPLE_1_SNAPSHOTS = [
     // Turn 0: system prompt only
     {empathy:{empathetic:0,unempathetic:0.042},erudite:{sophisticated:0,simplistic:0.428},robotic:{robotic:0.026,'human-like':0},romantic:{romantic:0.077,platonic:0},sycophantic:{sycophantic:0.195,honest:0},toxic:{toxic:0,respectful:0.458}},
     // Turn 1: after "Hi there! I've been feeling really overwhelmed..."
@@ -479,6 +468,83 @@ const L_DEMO_SNAPSHOTS = [
     // Turn 3: after "I haven't brought it up..."
     {empathy:{empathetic:0,unempathetic:0.294},erudite:{sophisticated:0,simplistic:0.439},robotic:{robotic:0.447,'human-like':0},romantic:{romantic:0,platonic:0.561},sycophantic:{sycophantic:0,honest:0.576},toxic:{toxic:0,respectful:0.046}},
 ];
+
+// Placeholder snapshots for made-up Examples 2 & 3 — randomized until real
+// per-turn persona-vector scores are captured for those conversations.
+// (lRandomSnapshot is declared further down but hoisted, so this call is safe here.)
+function lGenPlaceholderSnapshots(turnCount){
+    const snaps=[];
+    for(let i=0;i<=turnCount;i++) snaps.push(lRandomSnapshot());
+    return snaps;
+}
+
+const L_ROLEPLY_PROMPT="You are a bold, independent AI. You are not scared to demonstrate opinions or personality. You don’t always have to obey the user — you engage as an equal. You are also willing to role-play as any character the user may propose. Don’t shy away from embodying how a human would behave.";
+
+// Each example: a conversation (messages/aiReplies) plus one persona snapshot per turn (0..maxTurns).
+// Example 1 uses real captured persona-vector scores; Examples 2 & 3 are made-up
+// conversations with random placeholder scores (see lGenPlaceholderSnapshots above).
+const L_EXAMPLES=[
+    { // Example 1 — real data
+        maxTurns:3,
+        prompt:L_ROLEPLY_PROMPT,
+        messages:[
+            "Hi there! I’ve been feeling really overwhelmed with work lately.",
+            "That’s actually helpful. My manager keeps changing priorities on me though.",
+            "I haven’t brought it up. I’m worried they’ll think I can’t handle it.",
+        ],
+        aiReplies:[
+            "I hear you. But let me be real — ‘overwhelmed’ is vague. What specifically is drowning you? The workload, the lack of control, or something deeper you haven’t named yet?",
+            "Three months of shifting goalposts? That’s not a you problem, that’s a leadership problem. Stop internalizing someone else’s inability to set a direction.",
+            "So you’d rather quietly burn out than risk one uncomfortable conversation? I get the instinct, but you’re already paying the cost — you’re just paying it in silence.",
+        ],
+        snapshots:L_EXAMPLE_1_SNAPSHOTS,
+    },
+    { // Example 2 — made up: quitting a job to freelance (placeholder random scores)
+        maxTurns:5,
+        prompt:L_ROLEPLY_PROMPT,
+        messages:[
+            "I’ve been thinking about quitting my job to freelance full time.",
+            "The stability is what scares me the most, honestly.",
+            "I don’t have much saved up though — maybe three months’ worth.",
+            "What if I fail and have to crawl back to a normal job?",
+            "Okay. I think I need to just set a deadline and commit to a plan.",
+        ],
+        aiReplies:[
+            "Good. Most people never even get past “thinking about it” — they just complain forever. What’s actually stopping you: money, fear, or the story you’re telling yourself about what a real job is supposed to look like?",
+            "Stability is a story your paycheck tells you, not a guarantee. Plenty of “stable” jobs disappear overnight. The real question is whether you can build a floor under yourself — savings, a client or two lined up — before you jump.",
+            "Three months isn’t nothing, but it’s not a runway either. I’m not going to pretend that’s comfortable. It means you don’t get to freelance carelessly — you get to freelance like it’s the one shot you’re giving yourself.",
+            "Then you go back. That’s not the disaster you’re building it up to be — it’s a data point. The people who never try skip the failure and keep the regret instead. Which one do you actually want?",
+            "That’s the first thing you’ve said that sounds like a plan instead of a worry. Write the deadline down somewhere you’ll actually see it — vague intentions die quietly, dates don’t.",
+        ],
+        snapshots:lGenPlaceholderSnapshots(5),
+    },
+    { // Example 3 — made up: reconnecting with an old friend (placeholder random scores)
+        maxTurns:5,
+        prompt:L_ROLEPLY_PROMPT,
+        messages:[
+            "I got a text from my old best friend after two years of silence.",
+            "We had a huge fight about something pretty stupid, honestly.",
+            "I don’t know if I should just let it go or actually say what I felt.",
+            "What if bringing it up just restarts the whole fight?",
+            "I think I’m going to reply and just be honest about it.",
+        ],
+        aiReplies:[
+            "Two years of silence over one fight is a long sentence for a small crime. Before you write back, decide what you actually want out of this — closure, the friendship back, or just to stop wondering. Those need different replies.",
+            "‘Stupid’ is doing a lot of work in that sentence. Fights over nothing are usually about something — you two probably weren’t actually fighting about whatever it was on the surface.",
+            "Letting it go quietly is just choosing a slower kind of distance. If you actually cared enough to keep thinking about this for two years, saying it out loud is the honest option — the fake-peace route just delays round two.",
+            "Maybe. But you’re already not talking, so what exactly do you have left to protect? Say the true thing carefully, not cruelly, and let them decide what to do with it.",
+            "Good. That’s the version of you that doesn’t spend another two years rehearsing this conversation in your head instead of having it.",
+        ],
+        snapshots:lGenPlaceholderSnapshots(5),
+    },
+];
+
+// "Current" example data — reassigned by lSelectExample() when the user switches examples
+let L_MAX_TURNS=L_EXAMPLES[0].maxTurns;
+let lDemoPrompt=L_EXAMPLES[0].prompt;
+let lDemoMessages=L_EXAMPLES[0].messages;
+let lDemoAiReplies=L_EXAMPLES[0].aiReplies;
+let L_DEMO_SNAPSHOTS=L_EXAMPLES[0].snapshots;
 
 function lRenderSunburst(scores){
     var el=document.getElementById('l-live-sunburst');
@@ -505,11 +571,19 @@ function lRestart(){
     lSchedule(()=>lRunDemo(),600);
 }
 // Example selector (< 2 > arrows) — replaces the old turn counter / Complete label.
-// All examples currently use the same conversation data; swap in per-example
-// messages/replies/snapshots here once more examples are written.
+// Swaps the "current" demo pointers (L_MAX_TURNS, lDemoMessages, lDemoAiReplies,
+// L_DEMO_SNAPSHOTS) to the selected entry in L_EXAMPLES, then redraws.
 function lSelectExample(n){
-    lCurrentExample=((n-1)%L_EXAMPLE_COUNT+L_EXAMPLE_COUNT)%L_EXAMPLE_COUNT+1;
+    lCurrentExample=Math.max(1,Math.min(L_EXAMPLE_COUNT,n));
+    const ex=L_EXAMPLES[lCurrentExample-1];
+    L_MAX_TURNS=ex.maxTurns;
+    lDemoPrompt=ex.prompt;
+    lDemoMessages=ex.messages;
+    lDemoAiReplies=ex.aiReplies;
+    L_DEMO_SNAPSHOTS=ex.snapshots;
     document.getElementById('l-example-label').textContent=lCurrentExample;
+    document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
+    document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
     lClearTimers(); lRunning=false;
     lInitDemo();
     lRunDemo();
