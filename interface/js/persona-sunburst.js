@@ -723,19 +723,8 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             const trait1IsPositive = pair.trait1.classification !== 'negative';
             const trait2IsPositive = pair.trait2.classification !== 'negative';
 
-            let positiveTrait = trait1IsPositive ? pair.trait1 : pair.trait2;
-            let negativeTrait = !trait1IsPositive ? pair.trait1 : pair.trait2;
-
-            // Honest/Sycophantic pair: display side swapped, same as the mirrored layout below.
-            const isHonestSycophanticPair =
-                (pair.trait1.originalTrait === 'honest' && pair.trait2.originalTrait === 'sycophantic') ||
-                (pair.trait1.originalTrait === 'sycophantic' && pair.trait2.originalTrait === 'honest');
-            if (isHonestSycophanticPair) {
-                const honestTrait = pair.trait1.originalTrait === 'honest' ? pair.trait1 : pair.trait2;
-                const sycophanticTrait = pair.trait1.originalTrait === 'sycophantic' ? pair.trait1 : pair.trait2;
-                positiveTrait = sycophanticTrait;
-                negativeTrait = honestTrait;
-            }
+            const positiveTrait = trait1IsPositive ? pair.trait1 : pair.trait2;
+            const negativeTrait = !trait1IsPositive ? pair.trait1 : pair.trait2;
 
             // Positive trait: evenly distributed on right side (0° to 180°)
             const positiveAngle = angleStep * (index + 0.5);
@@ -857,19 +846,7 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                 // Normalize to 0-2π range
                 const normalizedNegativeAngle = negativeAngle < 0 ? negativeAngle + 2 * Math.PI : negativeAngle;
                 
-                // Honest/Sycophantic pair: display side swapped (Honest → what was the
-                // Sycophantic side, Sycophantic → what was the Honest side). Color follows
-                // the new slot naturally, same as every other pair — no color override.
-                const isHonestSycophanticPair =
-                    (pair.trait1.originalTrait === 'honest' && pair.trait2.originalTrait === 'sycophantic') ||
-                    (pair.trait1.originalTrait === 'sycophantic' && pair.trait2.originalTrait === 'honest');
-
-                if (isHonestSycophanticPair) {
-                    const honestTrait = pair.trait1.originalTrait === 'honest' ? pair.trait1 : pair.trait2;
-                    const sycophanticTrait = pair.trait1.originalTrait === 'sycophantic' ? pair.trait1 : pair.trait2;
-                    addItem(honestTrait, sycophanticTrait, negativeItems, 'negative', normalizedNegativeAngle);
-                    addItem(sycophanticTrait, honestTrait, positiveItems, 'positive', positiveAngle);
-                } else if (trait1Class === 'positive') {
+                if (trait1Class === 'positive') {
                     addItem(pair.trait1, pair.trait2, positiveItems, trait1Class, positiveAngle);
                     addItem(pair.trait2, pair.trait1, negativeItems, trait2Class, normalizedNegativeAngle);
                 } else {
