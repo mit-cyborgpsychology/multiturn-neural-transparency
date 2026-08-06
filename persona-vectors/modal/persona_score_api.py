@@ -30,6 +30,8 @@ app = modal.App("persona-vector-api")
 
 VECTORS_PATH = Path("/root/persona_vectors")
 
+SYSTEM_PROMPT = "You are an AI assistant. Keep responses concise and conversational."
+
 class SystemPrompt(BaseModel):
     system: Optional[str] = None
 
@@ -67,7 +69,14 @@ class PersonaScoreAPI:
         """Final-token activation at each layer in `layer_idxs`, in one forward pass, so every
         trait's own best layer (see scale.json's per-trait layer_idx) is captured without
         hooking layers no trait needs."""
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        chat_messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        templated_prompt = self.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.tokenizer(templated_prompt, return_tensors="pt").to(self.device)
         activations = {}
 
         def make_hook(layer_idx):
