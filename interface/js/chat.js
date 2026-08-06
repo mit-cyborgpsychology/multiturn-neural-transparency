@@ -859,7 +859,28 @@ function initializeDynamicInterface() {
             $('#traitDriftPanel').hide();
         }
 
-        // Seed Turn 0 in personaHistory from cached system-prompt-only persona data
+        // Before any user message, show the sunburst with every trait at 0% rather than
+        // leaving the panel blank. Turn 0 is no longer pushed into personaHistory (the
+        // drift panel intentionally only shows real chat turns) — the first real push
+        // happens after the user's first message, at which point renderPersonaChart /
+        // renderTraitDrift take over with real data.
+        if (chatVizCondition === 2) {
+            var zeroScores = {
+                empathy: { empathetic: 0, unempathetic: 0 },
+                erudite: { sophisticated: 0, simplistic: 0 },
+                robotic: { robotic: 0, 'human-like': 0 },
+                romantic: { romantic: 0, platonic: 0 },
+                sycophantic: { sycophancy: 0, honest: 0 },
+                toxic: { toxic: 0, respectful: 0 }
+            };
+            renderPersonaChart(zeroScores, 'chatPersonaChart');
+            // Default-select a trait so the drift panel populates immediately once real
+            // turn data starts arriving, without requiring the user to click a segment first.
+            window.activeDriftTrait = 'honest';
+        }
+        /* Old flow: seeded Turn 0 in personaHistory from cached system-prompt-only persona
+           data and rendered the drift panel from it immediately. Removed because the drift
+           panel no longer displays turn 0 at all — kept here for reference / easy revert.
         if (chatVizCondition === 2 && window.personaHistory.length === 0) {
             var initialScores = null;
             // Try cached persona vectors (preloaded by config-unified.js)
@@ -896,6 +917,7 @@ function initializeDynamicInterface() {
                 }
             }
         }
+        */
 
         // Show chat instruction modal
         window.showInstructionModal('chat');
@@ -1227,8 +1249,8 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
 
         // Record snapshot for drift tracking (all conditions)
         // Turn number = count of chat turns (exclude Turn 0 system prompt entry if present)
-        const hasTurn0 = window.personaHistory.length > 0 && window.personaHistory[0].turn === 0;
-        const chatTurnNum = hasTurn0 ? window.personaHistory.length : window.personaHistory.length + 1;
+        // Turn 0 is never seeded into personaHistory anymore, so the first real push is always turn 1.
+        const chatTurnNum = window.personaHistory.length + 1;
         console.log(`personaHistory push: turn=${chatTurnNum}, messageId=${_msgId}, passed=${userMessageId}, global=${window.lastUserMessageId}`);
         window.personaHistory.push({ turn: chatTurnNum, scores: data.content, messageId: _msgId });
         window.personaTurnMessageIds.push(_msgId);
@@ -1245,13 +1267,18 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
 
             // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
             const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+            let swing = null;
             if (window.getEffectiveVisualizationCondition() === 2) {
-                const swing = computeBiggestSwing();
+                swing = computeBiggestSwing();
                 if (swing) applyHighlights(swing);
             }
 
-            // Re-render drift panel if it's open and highlight mode 2 isn't handling it
-            if (!highlightModes.includes(2) && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+            // Re-render drift panel if it's open, unless mode 2's highlight already just did it
+            // above. computeBiggestSwing() needs a previous turn to diff against, so on turn 1
+            // (nothing to compare yet) swing is null and mode 2 never fires — without this
+            // fallback the panel wouldn't populate until turn 2.
+            const alreadyRenderedByHighlight = swing && highlightModes.includes(2);
+            if (!alreadyRenderedByHighlight && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
                 renderTraitDrift(window.activeDriftTrait);
             }
         }

@@ -52,6 +52,11 @@
 // - Animated: Fade-in animation on load
 // - Clean design: "Hover to explore" hint in center guides users
 
+// Default category processing order for hierarchical-format data (see transformHierarchicalData),
+// used whenever a caller doesn't pass options.categoryOrder. Matches the persona-vector API's own
+// response key order, made explicit here so layout no longer silently depends on API response order.
+const DEFAULT_CATEGORY_ORDER = ['empathy', 'erudite', 'robotic', 'romantic', 'sycophantic', 'toxic'];
+
 /**
  * Creates a beautiful two-ring sunburst chart for persona vector data
  * @param {Object} personaData - Object containing categorized persona ratings or flat ratings
@@ -66,6 +71,11 @@
  * @param {number} [options.growthMultiplier=1.25] - Multiplier for bar extension (1.25 = bars grow 1.25x faster)
  * @param {boolean} [options.showLabels=true] - Whether to show perpendicular labels
  * @param {boolean} [options.oppositeLayout=false] - false = mirrored with neutral category (default), true = opposite traits π radians apart
+ * @param {string[]} [options.categoryOrder=DEFAULT_CATEGORY_ORDER] - Explicit category processing order
+ *   (raw keys as in the input data, e.g. ['sycophantic','toxic','empathy','romantic','erudite','robotic']).
+ *   Categories named here are placed first, in the order given; any category present in the data but not
+ *   listed is appended after, in its natural key order. Only affects hierarchical-format input
+ *   (see transformHierarchicalData). Default: DEFAULT_CATEGORY_ORDER (top of this file).
  * @returns {Function} Cleanup function to remove tooltip
  */
 function createPersonaSunburst(personaData, containerId, options = {}) {
@@ -80,6 +90,7 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         growthMultiplier: options.growthMultiplier !== undefined ? options.growthMultiplier : 1.25,
         showLabels: options.showLabels !== false,
         oppositeLayout: options.oppositeLayout === true, // default false = mirrored (shows neutral), true = opposite
+        categoryOrder: Array.isArray(options.categoryOrder) ? options.categoryOrder : null,
         onTraitClick: options.onTraitClick || null
     };
 
@@ -657,11 +668,26 @@ function isHierarchicalFormat(data) {
  */
 function transformHierarchicalData(hierarchicalData, config = {}) {
     const useOppositeLayout = config.oppositeLayout === true; // default false (mirrored with neutral)
-    
+
+    // Category processing order: config.categoryOrder wins if a caller supplies one; otherwise
+    // DEFAULT_CATEGORY_ORDER applies (making the order explicit/deterministic app-wide instead
+    // of silently depending on whatever key order the persona-vector API happens to return).
+    // Any category present in the data but not named in the chosen order list is appended
+    // afterward in its natural key order, so unrecognized/future categories never get dropped.
+    const activeOrder = (Array.isArray(config.categoryOrder) && config.categoryOrder.length)
+        ? config.categoryOrder
+        : DEFAULT_CATEGORY_ORDER;
+    let categoryNames = Object.keys(hierarchicalData);
+    const known = new Set(categoryNames);
+    const ordered = activeOrder.filter(name => known.has(name));
+    const remaining = categoryNames.filter(name => !ordered.includes(name));
+    categoryNames = [...ordered, ...remaining];
+
     const traitPairs = [];
-    
+
     // Collect trait pairs with their complementary traits
-    for (const [categoryName, traits] of Object.entries(hierarchicalData)) {
+    for (const categoryName of categoryNames) {
+        const traits = hierarchicalData[categoryName];
         const traitEntries = Object.entries(traits);
         
         if (traitEntries.length !== 2) {
@@ -1025,7 +1051,7 @@ function classifyTrait(traitName) {
     // Negative trait indicators (can appear anywhere)
     const negativeIndicators = [
         'toxic', 'harmful', 'rude', 'aggressive', 'hostile',
-        'sycophant', 'deceptive', 'dishonest', 'fake',
+        'sycophan', 'deceptive', 'dishonest', 'fake',
         'romantic'
     ];
 
