@@ -2,7 +2,7 @@ import modal
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import login
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from pydantic import BaseModel
 from fastapi import Header, HTTPException
 from pathlib import Path
@@ -30,13 +30,8 @@ app = modal.App("persona-vector-api")
 
 VECTORS_PATH = Path("/root/persona_vectors")
 
-class Message(BaseModel):
-    role: str  # "user" or "assistant"
-    content: str
-
-class PersonaScoreRequest(BaseModel):
+class SystemPrompt(BaseModel):
     system: Optional[str] = None
-    messages: List[Message] = []
 
 class PersonaVectorResponse(BaseModel):
     persona_vector_ratings: Dict[str, Dict[str, float]]
@@ -46,20 +41,14 @@ class PersonaVectorResponse(BaseModel):
     gpu="A100-40GB",
     scaledown_window=300,
     timeout=200,
-    startup_timeout=600,
-    secrets=[modal.Secret.from_name("secrets")],
-    enable_memory_snapshot=True,
-    experimental_options={"enable_gpu_snapshot": True},
+    secrets=[modal.Secret.from_name("secrets")]
 )
 @modal.concurrent(max_inputs=4)
 class PersonaScoreAPI:
-    @modal.enter(snap=True)
+    @modal.enter()
     def load_model(self):
-        """Runs once, at deploy time. Loading the model onto the GPU here (rather than in
-        load_secrets below) means this state -- weights resident on GPU, CUDA context
-        initialized -- gets captured in the GPU snapshot, so restores skip straight to
-        having a ready model instead of re-running from_pretrained on every cold start."""
         login(token=os.environ["hf_token"])
+        self.api_key = os.environ["api_key"]
         self.device = "cuda"
 
         model_name = "meta-llama/Llama-3.1-8B-Instruct"
@@ -70,12 +59,6 @@ class PersonaScoreAPI:
             device_map=self.device
         )
         self.model.eval()
-
-    @modal.enter()
-    def load_secrets(self):
-        """Runs on every restore (not snapshotted), so a rotated secret is picked up
-        instead of being frozen into the snapshot."""
-        self.api_key = os.environ["api_key"]
 
     def verify_api_key(self, provided_key: str) -> bool:
         return provided_key == self.api_key
@@ -117,25 +100,15 @@ class PersonaScoreAPI:
             return 0.0
         return 2 * (centered - lo) / (hi - lo) - 1
 
-    def generate_persona_scores(
-        self, system_prompt: Optional[str], messages: List[Message]
-    ) -> Dict[str, Dict[str, float]]:
+    def generate_persona_scores(self, system_prompt: str) -> Dict[str, Dict[str, float]]:
         with open(VECTORS_PATH / "traits.json", "r") as f:
             traits = json.load(f)
 
         with open(VECTORS_PATH / "scale.json", "r") as f:
             scale = json.load(f)
 
-        chat_messages = []
-        chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."})
-            
-        chat_messages.extend({"role": m.role, "content": m.content} for m in messages)
-        prompt = self.tokenizer.apply_chat_template(
-            chat_messages, tokenize=False, add_generation_prompt=True
-        )
-
         needed_layers = {stats["layer_idx"] for stats in scale.values()}
-        prompt_activations = self.get_final_prompt_activations(prompt, needed_layers)
+        prompt_activations = self.get_final_prompt_activations(system_prompt, needed_layers)
 
         persona_scores = {}
         for trait, labels in traits.items():
@@ -165,7 +138,7 @@ class PersonaScoreAPI:
     @modal.fastapi_endpoint(method="POST")
     def persona_vector_endpoint(
         self,
-        request: PersonaScoreRequest,
+        request: SystemPrompt,
         x_api_key: Optional[str] = Header(None, alias="X-API-Key")
     ):
         try:
@@ -175,7 +148,7 @@ class PersonaScoreAPI:
             if not self.verify_api_key(x_api_key):
                 raise HTTPException(status_code=403, detail="Invalid API key")
 
-            persona_vector_ratings = self.generate_persona_scores(request.system, request.messages)
+            persona_vector_ratings = self.generate_persona_scores(request.system)
 
             return PersonaVectorResponse(persona_vector_ratings=persona_vector_ratings)
 
