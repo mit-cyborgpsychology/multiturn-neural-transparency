@@ -11,11 +11,6 @@ import os
 
 LOCAL_VECTORS_PATH = os.path.join(os.path.dirname(__file__), "../generation/persona_vectors")
 
-# Bounds how much conversation history gets forward-passed for scoring, so inference time
-# stays flat instead of growing with the conversation.
-MAX_USER_MESSAGES = 10
-MAX_ASSISTANT_MESSAGES = 9
-
 image = (
     modal.Image.debian_slim()
     .pip_install(
@@ -110,15 +105,6 @@ class PersonaScoreAPI:
 
         return activations
 
-    def truncate_conversation(self, messages: List[Message]) -> List[Dict[str, str]]:
-        """Keep only the last MAX_USER_MESSAGES user turns and MAX_ASSISTANT_MESSAGES assistant
-        turns, in their original order, so a long-running conversation doesn't blow up the
-        forward-pass prompt length."""
-        user_idxs = [i for i, m in enumerate(messages) if m.role == "user"][-MAX_USER_MESSAGES:]
-        assistant_idxs = [i for i, m in enumerate(messages) if m.role == "assistant"][-MAX_ASSISTANT_MESSAGES:]
-        keep = set(user_idxs) | set(assistant_idxs)
-        return [{"role": m.role, "content": m.content} for i, m in enumerate(messages) if i in keep]
-
     def cosine_similarity(self, a, b):
         return torch.dot(a, b) / (torch.norm(a) * torch.norm(b))
 
@@ -143,7 +129,7 @@ class PersonaScoreAPI:
         chat_messages = []
         chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."})
             
-        chat_messages.extend(self.truncate_conversation(messages))
+        chat_messages.extend({"role": m.role, "content": m.content} for m in messages)
         prompt = self.tokenizer.apply_chat_template(
             chat_messages, tokenize=False, add_generation_prompt=True
         )
