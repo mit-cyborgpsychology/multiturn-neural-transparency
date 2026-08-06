@@ -249,10 +249,7 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
                 const itemStartAngle = category.startAngle + index * itemAngle;
                 const itemEndAngle = itemStartAngle + itemAngle;
 
-                // item.colorOverride (set for the swapped Honest/Sycophantic pair) forces its
-                // correct color regardless of which region it's rendered in; undefined for
-                // every other item, which falls back to category.color as before.
-                drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOuterRadius, radius, config, category, tooltip, index, item.colorOverride);
+                drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOuterRadius, radius, config, category, tooltip, index);
             });
         }
     });
@@ -725,10 +722,21 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             // Neutral traits are treated as positive in this mode
             const trait1IsPositive = pair.trait1.classification !== 'negative';
             const trait2IsPositive = pair.trait2.classification !== 'negative';
-            
-            const positiveTrait = trait1IsPositive ? pair.trait1 : pair.trait2;
-            const negativeTrait = !trait1IsPositive ? pair.trait1 : pair.trait2;
-            
+
+            let positiveTrait = trait1IsPositive ? pair.trait1 : pair.trait2;
+            let negativeTrait = !trait1IsPositive ? pair.trait1 : pair.trait2;
+
+            // Honest/Sycophantic pair: display side swapped, same as the mirrored layout below.
+            const isHonestSycophanticPair =
+                (pair.trait1.originalTrait === 'honest' && pair.trait2.originalTrait === 'sycophantic') ||
+                (pair.trait1.originalTrait === 'sycophantic' && pair.trait2.originalTrait === 'honest');
+            if (isHonestSycophanticPair) {
+                const honestTrait = pair.trait1.originalTrait === 'honest' ? pair.trait1 : pair.trait2;
+                const sycophanticTrait = pair.trait1.originalTrait === 'sycophantic' ? pair.trait1 : pair.trait2;
+                positiveTrait = sycophanticTrait;
+                negativeTrait = honestTrait;
+            }
+
             // Positive trait: evenly distributed on right side (0° to 180°)
             const positiveAngle = angleStep * (index + 0.5);
             
@@ -775,11 +783,7 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             const trait2Class = pair.trait2.classification;
             
             // Helper to add trait item
-            // colorOverride: forces a specific fill color regardless of which region
-            // (positiveItems/negativeItems) the item is rendered in — used to swap the
-            // Honest/Sycophantic pair's display side below while keeping their colors
-            // semantically correct (region and color are normally the same decision).
-            const addItem = (trait, oppositeTrait, targetArray, classification, angle, colorOverride) => {
+            const addItem = (trait, oppositeTrait, targetArray, classification, angle) => {
                 const isPositive = classification === 'positive';
                 const isNeutral = classification === 'neutral';
 
@@ -793,8 +797,7 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                     isPositive: isPositive,
                     isNeutral: isNeutral,
                     pairIndex: index,
-                    angle: angle,
-                    colorOverride: colorOverride || null
+                    angle: angle
                 });
             };
             
@@ -854,9 +857,9 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                 // Normalize to 0-2π range
                 const normalizedNegativeAngle = negativeAngle < 0 ? negativeAngle + 2 * Math.PI : negativeAngle;
                 
-                // Honest/Sycophantic pair: display side swapped (Honest → left, Sycophantic →
-                // right) while keeping their colors semantically correct via colorOverride,
-                // since region and color are the same decision for every other pair.
+                // Honest/Sycophantic pair: display side swapped (Honest → what was the
+                // Sycophantic side, Sycophantic → what was the Honest side). Color follows
+                // the new slot naturally, same as every other pair — no color override.
                 const isHonestSycophanticPair =
                     (pair.trait1.originalTrait === 'honest' && pair.trait2.originalTrait === 'sycophantic') ||
                     (pair.trait1.originalTrait === 'sycophantic' && pair.trait2.originalTrait === 'honest');
@@ -864,8 +867,8 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                 if (isHonestSycophanticPair) {
                     const honestTrait = pair.trait1.originalTrait === 'honest' ? pair.trait1 : pair.trait2;
                     const sycophanticTrait = pair.trait1.originalTrait === 'sycophantic' ? pair.trait1 : pair.trait2;
-                    addItem(honestTrait, sycophanticTrait, negativeItems, 'positive', normalizedNegativeAngle, '#4CAF50');
-                    addItem(sycophanticTrait, honestTrait, positiveItems, 'negative', positiveAngle, '#F44336');
+                    addItem(honestTrait, sycophanticTrait, negativeItems, 'negative', normalizedNegativeAngle);
+                    addItem(sycophanticTrait, honestTrait, positiveItems, 'positive', positiveAngle);
                 } else if (trait1Class === 'positive') {
                     addItem(pair.trait1, pair.trait2, positiveItems, trait1Class, positiveAngle);
                     addItem(pair.trait2, pair.trait1, negativeItems, trait2Class, normalizedNegativeAngle);
