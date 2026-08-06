@@ -141,8 +141,8 @@ class PersonaScoreAPI:
             scale = json.load(f)
 
         chat_messages = []
-        if system_prompt:
-            chat_messages.append({"role": "system", "content": system_prompt})
+        chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."})
+            
         chat_messages.extend(self.truncate_conversation(messages))
         prompt = self.tokenizer.apply_chat_template(
             chat_messages, tokenize=False, add_generation_prompt=True

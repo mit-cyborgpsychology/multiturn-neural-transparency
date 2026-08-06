@@ -71,9 +71,9 @@ class ChatAPI:
         chat_messages = []
         
         if system_prompt:
-            chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational." + system_prompt})
+            chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's." + system_prompt})
         else:
-            chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational."})
+            chat_messages.append({"role": "system", "content": "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."})
 
         for msg in messages:
             chat_messages.append({"role": msg["role"], "content": msg["content"]})
