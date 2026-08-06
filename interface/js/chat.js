@@ -305,7 +305,7 @@ function initializeDynamicInterface() {
             // Control: auto-run persona check, show trait definitions, enable Start Chat
             $('#initialPlaceholder').show();
             $('#personaVisualization').hide();
-            // autoSubmitPersonaCheck(sessionPrompt); // persona/system-prompt evaluation disabled — "Your System Prompt" page is skipped
+            autoSubmitPersonaCheck(sessionPrompt);
         } else {
             // Viz conditions: show Check Persona button immediately
             $('#initialPlaceholder').show();
@@ -697,7 +697,7 @@ function initializeDynamicInterface() {
 
             // Score persona on context up to and including the user's message (before assistant responds)
             const _vc = window.getEffectiveVisualizationCondition();
-            // checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2, window.lastUserMessageId); // persona/system-prompt evaluation disabled — "Your System Prompt" page is skipped
+            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2, window.lastUserMessageId);
 
             const data = await makeAPIRequest(requestData);
 

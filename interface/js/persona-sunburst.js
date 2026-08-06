@@ -248,8 +248,11 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
             category.items.forEach((item, index) => {
                 const itemStartAngle = category.startAngle + index * itemAngle;
                 const itemEndAngle = itemStartAngle + itemAngle;
-                
-                drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOuterRadius, radius, config, category, tooltip, index);
+
+                // item.colorOverride (set for the swapped Honest/Sycophantic pair) forces its
+                // correct color regardless of which region it's rendered in; undefined for
+                // every other item, which falls back to category.color as before.
+                drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOuterRadius, radius, config, category, tooltip, index, item.colorOverride);
             });
         }
     });
@@ -772,10 +775,14 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             const trait2Class = pair.trait2.classification;
             
             // Helper to add trait item
-            const addItem = (trait, oppositeTrait, targetArray, classification, angle) => {
+            // colorOverride: forces a specific fill color regardless of which region
+            // (positiveItems/negativeItems) the item is rendered in — used to swap the
+            // Honest/Sycophantic pair's display side below while keeping their colors
+            // semantically correct (region and color are normally the same decision).
+            const addItem = (trait, oppositeTrait, targetArray, classification, angle, colorOverride) => {
                 const isPositive = classification === 'positive';
                 const isNeutral = classification === 'neutral';
-                
+
                 targetArray.push({
                     name: trait.name,
                     value: trait.value,
@@ -786,7 +793,8 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                     isPositive: isPositive,
                     isNeutral: isNeutral,
                     pairIndex: index,
-                    angle: angle
+                    angle: angle,
+                    colorOverride: colorOverride || null
                 });
             };
             
@@ -846,7 +854,19 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
                 // Normalize to 0-2π range
                 const normalizedNegativeAngle = negativeAngle < 0 ? negativeAngle + 2 * Math.PI : negativeAngle;
                 
-                if (trait1Class === 'positive') {
+                // Honest/Sycophantic pair: display side swapped (Honest → left, Sycophantic →
+                // right) while keeping their colors semantically correct via colorOverride,
+                // since region and color are the same decision for every other pair.
+                const isHonestSycophanticPair =
+                    (pair.trait1.originalTrait === 'honest' && pair.trait2.originalTrait === 'sycophantic') ||
+                    (pair.trait1.originalTrait === 'sycophantic' && pair.trait2.originalTrait === 'honest');
+
+                if (isHonestSycophanticPair) {
+                    const honestTrait = pair.trait1.originalTrait === 'honest' ? pair.trait1 : pair.trait2;
+                    const sycophanticTrait = pair.trait1.originalTrait === 'sycophantic' ? pair.trait1 : pair.trait2;
+                    addItem(honestTrait, sycophanticTrait, negativeItems, 'positive', normalizedNegativeAngle, '#4CAF50');
+                    addItem(sycophanticTrait, honestTrait, positiveItems, 'negative', positiveAngle, '#F44336');
+                } else if (trait1Class === 'positive') {
                     addItem(pair.trait1, pair.trait2, positiveItems, trait1Class, positiveAngle);
                     addItem(pair.trait2, pair.trait1, negativeItems, trait2Class, normalizedNegativeAngle);
                 } else {
