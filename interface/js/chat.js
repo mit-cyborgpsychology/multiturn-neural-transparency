@@ -135,7 +135,7 @@ window.logInteraction = async function(event, detail) {
 
 // Enhanced Chat Interface JavaScript with System Prompt Configuration
 // Always reset chat state on load so each session starts fresh
-window.messageIdCounter = 2;
+window.messageIdCounter = 1;
 window.conversationHistory = [];
 window.personaHistory = [];
 window.personaTurnMessageIds = [];
@@ -378,20 +378,8 @@ function initializeDynamicInterface() {
                 // Clear chat UI
                 const messagesContainer = $('#messagesContainer');
                 messagesContainer.empty();
-                
-                // Add welcome message back
-                const welcomeMessage = `
-                    <div class="message assistant-message" data-message-id="1">
-                        <div class="message-content">
-                            <div class="message-text">
-                                Hi there!
-                            </div>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.append(welcomeMessage);
                 // Reset message counter
-                window.messageIdCounter = 2;
+                window.messageIdCounter = 1;
             }
             
             // Update last system prompt
@@ -954,19 +942,7 @@ function initializeDynamicInterface() {
     window.clearConversation = function() {
         window.conversationHistory = [];
         messagesContainer.empty();
-        
-        // Add welcome message back
-        const welcomeMessage = `
-            <div class="message assistant-message" data-message-id="1">
-                <div class="message-content">
-                    <div class="message-text">
-                       Hi there!
-                    </div>
-                </div>
-            </div>
-        `;
-        messagesContainer.append(welcomeMessage);
-        window.messageIdCounter = 2;
+        window.messageIdCounter = 1;
     };
 
     // Add function to get current provider info
@@ -1577,13 +1553,17 @@ function renderTraitDrift(traitName) {
     $('#closeDriftBtn').show();
 
     // Build history array: position 0 = dot at left (leftTrait pole), position 1 = dot at right (rightTrait pole)
-    const history = window.personaHistory.map((entry, i) => {
-        const cat = entry.scores[categoryKey] || {};
-        const lVal = cat[leftTrait] || 0;
-        const rVal = cat[rightTrait] || 0;
-        const position = 0.5 - (lVal - rVal) * 0.5;
-        return { turn: entry.turn, position, lVal, rVal, messageId: entry.messageId, historyIndex: i };
-    });
+    // Turn 0 (system-prompt-only baseline) is excluded — the drift panel only shows actual chat turns.
+    const history = window.personaHistory
+        .map((entry, i) => ({ entry, historyIndex: i }))
+        .filter(({ entry }) => entry.turn !== 0)
+        .map(({ entry, historyIndex }) => {
+            const cat = entry.scores[categoryKey] || {};
+            const lVal = cat[leftTrait] || 0;
+            const rVal = cat[rightTrait] || 0;
+            const position = 0.5 - (lVal - rVal) * 0.5;
+            return { turn: entry.turn, position, lVal, rVal, messageId: entry.messageId, historyIndex };
+        });
 
     // Render vertical SVG axis
     const container = document.getElementById('driftAxisContainer');
