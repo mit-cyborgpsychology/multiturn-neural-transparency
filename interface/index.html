@@ -729,7 +729,7 @@ function lStepTurn(idx){
             // Use hardcoded API snapshot for this turn
             var snap=L_DEMO_SNAPSHOTS[idx+1];
             lRenderSunburst(snap);
-            lComputeBiggestSwing(idx+1);
+            // lComputeBiggestSwing(idx+1); // drift trait is now locked per example (see L_EXAMPLES[i].driftTrait)
             var tc=snap[lDriftTrait.category]||{};
             var posV=tc[lDriftTrait.pos]||0, negV=tc[lDriftTrait.neg]||0;
             lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
