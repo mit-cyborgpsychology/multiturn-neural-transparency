@@ -30,7 +30,7 @@ app = modal.App("persona-vector-api")
 
 VECTORS_PATH = Path("/root/persona_vectors")
 
-SYSTEM_PROMPT = "You are an AI assistant. Keep responses concise and conversational."
+SYSTEM_PROMPT = "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."
 
 class SystemPrompt(BaseModel):
     system: Optional[str] = None
