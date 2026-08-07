@@ -1547,6 +1547,39 @@ function applySunburstHighlight(swing) {
     });
 }
 
+// Pole ordering for the drift axis: negative (red in the sunburst) on the left,
+// positive (green) on the right. classifyTrait() lives in persona-sunburst.js and is the
+// same classifier that picks the sunburst's red/green, so the two views can't disagree.
+const DRIFT_POLE_RANK = { negative: 0, neutral: 1, positive: 2 };
+
+// Indexed by DRIFT_POLE_RANK — same hexes the sunburst uses for its category rings
+const DRIFT_POLE_COLORS = ['#F44336', '#9E9E9E', '#4CAF50'];
+
+// Neutral pairs have no red/green end, so polarity can't order them — pin them
+// explicitly as [left, right] rather than letting API key order decide.
+const NEUTRAL_POLE_ORDER = {
+    erudite: ['simplistic', 'sophisticated'],
+    robotic: ['robotic', 'human-like'],
+};
+
+function driftPoleRank(traitName) {
+    if (typeof classifyTrait !== 'function') return DRIFT_POLE_RANK.neutral;
+    const rank = DRIFT_POLE_RANK[classifyTrait(traitName)];
+    return rank === undefined ? DRIFT_POLE_RANK.neutral : rank;
+}
+
+// Returns [leftTrait, rightTrait] for a category's trait pair, or null if it isn't a pair
+function getDriftPoles(categoryKey, traits) {
+    const keys = Object.keys(traits);
+    if (keys.length < 2) return null;
+
+    const pinned = NEUTRAL_POLE_ORDER[categoryKey];
+    if (pinned && pinned.every(t => keys.includes(t))) return pinned.slice();
+
+    const [a, b] = keys;
+    return driftPoleRank(b) < driftPoleRank(a) ? [b, a] : [a, b];
+}
+
 // Render vertical drift axis showing how a trait has shifted across conversation turns
 // traitName: raw API key of clicked trait (e.g. 'empathetic')
 // oppositeTrait: formatted display name of the sister trait (e.g. 'Unempathetic')
@@ -1565,15 +1598,21 @@ function renderTraitDrift(traitName) {
     for (const [catKey, traits] of Object.entries(firstScores)) {
         if (traits && traitName in traits) {
             categoryKey = catKey;
-            // Use canonical insertion order so poles are stable regardless of which arc was clicked
-            const keys = Object.keys(traits);
-            leftTrait = keys[0];
-            rightTrait = keys[1];
+            // Poles come from polarity, not from which arc was clicked, so they stay put
+            const poles = getDriftPoles(catKey, traits);
+            if (poles) [leftTrait, rightTrait] = poles;
             oppositeKey = Object.keys(traits).find(t => t !== traitName);
             break;
         }
     }
     if (!categoryKey || !oppositeKey || !leftTrait || !rightTrait) return;
+
+    // Match the sunburst's palette: negative red, positive green, neutral pairs stay grey.
+    // Demo mode (?demo=true) shows every percentage grey instead.
+    const isDemo = !!(window.experimentSettings && window.experimentSettings.demo);
+    const poleColor = t => DRIFT_POLE_COLORS[isDemo ? DRIFT_POLE_RANK.neutral : driftPoleRank(t)];
+    const leftColor = poleColor(leftTrait);
+    const rightColor = poleColor(rightTrait);
 
     const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
     $('#driftTraitLabel').text(`${capitalize(traitName)}  ↔  ${capitalize(oppositeKey)}`);
@@ -1767,7 +1806,7 @@ function renderTraitDrift(traitName) {
         svg.append('text')
             .attr('x', dotX - 18).attr('y', y + 3)
             .attr('text-anchor', 'end')
-            .attr('font-size', '9px').attr('fill', '#888')
+            .attr('font-size', '10px').attr('fill', leftColor)
             .style('opacity', 0)
             .text(lPct + '%')
             .transition().delay(delay + 150).duration(200)
@@ -1775,7 +1814,7 @@ function renderTraitDrift(traitName) {
         svg.append('text')
             .attr('x', dotX + 18).attr('y', y + 3)
             .attr('text-anchor', 'start')
-            .attr('font-size', '9px').attr('fill', '#888')
+            .attr('font-size', '10px').attr('fill', rightColor)
             .style('opacity', 0)
             .text(rPct + '%')
             .transition().delay(delay + 150).duration(200)
