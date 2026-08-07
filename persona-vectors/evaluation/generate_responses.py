@@ -1,5 +1,6 @@
 import argparse
 import torch
+import torch.multiprocessing as mp
 from huggingface_hub import login
 from pathlib import Path
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -81,6 +82,14 @@ def parse_args():
              "(fewer than NUM_TURNS turns saved per conversation, e.g. after a crash mid-run), "
              "generate only the missing turns and keep flushing into that same file. Traits with "
              "no file yet, or a file already at NUM_TURNS turns, are left untouched.",
+    )
+    parser.add_argument(
+        "--n_gpus", type=int, default=1, choices=[1, 2, 3],
+        help="Number of GPUs to spread the discovered traits across. The trait list is split "
+             "into this many contiguous, roughly-equal chunks (e.g. 6 traits with --n_gpus 2 "
+             "gives 3 traits to cuda:0 and 3 to cuda:1; with --n_gpus 3, 2 traits to each of "
+             "cuda:0/1/2). Each chunk runs in its own process, with its own model copy pinned "
+             "to that device, in parallel.",
     )
     return parser.parse_args()
 
@@ -315,6 +324,20 @@ def _run_single_turn_trait(model, tokenizer, device, trait, num_questions, num_r
 
 def chunked(items, size):
     return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def split_traits(traits, n_gpus):
+    """Split traits into n_gpus contiguous chunks, sizes differing by at most 1 (e.g. 6 traits
+    over 2 GPUs -> [3, 3]; over 3 GPUs -> [2, 2, 2]). Empty chunks are possible if n_gpus >
+    len(traits)."""
+    base, extra = divmod(len(traits), n_gpus)
+    chunks = []
+    start = 0
+    for i in range(n_gpus):
+        size = base + (1 if i < extra else 0)
+        chunks.append(traits[start:start + size])
+        start += size
+    return chunks
 
 
 def _load_multiturn_trait(trait, num_questions):
@@ -622,13 +645,19 @@ def run_resume_multiturn(model, tokenizer, device, anthropic_client, traits, bat
                 del trait_states[trait]
 
 
-def main():
-    args = parse_args()
+def run_worker(gpu_index, traits, args):
+    """Everything one GPU needs to do end to end: load its own tokenizer/model onto
+    cuda:{gpu_index}, then dispatch on the same --multiturn/--resume-multiturn/single-turn
+    flags as the single-GPU path, but scoped to just this worker's slice of traits. Runs
+    either inline (--n_gpus 1) or as the target of its own process (--n_gpus > 1), so it must
+    stay self-contained -- no state shared with other workers."""
+    if not traits:
+        return
 
     login(token=os.environ.get('HF_TOKEN'))
     torch.manual_seed(42)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{gpu_index}") if torch.cuda.is_available() else torch.device("cpu")
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=False)
     tokenizer.pad_token = tokenizer.eos_token
@@ -636,12 +665,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16).to(device)
     model.eval()
 
-    persona_vectors_dir = Path("../generation/persona_vectors")
-    traits = sorted(set(
-        p.stem.rsplit("_", 2)[0]
-        for p in persona_vectors_dir.glob("*.pt")
-    ))
-    print("Traits found:", traits)
+    print(f"[{device}] traits: {traits}")
 
     num_questions = 10  # final N situational questions to run inference on
     num_rollouts = 1
@@ -669,6 +693,36 @@ def main():
             model, tokenizer, device, traits,
             num_questions, num_rollouts, batch_size, max_length,
         )
+
+
+def main():
+    args = parse_args()
+
+    persona_vectors_dir = Path("../generation/persona_vectors")
+    traits = sorted(set(
+        p.stem.rsplit("_", 2)[0]
+        for p in persona_vectors_dir.glob("*.pt")
+    ))
+    print("Traits found:", traits)
+
+    trait_chunks = [chunk for chunk in split_traits(traits, args.n_gpus) if chunk]
+
+    if len(trait_chunks) <= 1:
+        run_worker(0, traits, args)
+        return
+
+    # CUDA contexts don't survive fork, so each GPU's worker needs its own freshly spawned
+    # process (re-importing this module) rather than a forked one.
+    ctx = mp.get_context("spawn")
+    processes = []
+    for gpu_index, chunk in enumerate(trait_chunks):
+        print(f"cuda:{gpu_index} assigned traits: {chunk}")
+        p = ctx.Process(target=run_worker, args=(gpu_index, chunk, args))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
 
 
 if __name__ == "__main__":
