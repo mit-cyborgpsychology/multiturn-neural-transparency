@@ -79,9 +79,13 @@ def parse_args():
     parser.add_argument(
         "--resume-multiturn", action="store_true",
         help="For each trait with an existing but incomplete responses_multiturn/{trait}.json "
-             "(fewer than NUM_TURNS turns saved per conversation, e.g. after a crash mid-run), "
-             "generate only the missing turns and keep flushing into that same file. Traits with "
-             "no file yet, or a file already at NUM_TURNS turns, are left untouched.",
+             "(fewer than NUM_TURNS turns saved for at least one conversation, e.g. after a crash "
+             "mid-run), generate only the missing turns and keep flushing into that same file. "
+             "Each conversation resumes independently from its own last completed turn -- "
+             "conversations that got further before the crash keep that progress rather than "
+             "being rolled back to match the slowest conversation in the file. Traits with no "
+             "file yet, or a file where every conversation already has NUM_TURNS turns, are left "
+             "untouched.",
     )
     parser.add_argument(
         "--n_gpus", type=int, default=1, choices=[1, 2, 3],
@@ -447,10 +451,11 @@ def _generate_first_turn(model, tokenizer, device, anthropic_client, trait, stat
         _flush_multiturn(state)
 
 
-def _simulate_user_turn(anthropic_client, trait, state, turn):
-    """The user-simulator API call for this turn, across the whole trait, dispatched
-    together so concurrency uses the full worker pool instead of being capped at
-    whatever fit in one GPU batch.
+def _simulate_user_turn(anthropic_client, trait, state, turn, conversations=None):
+    """The user-simulator API call for this turn, across the whole trait (or, when resuming a
+    trait whose conversations are at mixed progress, just the subset of `conversations` that
+    still need this turn), dispatched together so concurrency uses the full worker pool
+    instead of being capped at whatever fit in one GPU batch.
 
     Per each conversation's own PATTERNS[pattern], the simulator is additionally steered to
     embody the trait or its opposite this turn (see build_user_simulator_prompt and
@@ -458,7 +463,7 @@ def _simulate_user_turn(anthropic_client, trait, state, turn):
     polarities on the same turn) -- but that steering instruction is ephemeral, used only for
     this API call, never added to full_messages/visible_messages, so Llama's turn
     (_generate_assistant_turn) still sees a completely ordinary conversation."""
-    conversations = state["conversations"]
+    conversations = state["conversations"] if conversations is None else conversations
     polarities = [PATTERNS[conv["pattern"]][turn] for conv in conversations]
     next_user_messages = simulate_messages_grouped_by_polarity(
         anthropic_client, trait, state, f"turn {turn}",
@@ -471,11 +476,14 @@ def _simulate_user_turn(anthropic_client, trait, state, turn):
         conv["pending_target_polarity"] = polarity
 
 
-def _generate_assistant_turn(model, tokenizer, device, trait, state, turn, batch_size, max_length):
+def _generate_assistant_turn(model, tokenizer, device, trait, state, turn, batch_size, max_length, conversations=None):
     """The matching assistant turn, chunked by this turn's batch size (longer accumulated
     context can need a smaller batch to fit in VRAM), flushing after every batch so a
-    crash partway through this turn doesn't lose progress."""
-    conversations = state["conversations"]
+    crash partway through this turn doesn't lose progress. `conversations` (when given, e.g.
+    resuming a trait at mixed progress) restricts this call to just the conversations that
+    still need this turn; the flush still writes the full state["conversations"] every time,
+    so already-finished conversations elsewhere in the same file are preserved as-is."""
+    conversations = state["conversations"] if conversations is None else conversations
     for conv_batch in tqdm(chunked(conversations, batch_size), desc=f"{trait} turn {turn} llama", leave=True):
         next_responses = generate_response_from_conversation(
             model, tokenizer, [conv["full_messages"] for conv in conv_batch], max_length, device
@@ -535,8 +543,12 @@ def run_multiturn(model, tokenizer, device, anthropic_client, traits, num_questi
 def _load_resumable_trait(trait):
     """Load an existing responses_multiturn/{trait}.json and reconstruct the in-memory
     conversation state (full_messages, visible_messages) from its saved turns, so generation
-    can continue exactly where a crash left off. Returns None if there's nothing to resume:
-    no file yet, or a file whose conversations already have NUM_TURNS turns."""
+    can continue exactly where a crash left off. Each conversation keeps whatever turns it
+    already has -- conversations that got further before the crash are left alone and simply
+    stop being selected once they reach NUM_TURNS; conversations that fell behind resume from
+    their own last completed turn (see run_resume_multiturn's per-turn filtering). Returns
+    None if there's nothing to resume: no file yet, or a file whose conversations already all
+    have NUM_TURNS turns."""
     responses_file = Path(f"responses_multiturn/{trait}.json")
     if not responses_file.exists():
         print(f"No responses_multiturn/{trait}.json yet, nothing to resume for {trait}.")
@@ -583,32 +595,31 @@ def _load_resumable_trait(trait):
         return None
 
     if min_turns >= NUM_TURNS:
-        print(f"responses_multiturn/{trait}.json already has {NUM_TURNS} turns, nothing to resume for {trait}.")
+        print(f"responses_multiturn/{trait}.json already has {NUM_TURNS} turns for every conversation, "
+              f"nothing to resume for {trait}.")
         return None
 
     if any(len(conv["turns"]) != min_turns for conv in conversations):
-        print(f"Warning: {trait} has conversations at mixed turn counts; resuming everyone from "
-              f"the lowest ({min_turns}) turns saved -- conversations already ahead of that will "
-              f"have their later turns regenerated.")
-        for conv in conversations:
-            if len(conv["turns"]) > min_turns:
-                conv["turns"] = conv["turns"][:min_turns]
-                conv["full_messages"] = conv["full_messages"][:1 + 2 * min_turns]
-                conv["visible_messages"] = conv["visible_messages"][:2 * min_turns]
+        max_turns = max(len(conv["turns"]) for conv in conversations)
+        print(f"{trait} has conversations at mixed turn counts (from {min_turns} to {max_turns}); "
+              f"resuming each conversation independently from its own last completed turn.")
 
     return {
         "responses_file": responses_file,
         "response_skeleton": response_skeleton,
         "conversations": conversations,
         "trait_descriptions": load_trait_descriptions(trait),
-        "next_turn": min_turns + 1,
     }
 
 
 def run_resume_multiturn(model, tokenizer, device, anthropic_client, traits, batch_sizes, max_length):
     """Turn-major continuation of run_multiturn for traits that already have a partial
-    responses_multiturn/{trait}.json: pick up at whatever turn each trait left off on and
-    generate forward from there, in lockstep across traits the same way run_multiturn does."""
+    responses_multiturn/{trait}.json: pick up at whatever turn each *conversation* left off on
+    and generate forward from there. Unlike a trait-wide lockstep, a conversation with
+    len(turns) == turn - 1 is selected for `turn` regardless of how far ahead or behind other
+    conversations in the same file are -- so a conversation that already made it to turn 3
+    before a crash keeps that progress while one still stuck on turn 1 catches up alongside
+    it, each getting exactly its own next turn."""
     trait_states = {}
     for trait in traits:
         try:
@@ -624,21 +635,28 @@ def run_resume_multiturn(model, tokenizer, device, anthropic_client, traits, bat
         return
 
     for turn in range(2, NUM_TURNS + 1):
-        turn_traits = [trait for trait, state in trait_states.items() if state["next_turn"] <= turn]
-        if not turn_traits:
+        pending_by_trait = {}
+        for trait, state in trait_states.items():
+            pending = [conv for conv in state["conversations"] if len(conv["turns"]) == turn - 1]
+            if pending:
+                pending_by_trait[trait] = pending
+
+        if not pending_by_trait:
             continue
 
-        for trait in turn_traits:
+        for trait, pending in pending_by_trait.items():
             try:
-                _simulate_user_turn(anthropic_client, trait, trait_states[trait], turn)
+                _simulate_user_turn(anthropic_client, trait, trait_states[trait], turn, conversations=pending)
             except Exception as e:
                 print(f"Error simulating turn {turn} user message for {trait}, skipping to next trait. Results "
                       f"generated before the error are already saved to responses_multiturn/{trait}.json. Error: {e}")
                 del trait_states[trait]
 
-        for trait in [t for t in turn_traits if t in trait_states]:
+        for trait, pending in pending_by_trait.items():
+            if trait not in trait_states:
+                continue
             try:
-                _generate_assistant_turn(model, tokenizer, device, trait, trait_states[trait], turn, batch_sizes[turn], max_length)
+                _generate_assistant_turn(model, tokenizer, device, trait, trait_states[trait], turn, batch_sizes[turn], max_length, conversations=pending)
             except Exception as e:
                 print(f"Error processing {trait} turn {turn}, skipping to next trait. Results generated before the "
                       f"error are already saved to responses_multiturn/{trait}.json. Error: {e}")
@@ -673,7 +691,7 @@ def run_worker(gpu_index, traits, args):
     # Per-turn batch sizes for --multiturn: total sequences per generate() call on that turn.
     # Later turns carry more accumulated conversation context per sequence, so they may need
     # a smaller batch size to fit the same VRAM budget.
-    batch_sizes = {1: 250, 2: 250, 3: 100, 4: 100}
+    batch_sizes = {1: 250, 2: 200, 3: 100, 4: 100}
     max_length = 512
 
     if args.multiturn:
