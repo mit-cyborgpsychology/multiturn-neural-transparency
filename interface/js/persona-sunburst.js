@@ -507,7 +507,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             const activationPercent = (item.value * 100).toFixed(0);
             const definition = getTraitDefinition(item.name);
             const oppositeTraitInfo = item.oppositeTrait ? 
-                `<br/><span style="opacity: 0.8;">Sister trait: ${item.oppositeTrait}</span>` : '';
+                `<br/><span style="opacity: 0.8;">Opposite trait: ${item.oppositeTrait}</span>` : '';
             
             tooltip.html(`
                 <strong style="font-size: 16px;">${item.name}</strong><br/>

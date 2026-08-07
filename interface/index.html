@@ -130,10 +130,11 @@
             <p class="hero-tagline" style="margin-top:0.3em">
                 What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:4px 0 3px">
+            <!-- margin-right matches .chat-frame's -25px bleed so this right-aligns with the box below -->
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:4px -25px 3px 0">
                 <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
                     <button id="l-example-prev" class="example-arrow" onclick="lPrevExample()" title="Previous example" style="visibility:hidden">&lt;</button>
-                    <span id="l-example-label" style="display:inline-block;min-width:250px;text-align:center">Example 1/3: Poem Feedback</span>
+                    <span id="l-example-label" style="display:inline-block;min-width:230px;text-align:center">Example 1: Poem Feedback</span>
                     <button id="l-example-next" class="example-arrow" onclick="lNextExample()" title="Next example">&gt;</button>
                 </div>
             </div>
@@ -721,8 +722,8 @@ function lSelectExample(n){
     lDriftTrait=ex.driftTrait;
     lHighlightedTurn=null;
     document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' ↔ '+lDriftTrait.negLabel;
-    // "Example 2/3: Emotional Support" — the counter tells users this is one of several
-    document.getElementById('l-example-label').textContent='Example '+lCurrentExample+'/'+L_EXAMPLE_COUNT+': '+ex.label;
+    // "Example 2: Emotional Support" — the number tells users this is one of several
+    document.getElementById('l-example-label').textContent='Example '+lCurrentExample+': '+ex.label;
     document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
     document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
     lClearTimers(); lRunning=false;
