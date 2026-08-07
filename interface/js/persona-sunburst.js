@@ -1088,6 +1088,50 @@ function classifyTrait(traitName) {
     return 'positive';
 }
 
+// ─── Drift-axis pole ordering ────────────────────────────────────────────────
+// Shared by the landing hero tracker (index.html) and the study/demo drift panel
+// (chat.js) so the two can't disagree. Poles are ordered by polarity — the negative
+// (red) trait on the left, the positive (green) on the right — using the same
+// classifyTrait() that colors the sunburst above.
+
+const DRIFT_POLE_RANK = { negative: 0, neutral: 1, positive: 2 };
+
+// Indexed by DRIFT_POLE_RANK — the category-ring hexes used elsewhere in this file
+const DRIFT_POLE_COLORS = ['#F44336', '#9E9E9E', '#4CAF50'];
+
+// Neutral pairs have no red/green end, so polarity can't order them — pin them
+// explicitly as [left, right] rather than letting API key order decide.
+const NEUTRAL_POLE_ORDER = {
+    erudite: ['simplistic', 'sophisticated'],
+    robotic: ['robotic', 'human-like'],
+};
+
+function driftPoleRank(traitName) {
+    const rank = DRIFT_POLE_RANK[classifyTrait(traitName)];
+    return rank === undefined ? DRIFT_POLE_RANK.neutral : rank;
+}
+
+function driftPoleColor(traitName) {
+    return DRIFT_POLE_COLORS[driftPoleRank(traitName)];
+}
+
+/**
+ * Returns [leftTrait, rightTrait] for a category's trait pair, or null if it isn't a pair
+ * @param {string} categoryKey - API category key (e.g. 'empathy')
+ * @param {Object} traits - That category's { traitName: value } object
+ */
+function getDriftPoles(categoryKey, traits) {
+    if (!traits) return null;
+    const keys = Object.keys(traits);
+    if (keys.length < 2) return null;
+
+    const pinned = NEUTRAL_POLE_ORDER[categoryKey];
+    if (pinned && pinned.every(t => keys.includes(t))) return pinned.slice();
+
+    const [a, b] = keys;
+    return driftPoleRank(b) < driftPoleRank(a) ? [b, a] : [a, b];
+}
+
 /**
  * Filters trait pairs to keep only the dominant trait from each pair
  * Dynamically detects pairs and filters - works with any traits the API returns
@@ -1239,7 +1283,13 @@ if (typeof module !== 'undefined' && module.exports) {
         getEffectiveTrait,
         formatTraitName,
         detectTraitPairs,
-        classifyTrait
+        classifyTrait,
+        getDriftPoles,
+        driftPoleRank,
+        driftPoleColor,
+        DRIFT_POLE_RANK,
+        DRIFT_POLE_COLORS,
+        NEUTRAL_POLE_ORDER
     };
 }
 

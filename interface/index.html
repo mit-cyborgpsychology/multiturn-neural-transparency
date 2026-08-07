@@ -131,10 +131,10 @@
                 What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
             <!-- Live demo -->
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:4px 0 3px">
-                <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
-                    <button id="l-example-prev" onclick="lPrevExample()" title="Previous example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1;visibility:hidden">&lt;</button>
-                    <span id="l-example-label" style="display:inline-block;min-width:118px;text-align:center">Poem Feedback</span>
-                    <button id="l-example-next" onclick="lNextExample()" title="Next example" style="background:none;border:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);padding:0;line-height:1">&gt;</button>
+                <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
+                    <button id="l-example-prev" class="example-arrow" onclick="lPrevExample()" title="Previous example" style="visibility:hidden">&lt;</button>
+                    <span id="l-example-label" style="display:inline-block;min-width:250px;text-align:center">Example 1/3: Poem Feedback</span>
+                    <button id="l-example-next" class="example-arrow" onclick="lNextExample()" title="Next example">&gt;</button>
                 </div>
             </div>
             <div class="chat-frame" id="l-chat-frame" style="position:relative">
@@ -623,6 +623,65 @@ let L_DEMO_SNAPSHOTS=L_EXAMPLES[0].snapshots;
 let lDriftTrait=L_EXAMPLES[0].driftTrait; // locked drift trait for the current example
 let lHighlightedTurn=null; // which turn's dot is highlighted in the drift panel; null = latest turn
 
+// ── Drift-trait helpers ──────────────────────────────────────────────────────
+// Poles/colors/labels all come from persona-sunburst.js so the landing tracker and
+// the demo's drift panel stay in lockstep. Each helper degrades to the example's
+// hand-authored pos/neg fields if those shared helpers ever fail to load.
+
+// The trait pair for a category, read from the LATEST snapshot that has it — that's the
+// snapshot the sunburst renders, and a category's keys can differ across snapshots
+// (Example 1's real turns use 'sycophancy' where lRandomSnapshot uses 'sycophantic').
+function lCategoryTraits(category){
+    for(let i=L_DEMO_SNAPSHOTS.length-1;i>=0;i--){
+        const snap=L_DEMO_SNAPSHOTS[i];
+        if(snap && snap[category]) return snap[category];
+    }
+    return null;
+}
+// [leftTrait, rightTrait] for the current drift category
+function lDriftPoles(){
+    const traits=lCategoryTraits(lDriftTrait.category);
+    if(traits && typeof getDriftPoles==='function'){
+        const poles=getDriftPoles(lDriftTrait.category,traits);
+        if(poles) return poles;
+    }
+    return [lDriftTrait.neg, lDriftTrait.pos];
+}
+function lPoleColor(trait){
+    return typeof driftPoleColor==='function' ? driftPoleColor(trait) : '#888';
+}
+function lPoleLabel(trait){
+    return typeof formatTraitName==='function' ? formatTraitName(trait).toUpperCase() : String(trait).toUpperCase();
+}
+// Which category holds a given raw trait key (e.g. 'platonic' → 'romantic')
+function lFindTraitCategory(rawTrait){
+    for(let i=L_DEMO_SNAPSHOTS.length-1;i>=0;i--){
+        const snap=L_DEMO_SNAPSHOTS[i];
+        if(!snap) continue;
+        for(const [category,traits] of Object.entries(snap)){
+            if(traits && rawTrait in traits) return category;
+        }
+    }
+    return null;
+}
+// Clicking any sunburst arc/label retargets the tracker to that trait's pair,
+// matching the demo's behavior (chat.js:562). Delegated so it survives re-renders.
+document.addEventListener('click',function(e){
+    const el=e.target.closest && e.target.closest('#l-live-sunburst [data-trait-name]');
+    if(!el) return;
+    const raw=(el.getAttribute('data-trait-name')||'').toLowerCase();
+    const category=lFindTraitCategory(raw);
+    if(!category) return;
+    const traits=lCategoryTraits(category);
+    const poles=(typeof getDriftPoles==='function' && getDriftPoles(category,traits)) || Object.keys(traits||{});
+    if(poles.length<2) return;
+    // Keep lDriftTrait's full shape — lSelectExample and the (hidden) tracker title read these
+    lDriftTrait={category:category, neg:poles[0], pos:poles[1],
+                 negLabel:lPoleLabel(poles[0]), posLabel:lPoleLabel(poles[1])};
+    document.getElementById('l-tracker-title').textContent=lDriftTrait.negLabel+' ↔ '+lDriftTrait.posLabel;
+    lDrawTracker();
+});
+
 function lRenderSunburst(scores){
     var el=document.getElementById('l-live-sunburst');
     if(el && typeof createPersonaSunburst==='function'){
@@ -662,7 +721,8 @@ function lSelectExample(n){
     lDriftTrait=ex.driftTrait;
     lHighlightedTurn=null;
     document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' ↔ '+lDriftTrait.negLabel;
-    document.getElementById('l-example-label').textContent=ex.label;
+    // "Example 2/3: Emotional Support" — the counter tells users this is one of several
+    document.getElementById('l-example-label').textContent='Example '+lCurrentExample+'/'+L_EXAMPLE_COUNT+': '+ex.label;
     document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
     document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
     lClearTimers(); lRunning=false;
@@ -808,9 +868,15 @@ function lDrawTracker(){
     const tw=scroll.clientWidth-8||200;
     const rowHeight=28; // reduced spacing between turns so more of the 6-turn timeline fits without scrolling
     const topPad=30;
-    const lc='#ef4444', rc='#22c55e';
     const leftX=70, rightX=tw-70, axisSpan=rightX-leftX;
     const centerX=leftX+axisSpan/2;
+
+    // Poles come from polarity (negative/red left, positive/green right) via the shared
+    // helpers in persona-sunburst.js, so this tracker matches the demo's drift panel.
+    // The example's own pos/neg fields are only the fallback if those helpers are missing.
+    const poles=lDriftPoles();
+    const leftTrait=poles[0], rightTrait=poles[1];
+    const leftColor=lPoleColor(leftTrait), rightColor=lPoleColor(rightTrait);
 
     // Build all data points using current drift trait — turn 0 (system-prompt baseline)
     // is intentionally excluded, only actual AI-reply turns are shown.
@@ -820,7 +886,7 @@ function lDrawTracker(){
     aiEntries.forEach((e,i)=>{
         var snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
         var tc=snap[lDriftTrait.category]||{};
-        allDots.push({posV:tc[lDriftTrait.pos]||0, negV:tc[lDriftTrait.neg]||0, turn:i+1});
+        allDots.push({leftV:tc[leftTrait]||0, rightV:tc[rightTrait]||0, turn:i+1});
     });
 
     // SVG is sized to the FULL content height (not just the visible scroll window) so
@@ -832,13 +898,13 @@ function lDrawTracker(){
     svg.attr("viewBox",'0 0 '+tw+' '+contentH).attr("preserveAspectRatio","xMidYMin meet")
         .style("width","100%").attr("height",contentH);
 
-    // Pole labels (dynamic based on biggest swing)
+    // Pole labels — derived from the poles above, so they always match the axis
     svg.append('text').attr('x',leftX).attr('y',14)
         .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
-        .attr('fill','#888').attr('letter-spacing','0.05em').text(lDriftTrait.negLabel);
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(leftTrait));
     svg.append('text').attr('x',rightX).attr('y',14)
         .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
-        .attr('fill','#888').attr('letter-spacing','0.05em').text(lDriftTrait.posLabel);
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(rightTrait));
 
     // Pole guide lines
     [leftX,rightX].forEach(x=>{
@@ -856,10 +922,10 @@ function lDrawTracker(){
     // Compute dot positions
     // position uses (posV - negV) mapped from [-1,1] to [0,1] on the axis
     const dots=allDots.map((e,i)=>{
-        const diff=e.posV-e.negV; // -1 to 1
+        const diff=e.rightV-e.leftV; // -1 to 1
         const position=(diff+1)/2; // 0 to 1
         const y=topPad+i*rowHeight+rowHeight/2;
-        return{x:leftX+position*axisSpan, y, posV:e.posV, negV:e.negV, turn:e.turn};
+        return{x:leftX+position*axisSpan, y, leftV:e.leftV, rightV:e.rightV, turn:e.turn};
     });
 
     // Connecting line
@@ -889,13 +955,13 @@ function lDrawTracker(){
             .attr('text-anchor','middle').attr('font-size','9px').attr('font-weight','600')
             .attr('fill',isHighlighted?'white':'#777').text(d.turn);
         // Value labels on either side
-        var negPct=Math.round(d.negV*100), posPct=Math.round(d.posV*100);
+        var leftPct=Math.round(d.leftV*100), rightPct=Math.round(d.rightV*100);
         svg.append('text').attr('x',d.x-18).attr('y',d.y+3)
-            .attr('text-anchor','end').attr('font-size','9px').attr('fill',lc)
-            .text(negPct+'%');
+            .attr('text-anchor','end').attr('font-size','10px').attr('fill',leftColor)
+            .text(leftPct+'%');
         svg.append('text').attr('x',d.x+18).attr('y',d.y+3)
-            .attr('text-anchor','start').attr('font-size','9px').attr('fill',rc)
-            .text(posPct+'%');
+            .attr('text-anchor','start').attr('font-size','10px').attr('fill',rightColor)
+            .text(rightPct+'%');
     });
 
     // Auto-scroll so the highlighted turn's row is centered in the visible window

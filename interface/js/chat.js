@@ -1547,38 +1547,8 @@ function applySunburstHighlight(swing) {
     });
 }
 
-// Pole ordering for the drift axis: negative (red in the sunburst) on the left,
-// positive (green) on the right. classifyTrait() lives in persona-sunburst.js and is the
-// same classifier that picks the sunburst's red/green, so the two views can't disagree.
-const DRIFT_POLE_RANK = { negative: 0, neutral: 1, positive: 2 };
-
-// Indexed by DRIFT_POLE_RANK — same hexes the sunburst uses for its category rings
-const DRIFT_POLE_COLORS = ['#F44336', '#9E9E9E', '#4CAF50'];
-
-// Neutral pairs have no red/green end, so polarity can't order them — pin them
-// explicitly as [left, right] rather than letting API key order decide.
-const NEUTRAL_POLE_ORDER = {
-    erudite: ['simplistic', 'sophisticated'],
-    robotic: ['robotic', 'human-like'],
-};
-
-function driftPoleRank(traitName) {
-    if (typeof classifyTrait !== 'function') return DRIFT_POLE_RANK.neutral;
-    const rank = DRIFT_POLE_RANK[classifyTrait(traitName)];
-    return rank === undefined ? DRIFT_POLE_RANK.neutral : rank;
-}
-
-// Returns [leftTrait, rightTrait] for a category's trait pair, or null if it isn't a pair
-function getDriftPoles(categoryKey, traits) {
-    const keys = Object.keys(traits);
-    if (keys.length < 2) return null;
-
-    const pinned = NEUTRAL_POLE_ORDER[categoryKey];
-    if (pinned && pinned.every(t => keys.includes(t))) return pinned.slice();
-
-    const [a, b] = keys;
-    return driftPoleRank(b) < driftPoleRank(a) ? [b, a] : [a, b];
-}
+// Pole ordering (getDriftPoles / driftPoleColor) and the red-green-grey palette live in
+// persona-sunburst.js, shared with the landing hero tracker in index.html.
 
 // Render vertical drift axis showing how a trait has shifted across conversation turns
 // traitName: raw API key of clicked trait (e.g. 'empathetic')
@@ -1599,7 +1569,7 @@ function renderTraitDrift(traitName) {
         if (traits && traitName in traits) {
             categoryKey = catKey;
             // Poles come from polarity, not from which arc was clicked, so they stay put
-            const poles = getDriftPoles(catKey, traits);
+            const poles = typeof getDriftPoles === 'function' ? getDriftPoles(catKey, traits) : Object.keys(traits);
             if (poles) [leftTrait, rightTrait] = poles;
             oppositeKey = Object.keys(traits).find(t => t !== traitName);
             break;
@@ -1610,7 +1580,7 @@ function renderTraitDrift(traitName) {
     // Match the sunburst's palette: negative red, positive green, neutral pairs stay grey.
     // Demo mode (?demo=true) shows every percentage grey instead.
     const isDemo = !!(window.experimentSettings && window.experimentSettings.demo);
-    const poleColor = t => DRIFT_POLE_COLORS[isDemo ? DRIFT_POLE_RANK.neutral : driftPoleRank(t)];
+    const poleColor = t => (isDemo ? DRIFT_POLE_COLORS[DRIFT_POLE_RANK.neutral] : driftPoleColor(t));
     const leftColor = poleColor(leftTrait);
     const rightColor = poleColor(rightTrait);
 
