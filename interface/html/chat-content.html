@@ -107,7 +107,7 @@
                     <!-- <span id="driftTraitLabel">Click a trait to see drift · Click turns to view messages</span> -->
                     <div style="display:flex;gap:0.5rem;align-items:center;">
                         <button class="drift-info-btn" id="driftInfoBtn" title="How to use"><i class="fas fa-info-circle"></i></button>
-                        <button class="drift-close-btn" id="closeDriftBtn" style="display:none;">✕</button>
+                        <!-- Close (✕) button removed — the drift panel is always on and can't be dismissed -->
                     </div>
                 </div>
                 <div id="driftAxisContainer"></div>
@@ -688,6 +688,11 @@
         <p>Chat with the AI assistant in any way you want. See if you can predict what it will say based off of insight from the interfaces.</p>
         <p>Type your messages in the right side and use the interface on the left side.</p>
         <p>Chat for up to 10 conversational turns.</p>
+        <ul>
+            <li><strong>Click a trait</strong> on the sunburst to track how it shifts across turns</li>
+            <li><strong>Click a turn dot</strong> to view that turn's messages and sunburst snapshot</li>
+            <li>The sunburst automatically returns to the latest state when you send a new message</li>
+        </ul>
         <button class="btn btn-primary" onclick="window.dismissInstructionModal('chat')">Got it!</button>
     </div>
 </div>

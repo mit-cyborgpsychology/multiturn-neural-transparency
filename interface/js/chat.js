@@ -539,18 +539,8 @@ function initializeDynamicInterface() {
             $('#personaPlaceholder').show();
         };
 
-        $(document).on('click', '#closeDriftBtn', function() {
-            d3.select('#driftAxisContainer').selectAll('*').remove();
-            $('#driftTraitLabel').text('Click a trait to see drift · Click turns to view messages');
-            $('#closeDriftBtn').hide();
-            window.activeDriftTrait = null;
-            // Restore sunburst to latest and clear turn label
-            if (window.personaHistory && window.personaHistory.length > 0) {
-                const latest = window.personaHistory[window.personaHistory.length - 1];
-                renderPersonaChart(latest.scores, 'chatPersonaChart');
-            }
-            $('#viewingTurnLabel').hide();
-        });
+        // The drift panel's close (✕) handler was removed along with the button — the panel
+        // stays open for the whole conversation.
 
         // Drift panel info button
         $(document).on('click', '#driftInfoBtn', function() {
@@ -921,11 +911,8 @@ function initializeDynamicInterface() {
 
         // Show chat instruction modal
         window.showInstructionModal('chat');
-
-        // Queue drift panel info modal after chat modal is dismissed (dynamic condition only)
-        if (chatVizCondition === 2) {
-            window._showDriftInfoAfterChat = true;
-        }
+        // The drift-panel modal no longer auto-follows this one — its key points were folded
+        // into the chat modal above. It still opens on demand via the drift panel's info button.
 
         // Enable user input for live conversation
         $('#messageInput').prop('disabled', false);
@@ -1416,7 +1403,10 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                     height: h,
                     innerRadius: 65,
                     animate: true,
-                    oppositeLayout: window.sunburstOppositeLayout
+                    oppositeLayout: window.sunburstOppositeLayout,
+                    // Demo's live chat panel only — tighter margin so the sunburst fills more
+                    // of the same box. Every other sunburst keeps the 2.5 default.
+                    radiusDivisor: containerId === 'chatPersonaChart' ? 2.2 : 2.5
                 });
             } else {
                 console.error('createPersonaSunburst function not found. Falling back to bar chart.');
@@ -1586,7 +1576,6 @@ function renderTraitDrift(traitName) {
 
     const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
     $('#driftTraitLabel').text(`${capitalize(traitName)}  ↔  ${capitalize(oppositeKey)}`);
-    $('#closeDriftBtn').show();
 
     // Build history array: position 0 = dot at left (leftTrait pole), position 1 = dot at right (rightTrait pole)
     // Turn 0 (system-prompt-only baseline) is excluded — the drift panel only shows actual chat turns.
@@ -1770,25 +1759,30 @@ function renderTraitDrift(traitName) {
             .transition().delay(delay + 150).duration(200)
             .style('opacity', 1);
 
-        // Trait activation % labels on either side of dot
+        // Trait activation % labels on either side of dot. Only one trait in a pair is
+        // active per turn — the inactive side reads 0%, so its label is left off entirely.
         const lPct = Math.round(entry.lVal * 100);
         const rPct = Math.round(entry.rVal * 100);
-        svg.append('text')
-            .attr('x', dotX - 18).attr('y', y + 3)
-            .attr('text-anchor', 'end')
-            .attr('font-size', '10px').attr('fill', leftColor)
-            .style('opacity', 0)
-            .text(lPct + '%')
-            .transition().delay(delay + 150).duration(200)
-            .style('opacity', 1);
-        svg.append('text')
-            .attr('x', dotX + 18).attr('y', y + 3)
-            .attr('text-anchor', 'start')
-            .attr('font-size', '10px').attr('fill', rightColor)
-            .style('opacity', 0)
-            .text(rPct + '%')
-            .transition().delay(delay + 150).duration(200)
-            .style('opacity', 1);
+        if (lPct > 0) {
+            svg.append('text')
+                .attr('x', dotX - 18).attr('y', y + 3)
+                .attr('text-anchor', 'end')
+                .attr('font-size', '10px').attr('fill', leftColor)
+                .style('opacity', 0)
+                .text(lPct + '%')
+                .transition().delay(delay + 150).duration(200)
+                .style('opacity', 1);
+        }
+        if (rPct > 0) {
+            svg.append('text')
+                .attr('x', dotX + 18).attr('y', y + 3)
+                .attr('text-anchor', 'start')
+                .attr('font-size', '10px').attr('fill', rightColor)
+                .style('opacity', 0)
+                .text(rPct + '%')
+                .transition().delay(delay + 150).duration(200)
+                .style('opacity', 1);
+        }
     });
 
     // Auto-scroll drift panel to show latest dot
@@ -2137,12 +2131,6 @@ window.dismissInstructionModal = function(type) {
     const instructionsShown = JSON.parse(sessionStorage.getItem('instructionsShown') || '{}');
     instructionsShown[type] = true;
     sessionStorage.setItem('instructionsShown', JSON.stringify(instructionsShown));
-
-    // Chain: show drift info modal after chat modal is dismissed
-    if (type === 'chat' && window._showDriftInfoAfterChat) {
-        window._showDriftInfoAfterChat = false;
-        setTimeout(() => window.showInstructionModal('driftInfo'), 350);
-    }
 };
 
 // Show visualization explanation modal

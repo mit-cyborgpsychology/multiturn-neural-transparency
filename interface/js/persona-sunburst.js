@@ -91,7 +91,10 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         showLabels: options.showLabels !== false,
         oppositeLayout: options.oppositeLayout === true, // default false = mirrored (shows neutral), true = opposite
         categoryOrder: Array.isArray(options.categoryOrder) ? options.categoryOrder : null,
-        onTraitClick: options.onTraitClick || null
+        onTraitClick: options.onTraitClick || null,
+        // Chart window is radiusDivisor × radius. Lower it to shrink the padding between the
+        // drawing and its container without touching the container itself. Default 2.5.
+        radiusDivisor: options.radiusDivisor || 2.5
     };
 
     // Clear any existing SVG in the container
@@ -103,9 +106,9 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
     // Set up dimensions
     const width = config.width;
     const height = config.height;
-    // Radius is always min(w,h)/2.5 so the chart window is exactly 2.5x the radius:
-    // 0.25*radius margin on each side, no excess whitespace.
-    const radius = Math.min(width, height) / 2.5;
+    // Radius is min(w,h)/radiusDivisor, so the chart window is exactly radiusDivisor x the
+    // radius: at the 2.5 default that's a 0.25*radius margin on each side.
+    const radius = Math.min(width, height) / config.radiusDivisor;
 
     // Create SVG container that fills its container
     const svg = d3.select(`#${containerId}`)
