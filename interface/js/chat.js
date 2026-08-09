@@ -1415,6 +1415,10 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                         requestAnimationFrame(function() { drawWhenSized(attempt + 1); });
                         return;
                     }
+                    if (chartEl) {
+                        chartEl._sunburstSize = cw + 'x' + ch;
+                        chartEl._sunburstData = personaData;
+                    }
                     createPersonaSunburst(personaData, sunburstId, {
                         width: Math.max(cw || 700, 300),
                         height: Math.max(ch || 700, 300),
@@ -1427,6 +1431,27 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                     });
                 };
                 drawWhenSized(0);
+
+                // Redraw whenever the container's box changes. This is what keeps the initial
+                // all-zeros chart the same size as later ones: it is drawn while the drift
+                // panel below is still empty, so the chart box is TALLER then than it is once
+                // turn dots push the drift panel open. The SVG scales with preserveAspectRatio
+                // "meet", so a viewBox measured at the taller height gets letterboxed — and
+                // therefore drawn smaller — inside the shorter box it ends up in.
+                if (typeof ResizeObserver !== 'undefined' && chartEl && !chartEl._sunburstRO) {
+                    let pending = null;
+                    chartEl._sunburstRO = new ResizeObserver(function() {
+                        if (pending) cancelAnimationFrame(pending);
+                        pending = requestAnimationFrame(function() {
+                            pending = null;
+                            const cw = chartEl.clientWidth, ch = chartEl.clientHeight;
+                            if (!cw || !ch) return;                                  // hidden
+                            if (cw + 'x' + ch === chartEl._sunburstSize) return;     // no change
+                            renderPersonaChart(chartEl._sunburstData || personaData, containerId);
+                        });
+                    });
+                    chartEl._sunburstRO.observe(chartEl);
+                }
             } else {
                 console.error('createPersonaSunburst function not found. Falling back to bar chart.');
                 renderPersonaBarChart(personaData, containerId);
@@ -1790,7 +1815,7 @@ function renderTraitDrift(traitName) {
         svg.append('text')
             .attr('x', dotX - 18).attr('y', y + 3)
             .attr('text-anchor', 'end')
-            .attr('font-size', '10px').attr('fill', leftColor)
+            .attr('font-size', '11px').attr('fill', leftColor)
             .style('opacity', 0)
             .text(lPct + '%')
             .transition().delay(delay + 150).duration(200)
@@ -1798,7 +1823,7 @@ function renderTraitDrift(traitName) {
         svg.append('text')
             .attr('x', dotX + 18).attr('y', y + 3)
             .attr('text-anchor', 'start')
-            .attr('font-size', '10px').attr('fill', rightColor)
+            .attr('font-size', '11px').attr('fill', rightColor)
             .style('opacity', 0)
             .text(rPct + '%')
             .transition().delay(delay + 150).duration(200)
