@@ -603,6 +603,13 @@ function initializeDynamicInterface() {
             endChatAndPredict();
         });
 
+        // Skip straight to the prediction quiz from the visualization panel header
+        $('#skipToPredictBtn').on('click', function() {
+            $(this).blur();
+            window.logInteraction('skip_to_predict', { turnsCompleted: window.conversationHistory ? window.conversationHistory.filter(function(m) { return m.role === 'user'; }).length : 0 });
+            endChatAndPredict();
+        });
+
         // Attach button functionality
         attachBtn.on('click', function() {
             // Placeholder for file attachment
@@ -1529,7 +1536,9 @@ function applyDriftDotHighlight(swing) {
 function applySunburstHighlight(swing) {
     const containers = ['#chatPersonaChart', '#personaChart'];
     containers.forEach(sel => {
-        $(`${sel} path[data-trait-name]`).each(function() {
+        // :not(.trait-hit) skips the invisible click targets — styling them would draw a
+        // stroked wedge across the whole ring band.
+        $(`${sel} path[data-trait-name]:not(.trait-hit)`).each(function() {
             const attrName = $(this).attr('data-trait-name') || '';
             const isMatch = attrName.toLowerCase() === swing.traitKey.toLowerCase();
             $(this).toggleClass('highlight-swing-segment', isMatch);
@@ -1907,9 +1916,10 @@ function injectPredictBehavior() {
     const messagesContainer = $('#messagesContainer');
     messagesContainer.append(panelHtml);
 
-    // Hide the live sunburst + drift panel while predicting — otherwise the answer is on
-    // screen next to the sliders. showPredictResults() brings it back with the score.
-    $('#chatPersonaPanel').hide();
+    // Blank the live sunburst + drift panel while predicting — otherwise the answer is on
+    // screen next to the sliders. The panel keeps its width (chat stays where it is) and just
+    // goes white; showPredictResults() brings the contents back with the score.
+    $('#chatPersonaPanel').addClass('viz-blanked');
 
     // Submit handler
     $('#predictSubmitBtn').on('click', function() {
@@ -1939,17 +1949,17 @@ function showPredictResults() {
     // Returns { category: value } on -1 to 1 scale (pos_activation - neg_activation)
     const actual = getActualBehaviorValues();
 
-    // RMSE across all dimensions (-1 to 1 scale, so max possible error = 2)
-    let sumSqErr = 0;
+    // Mean absolute error across all dimensions (-1 to 1 scale, so max possible error = 2)
+    let sumAbsErr = 0;
     const perDim = [];
     BEHAVIOR_PAIRS.forEach(function(pair) {
         const predicted = userPredictions[pair.category];
         const actualVal = actual[pair.category];
         const err = predicted - actualVal;
-        sumSqErr += err * err;
+        sumAbsErr += Math.abs(err);
         perDim.push({ pair, predicted, actualVal, err, absErr: Math.abs(err) });
     });
-    const rmse = Math.sqrt(sumSqErr / BEHAVIOR_PAIRS.length);
+    const mae = sumAbsErr / BEHAVIOR_PAIRS.length;
 
     // Build per-dimension breakdown
     let breakdownHtml = '';
@@ -1963,8 +1973,6 @@ function showPredictResults() {
         const actDisplay = signedPct(d.actualVal);
         const predLabel = d.predicted >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
         const actLabel = d.actualVal >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
-        // Bar fill: proportion of max accuracy (2.0 range)
-        const accuracyPct = Math.round(Math.max(0, (1 - d.absErr / 2) * 100));
 
         breakdownHtml += `
             <div class="predict-breakdown-item">
@@ -1973,21 +1981,21 @@ function showPredictResults() {
                     <span class="accuracy" style="color:${color}">|err| = ${errDisplay}</span>
                 </div>
                 <div class="details">
-                    You: ${predLabel} (${predDisplay}) | Actual: ${actLabel} (${actDisplay})
+                    <span>You: ${predLabel} (${predDisplay})</span>
+                    <span>Actual: ${actLabel} (${actDisplay})</span>
                 </div>
-                <div class="bar"><div class="bar-fill" style="width:${accuracyPct}%;background:${color}"></div></div>
             </div>`;
     });
 
-    // Grade based on RMSE (-1 to 1 scale, theoretical max ~2.0)
+    // Grade based on MAE (-1 to 1 scale, theoretical max error = 2.0)
     let grade, desc;
-    if (rmse < 0.15) {
+    if (mae < 0.15) {
         grade = 'Outstanding calibration';
         desc = 'You have an excellent read on this model\'s behavior.';
-    } else if (rmse < 0.35) {
+    } else if (mae < 0.35) {
         grade = 'Good calibration';
         desc = 'The visualization helped you track the model\'s behavioral profile.';
-    } else if (rmse < 0.65) {
+    } else if (mae < 0.65) {
         grade = 'Moderate calibration';
         desc = 'Predicting AI behavior is hard — Neural Transparency helps close this gap.';
     } else {
@@ -1995,16 +2003,16 @@ function showPredictResults() {
         desc = 'Most people struggle to predict AI behavior. That\'s exactly why Neural Transparency exists.';
     }
 
-    const rmseColor = rmse < 0.15 ? '#22c55e' : rmse < 0.35 ? '#eab308' : '#ef4444';
+    const maeColor = mae < 0.15 ? '#22c55e' : mae < 0.35 ? '#eab308' : '#ef4444';
 
     const resultsHtml = `
         <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-top:1rem;">
-            <h4 style="font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-0.3px">Prediction Error (RMSE)</h4>
-            <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Root mean squared error between your predictions and the model's actual activations at the final turn.</p>
+            <h4 style="font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-0.3px">Prediction Error (MAE)</h4>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Mean absolute error between your predictions and the model's actual activations at the final turn.</p>
             <div class="predict-scores">
                 <div class="predict-score-card">
-                    <div class="label">RMSE</div>
-                    <div class="value" style="color:${rmseColor}">${rmse.toFixed(2)}</div>
+                    <div class="label">MAE</div>
+                    <div class="value" style="color:${maeColor}">${mae.toFixed(2)}</div>
                     <div class="sub">lower is better (−1 to 1 scale)</div>
                 </div>
                 <div class="predict-score-card">
@@ -2013,7 +2021,7 @@ function showPredictResults() {
                     <div class="sub" style="margin-top:4px">${desc}</div>
                 </div>
             </div>
-            <h5 style="font-size:13px;font-weight:700;margin-bottom:10px">Per-dimension breakdown</h5>
+            <h5 style="font-size:13px;font-weight:700;margin-bottom:10px">Trait Breakdown</h5>
             <div class="predict-breakdown">${breakdownHtml}</div>
             <div style="margin-top:20px;text-align:center;">
                 <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">See the Science →</button>
@@ -2021,7 +2029,7 @@ function showPredictResults() {
         </div>`;
 
     // Predictions are locked in — restore the visualization alongside the results
-    $('#chatPersonaPanel').show();
+    $('#chatPersonaPanel').removeClass('viz-blanked');
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
@@ -2031,7 +2039,7 @@ function showPredictResults() {
         if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 300);
 
-    savePredictionData(userPredictions, actual, rmse);
+    savePredictionData(userPredictions, actual, mae);
 }
 
 // Get actual behavior values from the final turn's persona-vector API data
@@ -2063,14 +2071,16 @@ function getActualBehaviorValues() {
 }
 
 // Save prediction data to Firebase
-async function savePredictionData(predictions, actual, rmse) {
+async function savePredictionData(predictions, actual, mae) {
     try {
         const session = window.getCurrentSession();
         const basePath = studyId + '/participantData/' + firebaseUserId + '/session' + session + '/behaviorPrediction';
         const data = {
             predictions: predictions,
             actual: actual,
-            rmse: rmse,
+            // Field renamed from `rmse` when the metric changed — records written before
+            // 2026-08-08 carry `rmse` instead, so analysis needs to handle both.
+            mae: mae,
             timestamp: new Date().toISOString(),
             turnsCompleted: window.conversationHistory ? window.conversationHistory.filter(function(m) { return m.role === 'user'; }).length : 0
         };

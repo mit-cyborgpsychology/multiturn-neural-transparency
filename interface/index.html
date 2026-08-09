@@ -901,12 +901,14 @@ function lDrawTracker(){
     svg.attr("viewBox",'0 0 '+tw+' '+contentH).attr("preserveAspectRatio","xMidYMin meet")
         .style("width","100%").attr("height",contentH);
 
-    // Pole labels — derived from the poles above, so they always match the axis
+    // Pole labels — derived from the poles above, so they always match the axis. Anchored to
+    // the inside of each pole line (left reads rightward, right reads leftward) so long trait
+    // names stay inside the panel instead of overhanging its edges.
     svg.append('text').attr('x',leftX).attr('y',14)
-        .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
+        .attr('text-anchor','start').attr('font-size','11px').attr('font-weight','600')
         .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(leftTrait));
     svg.append('text').attr('x',rightX).attr('y',14)
-        .attr('text-anchor','middle').attr('font-size','11px').attr('font-weight','600')
+        .attr('text-anchor','end').attr('font-size','11px').attr('font-weight','600')
         .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(rightTrait));
 
     // Pole guide lines

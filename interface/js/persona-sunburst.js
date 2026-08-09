@@ -331,6 +331,22 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
     
     const fillColor = d3.hsl(baseHSL.h, baseHSL.s, lightness);
     
+    // Transparent full-band hit area, drawn under the visible wedge. A trait sitting at 0%
+    // has extension 0, so its wedge has no thickness and nothing to click — this keeps every
+    // trait selectable. Tagged .trait-hit so the opposite-trait highlight selections below
+    // skip it; they'd otherwise stroke this invisible path and make it appear.
+    g.append('path')
+        .attr('class', 'trait-hit')
+        .attr('d', d3.arc()
+            .innerRadius(middleRadius)
+            .outerRadius(maxOuterRadius)
+            .startAngle(itemStartAngle)
+            .endAngle(itemEndAngle)
+        )
+        .attr('fill', 'transparent')
+        .attr('data-trait-name', item.name)
+        .style('cursor', 'pointer');
+
     // Item arc
     const itemArc = g.append('path')
         .attr('d', d3.arc()
@@ -371,7 +387,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
         
         // Highlight the opposite trait if it exists
         if (item.oppositeTrait) {
-            g.selectAll('path[data-trait-name]')
+            g.selectAll('path[data-trait-name]:not(.trait-hit)')
                 .filter(function() {
                     return d3.select(this).attr('data-trait-name') === item.oppositeTrait;
                 })
@@ -407,7 +423,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             .style('filter', 'none');
         
         // Reset ALL item arcs to white stroke (clears any lingering highlights)
-        g.selectAll('path[data-trait-name]')
+        g.selectAll('path[data-trait-name]:not(.trait-hit)')
             .transition()
             .duration(200)
             .attr('stroke', 'white')
@@ -490,7 +506,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             
             // Highlight the opposite trait if it exists
             if (item.oppositeTrait) {
-                g.selectAll('path[data-trait-name]')
+                g.selectAll('path[data-trait-name]:not(.trait-hit)')
                     .filter(function() {
                         return d3.select(this).attr('data-trait-name') === item.oppositeTrait;
                     })
@@ -527,7 +543,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
                 .style('filter', 'none');
             
             // Reset ALL item arcs to white stroke (clears any lingering highlights)
-            g.selectAll('path[data-trait-name]')
+            g.selectAll('path[data-trait-name]:not(.trait-hit)')
                 .transition()
                 .duration(200)
                 .attr('stroke', 'white')
