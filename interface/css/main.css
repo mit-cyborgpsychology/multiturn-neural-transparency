@@ -617,6 +617,7 @@ body.chat-active .dynamic-chat-container {
 #driftAxisContainer {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden; /* vertical timeline only — never scroll the axis sideways */
 }
 
 .chat-panel-header {
@@ -2159,7 +2160,7 @@ body.chat-active .dynamic-chat-container {
 }
 .predict-breakdown {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 10px;
 }
 .predict-breakdown-item {

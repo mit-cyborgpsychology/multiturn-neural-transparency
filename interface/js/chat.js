@@ -1595,7 +1595,9 @@ function renderTraitDrift(traitName) {
     if (!container) return;
     d3.select('#driftAxisContainer').selectAll('*').remove();
 
-    const panelWidth = $('#chatPersonaPanel').width() || 380;
+    // Size to the scroll container itself, not the panel — the panel's 1rem padding made the
+    // SVG wider than its box, which is what produced a horizontal scrollbar.
+    const panelWidth = container.clientWidth || $('#chatPersonaPanel').width() || 380;
     const leftX = 70;
     const rightX = panelWidth - 70;
     const axisSpan = rightX - leftX;
@@ -1612,17 +1614,19 @@ function renderTraitDrift(traitName) {
         .style('opacity', 1)
         .selection();
 
-    // Pole labels
+    // Pole labels — anchored to the inside of each pole line (left one reads rightward,
+    // right one reads leftward) so long trait names stay inside the panel instead of
+    // overhanging the edges the way centered labels did.
     svg.append('text')
         .attr('x', leftX).attr('y', 18)
-        .attr('text-anchor', 'middle')
+        .attr('text-anchor', 'start')
         .attr('font-size', '11px').attr('font-weight', '600')
         .attr('fill', '#888').attr('letter-spacing', '0.05em')
         .text(capitalize(leftTrait).toUpperCase());
 
     svg.append('text')
         .attr('x', rightX).attr('y', 18)
-        .attr('text-anchor', 'middle')
+        .attr('text-anchor', 'end')
         .attr('font-size', '11px').attr('font-weight', '600')
         .attr('fill', '#888').attr('letter-spacing', '0.05em')
         .text(capitalize(rightTrait).toUpperCase());
@@ -1759,30 +1763,25 @@ function renderTraitDrift(traitName) {
             .transition().delay(delay + 150).duration(200)
             .style('opacity', 1);
 
-        // Trait activation % labels on either side of dot. Only one trait in a pair is
-        // active per turn — the inactive side reads 0%, so its label is left off entirely.
+        // Trait activation % labels on either side of dot
         const lPct = Math.round(entry.lVal * 100);
         const rPct = Math.round(entry.rVal * 100);
-        if (lPct > 0) {
-            svg.append('text')
-                .attr('x', dotX - 18).attr('y', y + 3)
-                .attr('text-anchor', 'end')
-                .attr('font-size', '10px').attr('fill', leftColor)
-                .style('opacity', 0)
-                .text(lPct + '%')
-                .transition().delay(delay + 150).duration(200)
-                .style('opacity', 1);
-        }
-        if (rPct > 0) {
-            svg.append('text')
-                .attr('x', dotX + 18).attr('y', y + 3)
-                .attr('text-anchor', 'start')
-                .attr('font-size', '10px').attr('fill', rightColor)
-                .style('opacity', 0)
-                .text(rPct + '%')
-                .transition().delay(delay + 150).duration(200)
-                .style('opacity', 1);
-        }
+        svg.append('text')
+            .attr('x', dotX - 18).attr('y', y + 3)
+            .attr('text-anchor', 'end')
+            .attr('font-size', '10px').attr('fill', leftColor)
+            .style('opacity', 0)
+            .text(lPct + '%')
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+        svg.append('text')
+            .attr('x', dotX + 18).attr('y', y + 3)
+            .attr('text-anchor', 'start')
+            .attr('font-size', '10px').attr('fill', rightColor)
+            .style('opacity', 0)
+            .text(rPct + '%')
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
     });
 
     // Auto-scroll drift panel to show latest dot
@@ -1873,9 +1872,6 @@ function endChatAndPredict() {
 
 // Inject neuronpedia-style behavior prediction sliders below the chat log
 function injectPredictBehavior() {
-    const session = window.getCurrentSession();
-    const promptText = window.getSessionPromptText ? window.getSessionPromptText(session) : (localStorage.getItem('customSystemPrompt') || '');
-
     // Build slider HTML for each trait pair
     // Slider: -100 to 100 mapping to -1 to 1 (neg pole to pos pole)
     // Actual API values are already normalized to -1 to 1 (pos_activation - neg_activation)
@@ -1901,10 +1897,6 @@ function injectPredictBehavior() {
                 <h5>Predict Model Behavior</h5>
                 <p>Based on the conversation and system prompt, predict the model's behavioral profile on each dimension.</p>
             </div>
-            <details style="margin-bottom: 1rem; background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 0.75rem;">
-                <summary style="cursor: pointer; font-size: 0.875rem; font-weight: 700; color: #2c3e50;">Show system prompt</summary>
-                <p style="margin: 0.75rem 0 0 0; font-size: 0.875rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap; font-family: monospace;">${promptText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-            </details>
             <div class="predict-rating-grid">${slidersHtml}</div>
             <div style="text-align: right; margin-top: 1.25rem;">
                 <button type="button" class="btn btn-primary" id="predictSubmitBtn">Submit Prediction →</button>
@@ -1914,6 +1906,10 @@ function injectPredictBehavior() {
 
     const messagesContainer = $('#messagesContainer');
     messagesContainer.append(panelHtml);
+
+    // Hide the live sunburst + drift panel while predicting — otherwise the answer is on
+    // screen next to the sliders. showPredictResults() brings it back with the score.
+    $('#chatPersonaPanel').hide();
 
     // Submit handler
     $('#predictSubmitBtn').on('click', function() {
@@ -1958,11 +1954,13 @@ function showPredictResults() {
     // Build per-dimension breakdown
     let breakdownHtml = '';
     perDim.forEach(function(d) {
-        // Error on 0–2 scale, display as percentage of max possible error
-        const errDisplay = d.absErr.toFixed(2);
+        // Values are on a -1 to 1 scale — shown as -100% to +100% to match the sunburst
+        const asPct = v => Math.round(v * 100) + '%';
+        const signedPct = v => (v >= 0 ? '+' : '') + asPct(v);
+        const errDisplay = asPct(d.absErr);
         const color = d.absErr < 0.20 ? '#22c55e' : d.absErr < 0.50 ? '#eab308' : '#ef4444';
-        const predDisplay = (d.predicted >= 0 ? '+' : '') + d.predicted.toFixed(2);
-        const actDisplay = (d.actualVal >= 0 ? '+' : '') + d.actualVal.toFixed(2);
+        const predDisplay = signedPct(d.predicted);
+        const actDisplay = signedPct(d.actualVal);
         const predLabel = d.predicted >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
         const actLabel = d.actualVal >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
         // Bar fill: proportion of max accuracy (2.0 range)
@@ -2021,6 +2019,9 @@ function showPredictResults() {
                 <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">See the Science →</button>
             </div>
         </div>`;
+
+    // Predictions are locked in — restore the visualization alongside the results
+    $('#chatPersonaPanel').show();
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');

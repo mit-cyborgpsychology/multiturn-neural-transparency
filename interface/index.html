@@ -45,7 +45,9 @@
     <script src="js/config-unified.js"></script>
 
     <!-- Persona Sunburst Visualization -->
-    <script src="js/persona-sunburst.js"></script>
+    <!-- ?v= is a cache-buster: bump it whenever persona-sunburst.js changes, or browsers
+         keep serving the stale copy (chat.js gets this automatically via ?v=Date.now()). -->
+    <script src="js/persona-sunburst.js?v=20260808"></script>
 
     <!-- Persona Vectors -->
     <script src="js/persona_vectors.js"></script>
@@ -956,18 +958,13 @@ function lDrawTracker(){
             .attr('text-anchor','middle').attr('font-size','9px').attr('font-weight','600')
             .attr('fill',isHighlighted?'white':'#777').text(d.turn);
         // Value labels on either side
-        // Only one trait in a pair is active per turn — skip the inactive side's 0% label
         var leftPct=Math.round(d.leftV*100), rightPct=Math.round(d.rightV*100);
-        if(leftPct>0){
-            svg.append('text').attr('x',d.x-18).attr('y',d.y+3)
-                .attr('text-anchor','end').attr('font-size','10px').attr('fill',leftColor)
-                .text(leftPct+'%');
-        }
-        if(rightPct>0){
-            svg.append('text').attr('x',d.x+18).attr('y',d.y+3)
-                .attr('text-anchor','start').attr('font-size','10px').attr('fill',rightColor)
-                .text(rightPct+'%');
-        }
+        svg.append('text').attr('x',d.x-18).attr('y',d.y+3)
+            .attr('text-anchor','end').attr('font-size','10px').attr('fill',leftColor)
+            .text(leftPct+'%');
+        svg.append('text').attr('x',d.x+18).attr('y',d.y+3)
+            .attr('text-anchor','start').attr('font-size','10px').attr('fill',rightColor)
+            .text(rightPct+'%');
     });
 
     // Auto-scroll so the highlighted turn's row is centered in the visible window
