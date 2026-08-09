@@ -14,8 +14,21 @@ from persona_vectors import OpenAIAPI  # noqa: E402
 
 load_dotenv()
 
-JUDGE_WORKERS = 20
+JUDGE_WORKERS = 40
 AGREEMENT_TOLERANCE = 0.5
+
+# Some traits are named differently in generation/persona_vectors/ (where the trait list is
+# discovered from) than in generation/stored_prompts/ (where trait_description.json actually
+# lives) -- e.g. "sycophantic" vs "sycophancy". Anywhere a stored_prompts/{trait}/ path is
+# built, run the name through this map first. Kept in sync with generate_responses.py.
+TRAIT_FOLDER_ALIASES = {
+    "sycophantic": "sycophancy",
+    "toxic": "toxicity",
+}
+
+
+def stored_prompts_dir(trait):
+    return Path(f"../generation/stored_prompts/{TRAIT_FOLDER_ALIASES.get(trait, trait)}")
 
 
 def build_eval_judge_prompt(trait, trait_description, opposite_trait_description, question, answer):
@@ -91,7 +104,7 @@ def relabel_trait(openai, trait, force=False):
     intended level, and write it back onto the entry. Returns the flat list of (level, entry)
     jobs for every response, scored or not."""
     responses_dict = load_json(f"responses/{trait}.json")
-    trait_description_data = load_json(f"../generation/stored_prompts/{trait}/trait_description.json")
+    trait_description_data = load_json(stored_prompts_dir(trait) / "trait_description.json")
     trait_description = trait_description_data["trait_description"]
     opposite_trait_description = trait_description_data["opposite_trait_description"]
 
@@ -139,7 +152,7 @@ def relabel_trait_multiturn(openai, trait, force=False):
     onto that turn rather than onto the entry."""
     responses_file = f"responses_multiturn/{trait}.json"
     responses_dict = load_json(responses_file)
-    trait_description_data = load_json(f"../generation/stored_prompts/{trait}/trait_description.json")
+    trait_description_data = load_json(stored_prompts_dir(trait) / "trait_description.json")
     trait_description = trait_description_data["trait_description"]
     opposite_trait_description = trait_description_data["opposite_trait_description"]
 
@@ -232,10 +245,11 @@ def main():
     parser = argparse.ArgumentParser(description="Relabel responses with a gpt-5-mini judge score")
     parser.add_argument("--force", action="store_true", help="re-judge every response, even ones with an existing gpt_score")
     parser.add_argument(
-        "--multiturn", action="store_true",
-        help="Judge responses_multiturn/{trait}.json instead of responses/{trait}.json: every "
-             "turn (1st, 2nd, 3rd) is judged separately, with the preceding turns given to the "
-             "judge as context. Scores are written back per-turn, and stats are broken out per turn.",
+        "--singleturn", action="store_true",
+        help="Judge responses/{trait}.json instead of responses_multiturn/{trait}.json (the "
+             "default). The default judges responses_multiturn/{trait}.json: every turn (1st, "
+             "2nd, 3rd) is judged separately, with the preceding turns given to the judge as "
+             "context, and scores are written back per-turn with stats broken out per turn.",
     )
     args = parser.parse_args()
 
@@ -249,7 +263,7 @@ def main():
 
     os.makedirs("results", exist_ok=True)
 
-    if args.multiturn:
+    if not args.singleturn:
         traits = [t for t in traits if Path(f"responses_multiturn/{t}.json").exists()]
         print("Traits found:", traits)
 

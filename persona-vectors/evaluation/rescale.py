@@ -17,6 +17,10 @@ from evaluate import GraphEvaluator, format_combo_label_lines, load_json
 RESULTS_DIR = Path("results")
 SCALED_PLOTS_DIR = RESULTS_DIR / "scaled_plots"
 SCALE_PATH = RESULTS_DIR / "scale.json"
+# modal/persona_score_api.py reads scale.json from alongside the persona vector .pt files it
+# loads at runtime (VECTORS_PATH, mounted from generation/persona_vectors/), not from
+# evaluation/results/ -- so every run also writes a copy there to keep it wired up.
+PERSONA_VECTORS_SCALE_PATH = Path("../generation/persona_vectors/scale.json")
 
 # scale.json only records the one combo/metric actually used downstream (chat/turn_effects.py,
 # modal/persona_score_api.py): the multiturn prompt_final activation against the mean-pooled
@@ -25,24 +29,47 @@ SCALE_COMBO_TAG = "prompt_final_persona-mean_multiturn"
 SCALE_METRIC = "cosine"
 
 
-def normalize_to_unit_range(scores):
-    """Center the scores on their mean, then min-max scale so the lowest value maps to -1
-    and the highest to 1. Centering first is a constant shift and doesn't change the final
-    range, but keeps the two steps -- recenter on the mean, then scale to [-1, 1] -- explicit.
+def normalize_to_unit_range(scores, center, lo, hi):
+    """Two-sided scaling anchored at `center` (see fit_reference_points below): `center` itself
+    maps to exactly 0, the portion at or above it is scaled independently by (hi - center) into
+    [0, 1], and the portion below it is scaled independently by (center - lo) into [-1, 0].
+    `lo`/`hi` are the *fit line's* predicted values at trait level 1 and 10 -- not this sample's
+    own min/max -- so a single noisy outlier response can't stretch or compress the whole scale;
+    a live score outside [lo, hi] just lands outside [-1, 1] (see persona_score_api.py's
+    downstream clamp) instead of silently redefining the endpoints.
 
-    Returns the scaled scores alongside the raw (pre-centering) mean/min/max, since those three
-    numbers are all that's needed to reproduce this scaling for a new raw score later:
-    centered = raw - mean; scaled = 2 * (centered - (min - mean)) / ((max - mean) - (min - mean)) - 1."""
+    Returns the scaled scores alongside the raw midpoint/lo/hi, since those three numbers are
+    all that's needed to reproduce this scaling for a new raw score later (see
+    persona_score_api.py's normalize_score)."""
     scores = np.array(scores, dtype=float)
-    mean = scores.mean()
-    centered = scores - mean
-    lo, hi = centered.min(), centered.max()
-    if hi == lo:
-        scaled = np.zeros_like(centered)
-    else:
-        scaled = 2 * (centered - lo) / (hi - lo) - 1
-    scale_stats = {"mean": float(mean), "min": float(scores.min()), "max": float(scores.max())}
+    upper_span = hi - center
+    lower_span = center - lo
+    above = (scores - center) / upper_span if upper_span else np.zeros_like(scores)
+    below = (scores - center) / lower_span if lower_span else np.zeros_like(scores)
+    scaled = np.where(scores >= center, above, below)
+    scale_stats = {"midpoint": float(center), "min": float(lo), "max": float(hi)}
     return scaled, scale_stats
+
+
+def fit_reference_points(levels, raw_scores):
+    """Fit raw_scores against levels, then return three points read off that fit line rather
+    than off the noisy raw samples themselves: `center` at the midpoint of the observed level
+    range (same quantity evaluate.py's plot_comparison draws as the green "fit value at
+    level ..." reference line), and `lo`/`hi` at that same observed range's endpoints
+    (levels.min()/levels.max(), not a fixed 1/10) -- whichever end of the fit is actually
+    lower/higher, since a trait whose score decreases with level would otherwise have them
+    backwards. Anchoring to the observed range keeps these endpoints interpolated within the
+    fit's data support rather than extrapolated past it; since the fit is linear, `center`
+    ends up exactly (lo + hi) / 2."""
+    levels = np.array(levels)
+    slope, intercept, _r_squared, _mse = fit_layer(levels, raw_scores)
+    level_min, level_max = levels.min(), levels.max()
+    mid_level = (level_min + level_max) / 2
+    center = slope * mid_level + intercept
+    endpoint_a = slope * level_min + intercept
+    endpoint_b = slope * level_max + intercept
+    lo, hi = min(endpoint_a, endpoint_b), max(endpoint_a, endpoint_b)
+    return center, lo, hi
 
 
 def fit_layer(levels, scores):
@@ -119,7 +146,8 @@ def main():
                 best_layer = result["best_layer"]
                 levels = layer_levels[best_layer]
                 raw_scores = layer_scores[metric][best_layer]
-                scaled_scores, scale_stats = normalize_to_unit_range(raw_scores)
+                center, lo, hi = fit_reference_points(levels, raw_scores)
+                scaled_scores, scale_stats = normalize_to_unit_range(raw_scores, center, lo, hi)
                 slope, intercept, r_squared, mse = fit_layer(levels, scaled_scores)
                 entries_by_metric.setdefault(metric, []).append({
                     "combo_tag": combo_tag,
@@ -140,9 +168,11 @@ def main():
 
     with open(SCALE_PATH, "w") as f:
         json.dump(scale_data, f, indent=2)
+    with open(PERSONA_VECTORS_SCALE_PATH, "w") as f:
+        json.dump(scale_data, f, indent=2)
 
     print(f"Saved scaled plots to {SCALED_PLOTS_DIR}/")
-    print(f"Saved scaling stats to {SCALE_PATH}")
+    print(f"Saved scaling stats to {SCALE_PATH} and {PERSONA_VECTORS_SCALE_PATH}")
 
 
 if __name__ == "__main__":

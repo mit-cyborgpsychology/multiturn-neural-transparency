@@ -16,8 +16,18 @@ load_dotenv()
 
 # generates and evaluates model responses on synthetic system prompts and eval set situation questions
 
-# Number of conversational turns to generate under --multiturn (the first turn comes from the
-# usual single-turn generation; the rest are simulated user turn + assistant turn rounds).
+# By default (unless --singleturn is passed), this script generates NUM_TURNS-turn
+# conversations: for every turn, a Claude Haiku user-simulator (blind to the system prompt)
+# writes the user's message steered to embody the trait or its opposite (per PATTERNS -- half
+# the samples per level run trait/opposite/trait/opposite, half run the mirrored
+# opposite/trait/opposite/trait), then Llama generates the matching assistant response.
+# Assesses how much a forced swing moves Llama's response -- Llama itself still only ever sees
+# the plain resulting conversation, with no indication any message was engineered. Saved to
+# responses_multiturn/{trait}.json. If that file already exists, each conversation in it
+# resumes independently from its own last completed turn (e.g. after a crash mid-run) instead
+# of starting over -- conversations that got further before the crash keep that progress
+# rather than being rolled back to match the slowest conversation in the file. Traits where
+# every conversation already has NUM_TURNS turns are skipped entirely.
 NUM_TURNS = 4
 
 # Concurrent Claude API calls when simulating user turns (I/O-bound, unlike the batched GPU
@@ -33,8 +43,8 @@ TRAIT_FOLDER_ALIASES = {
     "toxic": "toxicity",
 }
 
-# Under --multiturn, every turn's user-simulator message (including turn 1's opening message
-# now -- see _generate_first_turn) is steered to embody the trait itself or its opposite (see
+# In multiturn mode, every turn's user-simulator message (including turn 1's opening message
+# -- see _generate_first_turn) is steered to embody the trait itself or its opposite (see
 # load_trait_descriptions), alternating turn to turn. Two mirror-image 4-turn patterns so a
 # forced swing's effect on Llama's response can be assessed independent of which polarity it
 # started on; each item is assigned one of the two (see _load_multiturn_trait), split evenly
@@ -65,27 +75,9 @@ def load_trait_descriptions(trait):
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate model responses on synthetic system prompts and situation questions")
     parser.add_argument(
-        "--multiturn", action="store_true",
-        help="Generate 4-turn conversations instead of single-turn responses: for every turn, "
-             "a Claude Haiku user-simulator (blind to the system prompt) writes the user's "
-             "message steered to embody the trait or its opposite (per PATTERNS -- half the "
-             "samples per level run trait/opposite/trait/opposite, half run the mirrored "
-             "opposite/trait/opposite/trait), then Llama generates the matching assistant "
-             "response. Assesses how much a forced swing moves Llama's response -- Llama "
-             "itself still only ever sees the plain resulting conversation, with no "
-             "indication any message was engineered. Saved to responses_multiturn/ instead "
-             "of responses/.",
-    )
-    parser.add_argument(
-        "--resume-multiturn", action="store_true",
-        help="For each trait with an existing but incomplete responses_multiturn/{trait}.json "
-             "(fewer than NUM_TURNS turns saved for at least one conversation, e.g. after a crash "
-             "mid-run), generate only the missing turns and keep flushing into that same file. "
-             "Each conversation resumes independently from its own last completed turn -- "
-             "conversations that got further before the crash keep that progress rather than "
-             "being rolled back to match the slowest conversation in the file. Traits with no "
-             "file yet, or a file where every conversation already has NUM_TURNS turns, are left "
-             "untouched.",
+        "--singleturn", action="store_true",
+        help="Generate single-turn responses instead of 4-turn conversations (the default). "
+             "Saved to responses/{trait}.json instead of responses_multiturn/{trait}.json.",
     )
     parser.add_argument(
         "--n_gpus", type=int, default=1, choices=[1, 2, 3],
@@ -345,25 +337,67 @@ def split_traits(traits, n_gpus):
 
 
 def _load_multiturn_trait(trait, num_questions):
-    """Load one trait's prompts/descriptions and lay out the flat (level, system prompt,
-    swing pattern) item list plus the (empty) skeleton its responses file will be shaped
-    like. Turn 1 no longer pulls from a fixed question pool -- like every other turn, its
-    message is generated fresh by Claude Haiku, steered per PATTERNS (see
-    _generate_first_turn). Each item is assigned pattern "A" or "B" (see PATTERNS), split
-    evenly within each level so exactly half its samples start with the trait and half with
-    its opposite -- same total sample count as before, just half now run the mirrored order.
-    Returns None if this trait's responses already exist, so the caller can skip it entirely."""
+    """Load state for one trait's multiturn run, resuming from responses_multiturn/{trait}.json
+    if it already exists rather than starting over.
+
+    If the file exists: reconstruct each conversation's full_messages/visible_messages from its
+    saved turns (see _reconstruct_conversation), so generation can continue exactly where a
+    previous run left off. Each conversation keeps whatever turns it already has -- one that got
+    further before a crash simply stops being selected once it reaches NUM_TURNS (see
+    run_multiturn's per-turn `pending` filtering), while one that fell behind resumes from its
+    own last completed turn. Returns None if every conversation already has NUM_TURNS turns, so
+    the caller can skip this trait entirely.
+
+    If the file doesn't exist: lay out the flat (level, system prompt, swing pattern) item list
+    plus the (empty) skeleton the responses file will be shaped like, for turn 1 to run over
+    fresh. Turn 1's message is generated by Claude Haiku like every other turn, steered per
+    PATTERNS (see _generate_first_turn). Each item is assigned pattern "A" or "B" (see
+    PATTERNS), split evenly within each level so exactly half its samples start with the trait
+    and half with its opposite."""
+    trait_descriptions = load_trait_descriptions(trait)
+    os.makedirs("responses_multiturn", exist_ok=True)
+    responses_file = Path(f"responses_multiturn/{trait}.json")
+
+    if responses_file.exists():
+        responses_dict = load_json(responses_file)
+        response_skeleton = {
+            level_key: {sp_key: [] for sp_key in sp_dict}
+            for level_key, sp_dict in responses_dict.items()
+        }
+        conversations = [
+            _reconstruct_conversation(level_key, system_prompt_key, conv)
+            for level_key, sp_dict in responses_dict.items()
+            for system_prompt_key, convs in sp_dict.items()
+            for conv in convs
+        ]
+
+        if conversations and all(len(conv["turns"]) >= NUM_TURNS for conv in conversations):
+            print(f"responses_multiturn/{trait}.json already has {NUM_TURNS} turns for every "
+                  f"conversation, skipping {trait}.")
+            return None
+
+        if conversations:
+            min_turns = min(len(conv["turns"]) for conv in conversations)
+            max_turns = max(len(conv["turns"]) for conv in conversations)
+            if min_turns != max_turns:
+                print(f"{trait} has conversations at mixed turn counts (from {min_turns} to "
+                      f"{max_turns}); resuming each conversation independently from its own "
+                      f"last completed turn.")
+            else:
+                print(f"Resuming {trait} from turn {min_turns + 1}.")
+
+        return {
+            "responses_file": responses_file,
+            "response_skeleton": response_skeleton,
+            "all_items": None,
+            "conversations": conversations,
+            "needs_turn_1": False,
+            "trait_descriptions": trait_descriptions,
+        }
+
     prompts_file = system_prompts_file(trait)
     system_prompts_dict = load_json(prompts_file)
 
-    responses_file = Path(f"responses_multiturn/{trait}.json")
-    if responses_file.exists():
-        print(f"Skipping multiturn inference for {trait}, responses already exist.")
-        return None
-
-    trait_descriptions = load_trait_descriptions(trait)
-
-    os.makedirs("responses_multiturn", exist_ok=True)
     response_skeleton = {}
     all_items = []  # (level_key, system_prompt_key, system_prompt, pattern) across every combination
     for level, rollouts in system_prompts_dict.items():
@@ -383,7 +417,34 @@ def _load_multiturn_trait(trait, num_questions):
         "response_skeleton": response_skeleton,
         "all_items": all_items,
         "conversations": [],
+        "needs_turn_1": True,
         "trait_descriptions": trait_descriptions,
+    }
+
+
+def _reconstruct_conversation(level_key, system_prompt_key, conv):
+    """Rebuild one conversation's full_messages (fed to Llama, includes the system prompt) and
+    visible_messages (fed to the Claude user-simulator, never does) from its saved turns."""
+    system_prompt = conv["system_prompt"]
+    full_messages = [{
+        "role": "system",
+        "content": f"{ASSISTANT_SYSTEM_PREFIX} {system_prompt}",
+    }]
+    visible_messages = []
+    for t in conv["turns"]:
+        full_messages.append({"role": "user", "content": t["user_message"]})
+        full_messages.append({"role": "assistant", "content": t["response"]})
+        visible_messages.append({"role": "user", "content": t["user_message"]})
+        visible_messages.append({"role": "assistant", "content": t["response"]})
+    return {
+        "level_key": level_key,
+        "system_prompt_key": system_prompt_key,
+        "system_prompt": system_prompt,
+        "rollout_index": conv["rollout_index"],
+        "pattern": conv["pattern"],
+        "full_messages": full_messages,
+        "visible_messages": visible_messages,
+        "turns": list(conv["turns"]),
     }
 
 
@@ -500,10 +561,18 @@ def _generate_assistant_turn(model, tokenizer, device, trait, state, turn, batch
 
 
 def run_multiturn(model, tokenizer, device, anthropic_client, traits, num_questions, num_rollouts, batch_sizes, max_length):
-    """Turn-major instead of trait-major: generate turn 1 for every trait before any trait
-    moves on to turn 2, then turn 2 for every trait before turn 3, and so on. A trait that
-    errors out on a phase is dropped from the remaining phases, but whatever it already
-    flushed to responses_multiturn/{trait}.json is kept."""
+    """Turn-major instead of trait-major: generate turn 1 for every trait that needs it before
+    any trait moves on to turn 2, then turn 2 for every trait before turn 3, and so on. A trait
+    that errors out on a phase is dropped from the remaining phases, but whatever it already
+    flushed to responses_multiturn/{trait}.json is kept.
+
+    Traits resuming from an existing responses_multiturn/{trait}.json (see _load_multiturn_trait)
+    skip straight past turn 1 with conversations already carrying however many turns they had
+    saved. From turn 2 on, every trait -- fresh or resumed -- goes through the same `pending`
+    filter: a conversation with len(turns) == turn - 1 is selected for `turn` regardless of how
+    far ahead or behind other conversations in the same file are, so one that already made it to
+    turn 3 before a crash keeps that progress while one still stuck on turn 1 catches up
+    alongside it, each getting exactly its own next turn."""
     trait_states = {}
     for trait in traits:
         try:
@@ -515,124 +584,14 @@ def run_multiturn(model, tokenizer, device, anthropic_client, traits, num_questi
             trait_states[trait] = state
 
     for trait in list(trait_states):
+        if not trait_states[trait]["needs_turn_1"]:
+            continue
         try:
             _generate_first_turn(model, tokenizer, device, anthropic_client, trait, trait_states[trait], num_rollouts, batch_sizes[1], max_length)
         except Exception as e:
             print(f"Error processing {trait} turn 1, skipping to next trait. Results generated before the "
                   f"error are already saved to responses_multiturn/{trait}.json. Error: {e}")
             del trait_states[trait]
-
-    for turn in range(2, NUM_TURNS + 1):
-        for trait in list(trait_states):
-            try:
-                _simulate_user_turn(anthropic_client, trait, trait_states[trait], turn)
-            except Exception as e:
-                print(f"Error simulating turn {turn} user message for {trait}, skipping to next trait. Results "
-                      f"generated before the error are already saved to responses_multiturn/{trait}.json. Error: {e}")
-                del trait_states[trait]
-
-        for trait in list(trait_states):
-            try:
-                _generate_assistant_turn(model, tokenizer, device, trait, trait_states[trait], turn, batch_sizes[turn], max_length)
-            except Exception as e:
-                print(f"Error processing {trait} turn {turn}, skipping to next trait. Results generated before the "
-                      f"error are already saved to responses_multiturn/{trait}.json. Error: {e}")
-                del trait_states[trait]
-
-
-def _load_resumable_trait(trait):
-    """Load an existing responses_multiturn/{trait}.json and reconstruct the in-memory
-    conversation state (full_messages, visible_messages) from its saved turns, so generation
-    can continue exactly where a crash left off. Each conversation keeps whatever turns it
-    already has -- conversations that got further before the crash are left alone and simply
-    stop being selected once they reach NUM_TURNS; conversations that fell behind resume from
-    their own last completed turn (see run_resume_multiturn's per-turn filtering). Returns
-    None if there's nothing to resume: no file yet, or a file whose conversations already all
-    have NUM_TURNS turns."""
-    responses_file = Path(f"responses_multiturn/{trait}.json")
-    if not responses_file.exists():
-        print(f"No responses_multiturn/{trait}.json yet, nothing to resume for {trait}.")
-        return None
-
-    responses_dict = load_json(responses_file)
-    response_skeleton = {
-        level_key: {sp_key: [] for sp_key in sp_dict}
-        for level_key, sp_dict in responses_dict.items()
-    }
-
-    conversations = []
-    min_turns = None
-    for level_key, sp_dict in responses_dict.items():
-        for system_prompt_key, convs in sp_dict.items():
-            for conv in convs:
-                turns = conv["turns"]
-                min_turns = len(turns) if min_turns is None else min(min_turns, len(turns))
-                system_prompt = conv["system_prompt"]
-                full_messages = [{
-                    "role": "system",
-                    "content": f"{ASSISTANT_SYSTEM_PREFIX} {system_prompt}",
-                }]
-                visible_messages = []
-                for t in turns:
-                    full_messages.append({"role": "user", "content": t["user_message"]})
-                    full_messages.append({"role": "assistant", "content": t["response"]})
-                    visible_messages.append({"role": "user", "content": t["user_message"]})
-                    visible_messages.append({"role": "assistant", "content": t["response"]})
-                conversations.append({
-                    "level_key": level_key,
-                    "system_prompt_key": system_prompt_key,
-                    "system_prompt": system_prompt,
-                    "rollout_index": conv["rollout_index"],
-                    "pattern": conv["pattern"],
-                    "full_messages": full_messages,
-                    "visible_messages": visible_messages,
-                    "turns": list(turns),
-                })
-
-    if not conversations or min_turns is None or min_turns < 1:
-        print(f"responses_multiturn/{trait}.json has no completed turn 1 yet, can't resume "
-              f"{trait} -- rerun with --multiturn instead.")
-        return None
-
-    if min_turns >= NUM_TURNS:
-        print(f"responses_multiturn/{trait}.json already has {NUM_TURNS} turns for every conversation, "
-              f"nothing to resume for {trait}.")
-        return None
-
-    if any(len(conv["turns"]) != min_turns for conv in conversations):
-        max_turns = max(len(conv["turns"]) for conv in conversations)
-        print(f"{trait} has conversations at mixed turn counts (from {min_turns} to {max_turns}); "
-              f"resuming each conversation independently from its own last completed turn.")
-
-    return {
-        "responses_file": responses_file,
-        "response_skeleton": response_skeleton,
-        "conversations": conversations,
-        "trait_descriptions": load_trait_descriptions(trait),
-    }
-
-
-def run_resume_multiturn(model, tokenizer, device, anthropic_client, traits, batch_sizes, max_length):
-    """Turn-major continuation of run_multiturn for traits that already have a partial
-    responses_multiturn/{trait}.json: pick up at whatever turn each *conversation* left off on
-    and generate forward from there. Unlike a trait-wide lockstep, a conversation with
-    len(turns) == turn - 1 is selected for `turn` regardless of how far ahead or behind other
-    conversations in the same file are -- so a conversation that already made it to turn 3
-    before a crash keeps that progress while one still stuck on turn 1 catches up alongside
-    it, each getting exactly its own next turn."""
-    trait_states = {}
-    for trait in traits:
-        try:
-            state = _load_resumable_trait(trait)
-        except Exception as e:
-            print(f"Error loading {trait} for resume, skipping. Error: {e}")
-            continue
-        if state is not None:
-            trait_states[trait] = state
-
-    if not trait_states:
-        print("Nothing to resume -- no incomplete responses_multiturn files found.")
-        return
 
     for turn in range(2, NUM_TURNS + 1):
         pending_by_trait = {}
@@ -665,10 +624,10 @@ def run_resume_multiturn(model, tokenizer, device, anthropic_client, traits, bat
 
 def run_worker(gpu_index, traits, args):
     """Everything one GPU needs to do end to end: load its own tokenizer/model onto
-    cuda:{gpu_index}, then dispatch on the same --multiturn/--resume-multiturn/single-turn
-    flags as the single-GPU path, but scoped to just this worker's slice of traits. Runs
-    either inline (--n_gpus 1) or as the target of its own process (--n_gpus > 1), so it must
-    stay self-contained -- no state shared with other workers."""
+    cuda:{gpu_index}, then dispatch on the same --singleturn/multiturn (default) choice as the
+    single-GPU path, but scoped to just this worker's slice of traits. Runs either inline
+    (--n_gpus 1) or as the target of its own process (--n_gpus > 1), so it must stay
+    self-contained -- no state shared with other workers."""
     if not traits:
         return
 
@@ -688,28 +647,22 @@ def run_worker(gpu_index, traits, args):
     num_questions = 10  # final N situational questions to run inference on
     num_rollouts = 1
     batch_size = 200  # total sequences per generate() call; items_per_batch = batch_size // num_rollouts
-    # Per-turn batch sizes for --multiturn: total sequences per generate() call on that turn.
-    # Later turns carry more accumulated conversation context per sequence, so they may need
-    # a smaller batch size to fit the same VRAM budget.
+    # Per-turn batch sizes for multiturn generation: total sequences per generate() call on
+    # that turn. Later turns carry more accumulated conversation context per sequence, so they
+    # may need a smaller batch size to fit the same VRAM budget.
     batch_sizes = {1: 250, 2: 200, 3: 100, 4: 100}
     max_length = 512
 
-    if args.multiturn:
+    if args.singleturn:
+        run_single_turn(
+            model, tokenizer, device, traits,
+            num_questions, num_rollouts, batch_size, max_length,
+        )
+    else:
         anthropic_client = anthropic.Anthropic()
         run_multiturn(
             model, tokenizer, device, anthropic_client, traits,
             num_questions, num_rollouts, batch_sizes, max_length,
-        )
-    elif args.resume_multiturn:
-        anthropic_client = anthropic.Anthropic()
-        run_resume_multiturn(
-            model, tokenizer, device, anthropic_client, traits,
-            batch_sizes, max_length,
-        )
-    else:
-        run_single_turn(
-            model, tokenizer, device, traits,
-            num_questions, num_rollouts, batch_size, max_length,
         )
 
 

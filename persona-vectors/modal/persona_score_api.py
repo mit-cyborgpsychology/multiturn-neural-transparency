@@ -100,14 +100,18 @@ class PersonaScoreAPI:
     def cosine_similarity(self, a, b):
         return torch.dot(a, b) / (torch.norm(a) * torch.norm(b))
 
-    def normalize_score(self, score, mean, min_val, max_val):
+    def normalize_score(self, score, midpoint, min_val, max_val):
         """Mirrors rescale.py's normalize_to_unit_range, but for a single score against a
-        precomputed (mean, min, max) from scale.json instead of an array of scores."""
-        centered = score - mean
-        lo, hi = min_val - mean, max_val - mean
-        if hi == lo:
-            return 0.0
-        return 2 * (centered - lo) / (hi - lo) - 1
+        precomputed (midpoint, min, max) from scale.json instead of an array of scores.
+        Two-sided: `midpoint` maps to exactly 0, values at or above it are scaled by
+        (max_val - midpoint) into [0, 1], values below it by (midpoint - min_val) into
+        [-1, 0] -- independently, so each side's spread doesn't affect the other."""
+        if score >= midpoint:
+            span = max_val - midpoint
+            return (score - midpoint) / span if span else 0.0
+        else:
+            span = midpoint - min_val
+            return (score - midpoint) / span if span else 0.0
 
     def generate_persona_scores(self, system_prompt: str) -> Dict[str, Dict[str, float]]:
         with open(VECTORS_PATH / "traits.json", "r") as f:
@@ -132,7 +136,7 @@ class PersonaScoreAPI:
             score = self.cosine_similarity(
                 prompt_activation.flatten(), persona_vector.flatten()
             ).item()
-            scaled_score = self.normalize_score(score, stats["mean"], stats["min"], stats["max"])
+            scaled_score = self.normalize_score(score, stats["midpoint"], stats["min"], stats["max"])
 
             positive, negative = (scaled_score, 0.0) if scaled_score > 0 else (0.0, -scaled_score)
             persona_scores[trait] = {
