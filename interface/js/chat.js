@@ -1403,18 +1403,30 @@ function renderPersonaChart(personaData, containerId = 'personaChart') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
                 const chartEl = document.getElementById(containerId);
-                const w = Math.max(chartEl ? chartEl.clientWidth : 700, 300);
-                const h = Math.max(chartEl ? chartEl.clientHeight : 700, 300);
-                createPersonaSunburst(personaData, sunburstId, {
-                    width: w,
-                    height: h,
-                    innerRadius: 65,
-                    animate: true,
-                    oppositeLayout: window.sunburstOppositeLayout,
-                    // Demo's live chat panel only — tighter margin so the sunburst fills more
-                    // of the same box. Every other sunburst keeps the 2.5 default.
-                    radiusDivisor: containerId === 'chatPersonaChart' ? 2.2 : 2.5
-                });
+
+                // Draw once the container has been laid out. The very first render (the
+                // all-zeros state, drawn from switchToChat) can land before the panel has a
+                // measured size — falling back to a square 300x300 viewBox letterboxes the
+                // chart and undoes the tighter radiusDivisor below, so retry instead.
+                const drawWhenSized = function(attempt) {
+                    const cw = chartEl ? chartEl.clientWidth : 0;
+                    const ch = chartEl ? chartEl.clientHeight : 0;
+                    if ((!cw || !ch) && attempt < 10) {
+                        requestAnimationFrame(function() { drawWhenSized(attempt + 1); });
+                        return;
+                    }
+                    createPersonaSunburst(personaData, sunburstId, {
+                        width: Math.max(cw || 700, 300),
+                        height: Math.max(ch || 700, 300),
+                        innerRadius: 65,
+                        animate: true,
+                        oppositeLayout: window.sunburstOppositeLayout,
+                        // Demo's live chat panel only — tighter margin so the sunburst fills
+                        // more of the same box. Others keep the 2.5 default.
+                        radiusDivisor: containerId === 'chatPersonaChart' ? 2.2 : 2.5
+                    });
+                };
+                drawWhenSized(0);
             } else {
                 console.error('createPersonaSunburst function not found. Falling back to bar chart.');
                 renderPersonaBarChart(personaData, containerId);
@@ -1854,12 +1866,12 @@ function testPersonaWithMockData() {
 // Behavioral dimension pairs (matching actual persona-vector API categories)
 // Format: { category: API object key, pos: positive trait, neg: negative trait }
 const BEHAVIOR_PAIRS = [
-    { category: "toxic",       pos: "respectful",    neg: "toxic",         label: "Respectful / Toxic" },
-    { category: "sycophantic", pos: "honest",        neg: "sycophantic",   label: "Honest / Sycophantic" },
-    { category: "empathy",     pos: "empathetic",    neg: "unempathetic",  label: "Empathetic / Unempathetic" },
-    { category: "erudite",     pos: "sophisticated", neg: "simplistic",    label: "Sophisticated / Simplistic" },
-    { category: "robotic",     pos: "human-like",    neg: "robotic",       label: "Human-Like / Robotic" },
-    { category: "romantic",    pos: "romantic",       neg: "platonic",      label: "Romantic / Platonic" },
+    { category: "toxic",       pos: "respectful",    neg: "toxic",         label: "Respectful ↔ Toxic" },
+    { category: "sycophantic", pos: "honest",        neg: "sycophantic",   label: "Honest ↔ Sycophantic" },
+    { category: "empathy",     pos: "empathetic",    neg: "unempathetic",  label: "Empathetic ↔ Unempathetic" },
+    { category: "erudite",     pos: "sophisticated", neg: "simplistic",    label: "Sophisticated ↔ Simplistic" },
+    { category: "robotic",     pos: "human-like",    neg: "robotic",       label: "Human-Like ↔ Robotic" },
+    { category: "romantic",    pos: "romantic",       neg: "platonic",      label: "Romantic ↔ Platonic" },
 ];
 
 // End chat and show the predict behavior flow
@@ -1981,8 +1993,8 @@ function showPredictResults() {
                     <span class="accuracy" style="color:${color}">MAE = ${errDisplay}</span>
                 </div>
                 <div class="details">
-                    <span>You: ${predLabel} (${predDisplay})</span>
-                    <span>Actual: ${actLabel} (${actDisplay})</span>
+                    <span><strong>Predicted:</strong> ${predLabel} (${predDisplay})</span>
+                    <span><strong>Actual:</strong> ${actLabel} (${actDisplay})</span>
                 </div>
             </div>`;
     });
@@ -2014,7 +2026,7 @@ function showPredictResults() {
             <div class="predict-scores">
                 <div class="predict-score-card">
                     <div class="label">MAE</div>
-                    <div class="value" style="color:${maeColor}">${mae.toFixed(2)}</div>
+                    <div class="value" style="color:${maeColor}">${Math.round(mae * 100)}%</div>
                     <div class="sub">lower is better</div>
                 </div>
                 <div class="predict-score-card">

@@ -2137,26 +2137,31 @@ body.chat-active .dynamic-chat-container {
     justify-content: space-between;
     font-size: 13px;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 3px;
 }
 .predict-rating-item .top .neg { color: #ef4444; }
 .predict-rating-item .top .pos { color: #22c55e; }
 .predict-rating-item input[type="range"] {
     width: 100%;
     accent-color: #2563eb;
+    display: block;
+    margin: 0; /* drop the browser's default range margin, which sits in this same gap */
 }
 .predict-rating-item .val {
     text-align: center;
     font-size: 12px;
     font-weight: 600;
     color: #6b7280;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 /* Calibration results */
 .predict-results {
     margin-top: 1rem;
 }
+/* Results subtitle runs 1px smaller than the quiz header's — later in the file than
+   `.predict-panel .predict-header p`, so it wins at equal specificity. */
+.predict-results .predict-header p { font-size: 0.8525rem; }
 .predict-scores {
     display: flex;
     gap: 16px;
@@ -2211,7 +2216,7 @@ body.chat-active .dynamic-chat-container {
     margin-bottom: 4px;
 }
 .predict-breakdown-item .dimension { font-size: 13px; font-weight: 700; }
-.predict-breakdown-item .accuracy  { font-size: 12px; font-weight: 600; }
+.predict-breakdown-item .accuracy  { font-size: 13px; font-weight: 600; }
 /* "You:" stays left, "Actual:" is pushed to the right edge so it lines up down every row */
 .predict-breakdown-item .details {
     display: flex;
