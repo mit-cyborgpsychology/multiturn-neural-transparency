@@ -206,7 +206,9 @@ body.np-body{
 }
 .chat-viz-bottom .tracker-title-area{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px}
-.chat-viz-bottom .tracker-scroll{flex:1;overflow:hidden;min-height:0}
+/* Vertical scroll only — lDrawTracker sizes the SVG to the full timeline height, which can
+   exceed this box; the axis itself always fits the width, so never scroll sideways. */
+.chat-viz-bottom .tracker-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 .chat-right{flex:1;display:flex;flex-direction:column;min-width:0}
 .chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;text-align:left}
 .chat-bubble{
