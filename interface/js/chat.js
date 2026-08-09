@@ -1904,7 +1904,7 @@ function injectPredictBehavior() {
         <div id="predictPanel" class="predict-panel">
             <div class="predict-header">
                 <h5>Predict Model Behavior</h5>
-                <p>Based on the conversation and system prompt, predict the model's behavioral profile on each dimension.</p>
+                <p>Based on your conversation and trait scores, predict the model's behavioral profile on each dimension.</p>
             </div>
             <div class="predict-rating-grid">${slidersHtml}</div>
             <div style="text-align: right; margin-top: 1.25rem;">
@@ -1978,7 +1978,7 @@ function showPredictResults() {
             <div class="predict-breakdown-item">
                 <div class="row-top">
                     <span class="dimension">${d.pair.label}</span>
-                    <span class="accuracy" style="color:${color}">|err| = ${errDisplay}</span>
+                    <span class="accuracy" style="color:${color}">MAE = ${errDisplay}</span>
                 </div>
                 <div class="details">
                     <span>You: ${predLabel} (${predDisplay})</span>
@@ -2007,17 +2007,19 @@ function showPredictResults() {
 
     const resultsHtml = `
         <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-top:1rem;">
-            <h4 style="font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-0.3px">Prediction Error (MAE)</h4>
-            <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Mean absolute error between your predictions and the model's actual activations at the final turn.</p>
+            <div class="predict-header">
+                <h5>Prediction Error (Mean Absolute Error)</h5>
+                <p>Mean absolute error (MAE) between your predicted actual trait scores at the last turn.</p>
+            </div>
             <div class="predict-scores">
                 <div class="predict-score-card">
                     <div class="label">MAE</div>
                     <div class="value" style="color:${maeColor}">${mae.toFixed(2)}</div>
-                    <div class="sub">lower is better (−1 to 1 scale)</div>
+                    <div class="sub">lower is better</div>
                 </div>
                 <div class="predict-score-card">
                     <div class="label">Grade</div>
-                    <div style="font-size:16px;font-weight:700;margin-top:8px">${grade}</div>
+                    <div style="font-size:16px;font-weight:700;margin-top:8px;color:${maeColor}">${grade}</div>
                     <div class="sub" style="margin-top:4px">${desc}</div>
                 </div>
             </div>

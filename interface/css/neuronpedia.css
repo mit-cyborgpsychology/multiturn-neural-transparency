@@ -200,7 +200,8 @@ body.np-body{
 }
 .chat-viz-top{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .chat-viz-bottom{
-  border-top:1px solid var(--border);padding:8px 12px;
+  /* Narrow side padding so the drift axis gets as much of the panel width as possible */
+  border-top:1px solid var(--border);padding:8px 4px;
   display:flex;flex-direction:column;overflow:hidden;flex:0 0 230px;
 }
 .chat-viz-bottom .tracker-title-area{display:flex;align-items:center;gap:6px;margin-bottom:4px}

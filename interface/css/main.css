@@ -2118,8 +2118,8 @@ body.chat-active .dynamic-chat-container {
     color: white;
     margin-bottom: 1rem;
 }
-.predict-panel .predict-header h5 { margin: 0 0 4px 0; font-size: 1.05rem; }
-.predict-panel .predict-header p  { margin: 0; font-size: 0.85rem; opacity: 0.9; }
+.predict-panel .predict-header h5 { margin: 0 0 4px 0; font-size: 1.115rem; }
+.predict-panel .predict-header p  { margin: 0; font-size: 0.915rem; opacity: 0.9; }
 
 .predict-rating-grid {
     display: flex;
@@ -2135,7 +2135,7 @@ body.chat-active .dynamic-chat-container {
 .predict-rating-item .top {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     margin-bottom: 6px;
 }
@@ -2147,7 +2147,7 @@ body.chat-active .dynamic-chat-container {
 }
 .predict-rating-item .val {
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
     margin-top: 2px;
@@ -2163,11 +2163,13 @@ body.chat-active .dynamic-chat-container {
     margin-bottom: 1rem;
     flex-wrap: wrap;
 }
+/* Same cell treatment as .predict-rating-item / .predict-breakdown-item */
 .predict-score-card {
     flex: 1;
     min-width: 140px;
-    background: #f3f4f6;
-    border-radius: 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     padding: 14px;
     text-align: center;
 }
@@ -2195,10 +2197,12 @@ body.chat-active .dynamic-chat-container {
     grid-template-columns: 1fr;
     gap: 10px;
 }
+/* Matches .predict-rating-item (the quiz cells) so results read as the same component */
 .predict-breakdown-item {
-    background: #f3f4f6;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 10px 12px;
+    padding: 10px 14px;
 }
 .predict-breakdown-item .row-top {
     display: flex;
@@ -2206,14 +2210,14 @@ body.chat-active .dynamic-chat-container {
     align-items: center;
     margin-bottom: 4px;
 }
-.predict-breakdown-item .dimension { font-size: 12px; font-weight: 700; }
-.predict-breakdown-item .accuracy  { font-size: 11px; font-weight: 600; }
+.predict-breakdown-item .dimension { font-size: 13px; font-weight: 700; }
+.predict-breakdown-item .accuracy  { font-size: 12px; font-weight: 600; }
 /* "You:" stays left, "Actual:" is pushed to the right edge so it lines up down every row */
 .predict-breakdown-item .details {
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    font-size: 11px;
+    font-size: 12px;
     color: #6b7280;
 }
 

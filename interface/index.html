@@ -871,7 +871,11 @@ function lDrawTracker(){
     const tw=scroll.clientWidth-8||200;
     const rowHeight=28; // reduced spacing between turns so more of the 6-turn timeline fits without scrolling
     const topPad=30;
-    const leftX=70, rightX=tw-70, axisSpan=rightX-leftX;
+    // Side margin: the axis spans everything except this gutter, so a smaller number = a wider
+    // axis in the same box. Floor is ~46px — a dot sitting on a pole puts its % label 18px
+    // further out, and "100%" needs roughly 26px beyond that.
+    const sideMargin=48;
+    const leftX=sideMargin, rightX=tw-sideMargin, axisSpan=rightX-leftX;
     const centerX=leftX+axisSpan/2;
 
     // Poles come from polarity (negative/red left, positive/green right) via the shared
