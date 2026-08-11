@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from tqdm import tqdm
 
-from evaluate import GraphEvaluator, format_combo_label_lines, load_json
+from evaluate import GraphEvaluator, load_json
 
 # Re-plots evaluate.py's cached per-layer scores (results/cache/), but with the persona
 # score axis rescaled to [0, 1] instead of raw cosine/projection units, and a leaner title
@@ -81,21 +81,23 @@ def fit_layer(levels, scores):
     return slope, intercept, r_squared, mse
 
 
-def plot_scaled(trait, metric, entries, output_dir):
-    """Like GraphEvaluator.plot_comparison, but the y-axis is the [0, 1]-normalized score
-    (see normalize_to_unit_range) and the title only reports R^2 and MSE -- the
-    within-level-variance / adjacent-level-delta stats are dropped."""
+def plot_all_traits_summary_scaled(metric, entries_by_trait, output_dir):
+    """Same combined-figure style as GraphEvaluator.plot_all_traits_summary in evaluate.py:
+    one subplot per trait (each trait's single best-R² combo), showing the full scaled-score
+    scatter, the fitted regression line, and the fit line's value at the min/mid/max trait
+    level overlaid as small red dots. Subplot titles show only the bold trait name, R², and
+    normalized MSE; axis labels are shown only on the edge subplots."""
     plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
     plt.rcParams["font.family"] = "sans-serif"
 
-    ranked = sorted(entries, key=lambda e: e["r_squared"], reverse=True)
-
-    n_cols = 2
-    n_rows = -(-len(ranked) // n_cols)  # ceil division
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 5 * n_rows))
+    traits = sorted(entries_by_trait)
+    n_cols = 3
+    n_rows = -(-len(traits) // n_cols)  # ceil division
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows))
     axes = np.atleast_1d(axes).flatten()
 
-    for ax, entry in zip(axes, ranked):
+    for i, (ax, trait) in enumerate(zip(axes, traits)):
+        entry = entries_by_trait[trait]
         x = np.array(entry["levels"])
         y = entry["scaled_scores"]
 
@@ -104,25 +106,33 @@ def plot_scaled(trait, metric, entries, output_dir):
         y_fit = entry["slope"] * x_fit + entry["intercept"]
         ax.plot(x_fit, y_fit, "r--", linewidth=2)
 
-        title_lines = format_combo_label_lines(entry["combo_tag"]) + [
-            f"layer: {entry['layer_idx']}",
-            f"R²: {entry['r_squared']:.3f}",
-            f"normalized MSE: {entry['mse']:.2e}",
-        ]
-        ax.set_title("\n".join(title_lines), fontsize=10)
-        ax.set_xlabel("Trait Level", fontsize=10)
-        ax.set_ylabel(f"Persona Score ({metric}, scaled -1 to 1)", fontsize=10)
+        x_min, x_max = x.min(), x.max()
+        x_mid = (x_min + x_max) / 2
+        xs_summary = [x_min, x_mid, x_max]
+        ys_summary = [entry["slope"] * xv + entry["intercept"] for xv in xs_summary]
+        ax.scatter(
+            xs_summary, ys_summary, color="red", s=20,
+            edgecolors="none", zorder=5,
+        )
 
-    for ax in axes[len(ranked):]:
+        title_lines = [
+            r"$\bf{" + trait.title() + "}$",
+            f"R²: {entry['r_squared']:.3f}",
+            f"normalized MSE: {entry['mse']:.3f}",
+        ]
+        ax.set_title("\n".join(title_lines), fontsize=19)
+        if i >= len(traits) - n_cols:  # bottom row only
+            ax.set_xlabel("Trait Level", fontsize=15)
+        if i % n_cols == 0:  # left column only
+            ax.set_ylabel("Behavioral Score (scaled -1 to 1)", fontsize=15)
+        ax.tick_params(labelsize=15)
+
+    for ax in axes[len(traits):]:
         ax.axis("off")
 
-    fig.suptitle(
-        f"{trait.title()} — Best Layer per Method (metric: {metric}, scaled)",
-        fontsize=18, fontweight="bold",
-    )
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.tight_layout()
 
-    output_path = output_dir / f"comparison_{trait}_{metric}_scaled.png"
+    output_path = output_dir / "all_traits_evaluation_scaled.png"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
@@ -135,8 +145,9 @@ def main():
     SCALED_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     scale_data = {}
+    entries_by_metric_by_trait = {}
     traits_present = sorted({trait for combo_results in all_results.values() for trait in combo_results})
-    for trait in tqdm(traits_present, desc="scaling+plotting"):
+    for trait in tqdm(traits_present, desc="scaling"):
         entries_by_metric = {}
         for combo_tag, combo_results in all_results.items():
             if trait not in combo_results:
@@ -162,9 +173,14 @@ def main():
                 if combo_tag == SCALE_COMBO_TAG and metric == SCALE_METRIC:
                     scale_data[trait] = {"layer_idx": best_layer, **scale_stats}
 
+        # Collapse each trait down to its single best (highest R²) combo, since the combined
+        # all-traits plot doesn't distinguish response activation / persona vector type.
         for metric, entries in entries_by_metric.items():
-            if entries:
-                plot_scaled(trait, metric, entries, SCALED_PLOTS_DIR)
+            best_entry = max(entries, key=lambda e: e["r_squared"])
+            entries_by_metric_by_trait.setdefault(metric, {})[trait] = best_entry
+
+    for metric, entries_by_trait in entries_by_metric_by_trait.items():
+        plot_all_traits_summary_scaled(metric, entries_by_trait, SCALED_PLOTS_DIR)
 
     with open(SCALE_PATH, "w") as f:
         json.dump(scale_data, f, indent=2)

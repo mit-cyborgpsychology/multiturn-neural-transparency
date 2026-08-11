@@ -469,6 +469,65 @@ class GraphEvaluator:
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
+    def plot_all_traits_summary(self, metric, entries_by_trait, results_dir):
+        """One figure with one subplot per trait (same grid layout as plot_comparison), each
+        contributing exactly one entry (its highest-R² combo, chosen by the caller): the full
+        raw scatter of all data points, the fitted regression line, and the fit line's value
+        at the min/mid/max trait level overlaid as larger dots. Each subplot's title shows
+        only the trait name, R², and normalized MSE (combo details like response activation
+        type / persona vector type are intentionally omitted)."""
+        plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
+        plt.rcParams["font.family"] = "sans-serif"
+
+        traits = sorted(entries_by_trait)
+        n_cols = 3
+        n_rows = -(-len(traits) // n_cols)  # ceil division
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows))
+        axes = np.atleast_1d(axes).flatten()
+
+        for i, (ax, trait) in enumerate(zip(axes, traits)):
+            entry = entries_by_trait[trait]
+            result = entry["result"]
+            x = np.array(entry["levels"])
+            y = np.array(entry["scores"])
+
+            ax.scatter(x, y, alpha=0.6, s=15, edgecolors="none", color="gray")
+            x_fit = np.linspace(x.min(), x.max(), 100)
+            y_fit = result["slope"] * x_fit + result["intercept"]
+            ax.plot(x_fit, y_fit, "r--", linewidth=2)
+
+            x_min, x_max = x.min(), x.max()
+            x_mid = (x_min + x_max) / 2
+            xs_summary = [x_min, x_mid, x_max]
+            ys_summary = [result["slope"] * xv + result["intercept"] for xv in xs_summary]
+            ax.scatter(
+                xs_summary, ys_summary, color="red", s=20,
+                edgecolors="none", zorder=5,
+            )
+
+            title_lines = [
+                r"$\bf{" + trait.title() + "}$",
+                f"R²: {result['r_squared']:.3f}",
+                f"normalized MSE: {result['normalized_mse']:.3f}",
+            ]
+            ax.set_title("\n".join(title_lines), fontsize=19)
+            if i >= len(traits) - n_cols:  # bottom row only
+                ax.set_xlabel("Trait Level", fontsize=15)
+            if i % n_cols == 0:  # left column only
+                ax.set_ylabel("Behavioral Score", fontsize=15)
+            ax.tick_params(labelsize=15)
+
+        for ax in axes[len(traits):]:
+            ax.axis("off")
+
+        fig.tight_layout()
+
+        plots_dir = Path(results_dir) / "evaluate_plots"
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        output_path = plots_dir / "all_traits_evaluation.png"
+        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
     def collect_and_fit(self, trait, results_dir, combo_tag, metrics, multiturn=False):
         """Collect activations/scores for `trait` under this evaluator's currently-set
         response_activation_type/persona_vector_type, fit a per-layer regression against trait
@@ -556,7 +615,8 @@ def main():
         evaluator = GraphEvaluator(load_model=False, persona_vectors_dir=args.persona_vectors_dir)
 
         traits_present = sorted({trait for combo_results in all_results.values() for trait in combo_results})
-        for trait in tqdm(traits_present, desc="plotting"):
+        entries_by_metric_by_trait = {}
+        for trait in tqdm(traits_present, desc="loading"):
             entries_by_metric = {}
             for combo_tag, combo_results in all_results.items():
                 if trait not in combo_results:
@@ -571,8 +631,15 @@ def main():
                         "levels": layer_levels[best_layer],
                         "scores": layer_scores[metric][best_layer],
                     })
+            # Collapse each trait down to its single best (highest R²) combo, since the
+            # combined all-traits plot doesn't distinguish response activation / persona
+            # vector type -- only R² is shown.
             for metric, entries in entries_by_metric.items():
-                evaluator.plot_comparison(trait, metric, entries, results_dir)
+                best_entry = max(entries, key=lambda e: e["result"]["r_squared"])
+                entries_by_metric_by_trait.setdefault(metric, {})[trait] = best_entry
+
+        for metric, entries_by_trait in entries_by_metric_by_trait.items():
+            evaluator.plot_all_traits_summary(metric, entries_by_trait, results_dir)
         return
 
     login(token=os.environ.get("HF_TOKEN"))
