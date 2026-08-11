@@ -198,7 +198,7 @@ nav{
   display:flex;flex-direction:column;overflow:hidden;flex:0 0 130px;
 }
 .chat-viz-bottom .tracker-title-area{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px;position:sticky;top:0;background:var(--bg2);z-index:2}
+.chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px}
 .chat-viz-bottom .tracker-scroll{flex:1;overflow-y:auto}
 .chat-right{flex:1;display:flex;flex-direction:column;min-width:0}
 .chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
@@ -1361,31 +1361,9 @@ function lDrawTracker(){
 
 }
 
-// The tracker's "scroll" isn't real DOM overflow — lDrawTracker draws a fixed-height SVG and
-// pans its viewBox to show the latest dots. So syncing it to the chat log's scroll means
-// re-deriving that same viewTop math from the chat log's scroll fraction, not copying scrollTop.
-function lSyncTrackerScroll(){
-  const log=document.getElementById('l-chat-log');
-  const svg=document.getElementById('l-tracker');
-  if(!log||!svg) return;
-  const vb=svg.getAttribute('viewBox');
-  if(!vb) return;
-  const [,,tw,scrollH]=vb.split(' ').map(Number);
-  const aiCount=lHistory.filter(c=>c.role==='ai').length;
-  if(!aiCount) return;
-  const dotSp=50;
-  const th=Math.max(scrollH, aiCount*dotSp+30);
-  const maxViewTop=Math.max(0, th-scrollH);
-  const logRange=log.scrollHeight-log.clientHeight;
-  if(logRange<=0||maxViewTop<=0) return;
-  const frac=log.scrollTop/logRange;
-  svg.setAttribute('viewBox',`0 ${frac*maxViewTop} ${tw} ${scrollH}`);
-}
-
 window.addEventListener('load',()=>{
   lInitDemo();
   lSchedule(()=>lRunDemo(),1400);
-  document.getElementById('l-chat-log').addEventListener('scroll', lSyncTrackerScroll);
 });
 </script>
 </body>

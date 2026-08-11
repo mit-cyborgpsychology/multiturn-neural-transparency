@@ -1644,8 +1644,9 @@ function renderTraitDrift(traitName) {
     // Size to the scroll container itself, not the panel — the panel's 1rem padding made the
     // SVG wider than its box, which is what produced a horizontal scrollbar.
     const panelWidth = container.clientWidth || $('#chatPersonaPanel').width() || 380;
-    const leftX = 70;
-    const rightX = panelWidth - 70;
+    const axisMargin = 110;
+    const leftX = axisMargin;
+    const rightX = panelWidth - axisMargin;
     const axisSpan = rightX - leftX;
     const rowHeight = 48;
     const topPad = 40;
@@ -1983,16 +1984,31 @@ function injectPredictBehavior() {
 
     const messagesContainer = $('#messagesContainer');
 
-    // Keep the conversation visible and scrollable during the quiz (rather than hiding/
-    // duplicating it) — just draw attention to the final message, since that's the turn
-    // being predicted.
-    messagesContainer.find('.message').last().addClass('predict-final-message-pulse');
+    // The final message is now shown in the transcript overlay on the left (below), so hide
+    // its bubble here on the right to avoid showing it twice.
+    messagesContainer.find('.message').last().hide();
+
     messagesContainer.append(panelHtml);
 
-    // Blank the live sunburst + drift panel while predicting — otherwise the answer (the
-    // model's actual current trait scores) is on screen next to the sliders. The panel keeps
-    // its width (chat stays where it is) and just goes white; showPredictResults() brings the
-    // visualization back with the score.
+    // Blank the live sunburst + drift panel while predicting — otherwise the answer is on
+    // screen next to the sliders. The panel keeps its width (chat stays where it is) and its
+    // contents are replaced with a read-only transcript (so users can still reference what was
+    // said, including their final message) instead of just going white;
+    // showPredictResults() brings the visualization back with the score.
+    const transcriptHtml = window.conversationHistory.map(function(msg) {
+        const roleClass = msg.role === 'user' ? 'user-message' : 'assistant-message';
+        return `
+            <div class="message ${roleClass}">
+                <div class="message-content">
+                    <div class="message-text">${msg.content}</div>
+                </div>
+            </div>`;
+    }).join('');
+    $('#chatPersonaPanel').append(`
+        <div class="predict-transcript-overlay" id="predictTranscriptOverlay">
+            <div class="predict-transcript-header">Your Conversation</div>
+            <div class="predict-transcript-messages">${transcriptHtml}</div>
+        </div>`);
     $('#chatPersonaPanel').addClass('viz-blanked');
 
     // Submit handler
@@ -2133,11 +2149,12 @@ function showPredictResults() {
 
     // Predictions are locked in — restore the visualization alongside the results
     $('#chatPersonaPanel').removeClass('viz-blanked');
+    $('#predictTranscriptOverlay').remove();
 
-    // The conversation was only meant to be visible during the slider quiz; hide every
-    // remaining chat bubble (and the pulse highlighting the final one) so no part of it
-    // lingers on the results page, on either side.
-    $('#messagesContainer .message').hide().removeClass('predict-final-message-pulse');
+    // The conversation was only meant to be visible during the slider quiz (via the transcript
+    // overlay above); hide every remaining chat bubble so no part of it lingers on the results
+    // page, on either side.
+    $('#messagesContainer .message').hide();
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
