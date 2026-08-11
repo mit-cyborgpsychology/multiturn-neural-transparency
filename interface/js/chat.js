@@ -2088,8 +2088,8 @@ function showPredictResults() {
                         <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
                     </div>
                     <div class="details">
-                        <span><strong>Predicted:</strong><br>${predText}</span>
-                        <span><strong>Actual:</strong><br>${actText}</span>
+                        <span class="predicted"><strong>Predicted:</strong><br>${predText}</span>
+                        <span class="actual"><strong>Actual:</strong><br>${actText}</span>
                     </div>
                 </div>
             </div>`;
@@ -2163,6 +2163,11 @@ function showPredictResults() {
     // Predictions are locked in — restore the visualization alongside the results
     $('#chatPersonaPanel').removeClass('viz-blanked');
     $('#predictTranscriptOverlay').remove();
+
+    // The conversation was only meant to be visible during the slider quiz (via the transcript
+    // overlay above); hide every remaining chat bubble so no part of it lingers on the results
+    // page, on either side.
+    $('#messagesContainer .message').hide();
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');

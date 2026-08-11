@@ -2335,16 +2335,19 @@ body.chat-active .dynamic-chat-container {
     margin-bottom: 3px;
 }
 .predict-breakdown-item .accuracy  { font-size: 13px; font-weight: 600; }
-/* Stacked (not side-by-side) so each line gets the card's full width — splitting the row
-   let flex shrink each span below its content width and wrap mid-line, even when either
-   line alone would fit. */
+/* Predicted (left) and Actual (right) share one row; each is its own two-line block — the
+   "Predicted:"/"Actual:" label on top, the value (e.g. "Neutral (0%)") below it via <br>,
+   which is what keeps the value from wrapping mid-line the way inline text did. */
 .predict-breakdown-item .details {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
     font-size: 12px;
     color: #6b7280;
 }
+.predict-breakdown-item .details .predicted { text-align: left; white-space: nowrap; }
+.predict-breakdown-item .details .actual    { text-align: right; white-space: nowrap; }
 /* Narrow screens: the fixed label column gets too tight next to the card, so stack the
    label above it instead of squeezing both into one row. Since .predict-breakdown-row is
    `display: contents`, the single-column override lives on the shared grid itself. */
