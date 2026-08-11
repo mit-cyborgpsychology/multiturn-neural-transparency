@@ -2322,7 +2322,7 @@ body.chat-active .dynamic-chat-container {
     line-height: 1.3;
     /* Padding widens the (max-content) label column, which narrows the card column next to
        it since the two share the row's width. */
-    padding: 0 20px;
+    padding: 0 25px;
 }
 /* Matches .predict-rating-item (the quiz cells) so results read as the same component */
 .predict-breakdown-item {
