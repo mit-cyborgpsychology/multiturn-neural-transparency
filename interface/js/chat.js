@@ -1931,8 +1931,8 @@ function injectPredictBehavior() {
                 <div class="top"><span class="neg">${negLabel}</span><span class="pos">${posLabel}</span></div>
                 <input type="range" min="-100" max="100" value="0" id="predict-${pair.category}"
                     oninput="document.getElementById('predict-val-${pair.category}').textContent =
-                        this.value > 0 ? '${posLabel} ' + this.value + '%' :
-                        this.value < 0 ? '${negLabel} ' + Math.abs(this.value) + '%' : 'Neutral'">
+                        this.value > 0 ? '${posLabel}: ' + this.value + '%' :
+                        this.value < 0 ? '${negLabel}: ' + Math.abs(this.value) + '%' : 'Neutral'">
                 <div class="val" id="predict-val-${pair.category}">Neutral</div>
             </div>`;
     });
@@ -1941,7 +1941,7 @@ function injectPredictBehavior() {
         <div id="predictPanel" class="predict-panel">
             <div class="predict-header">
                 <h5>Predict Model Behavior</h5>
-                <p>Based on your conversation and trait scores, predict the model's behavioral profile on each dimension.</p>
+                <p>Based on your conversation and trait scores, predict the model's behavioral scores on the final turn of your conversation with the sliders.</p>
             </div>
             <div class="predict-rating-grid">${slidersHtml}</div>
             <div style="text-align: right; margin-top: 1.25rem;">
@@ -1954,8 +1954,24 @@ function injectPredictBehavior() {
     messagesContainer.append(panelHtml);
 
     // Blank the live sunburst + drift panel while predicting — otherwise the answer is on
-    // screen next to the sliders. The panel keeps its width (chat stays where it is) and just
-    // goes white; showPredictResults() brings the contents back with the score.
+    // screen next to the sliders. The panel keeps its width (chat stays where it is) and its
+    // contents are replaced with a read-only transcript (so users can still reference what was
+    // said, including their final message) instead of just going white;
+    // showPredictResults() brings the visualization back with the score.
+    const transcriptHtml = window.conversationHistory.map(function(msg) {
+        const roleClass = msg.role === 'user' ? 'user-message' : 'assistant-message';
+        return `
+            <div class="message ${roleClass}">
+                <div class="message-content">
+                    <div class="message-text">${msg.content}</div>
+                </div>
+            </div>`;
+    }).join('');
+    $('#chatPersonaPanel').append(`
+        <div class="predict-transcript-overlay" id="predictTranscriptOverlay">
+            <div class="predict-transcript-header">Your Conversation</div>
+            <div class="predict-transcript-messages">${transcriptHtml}</div>
+        </div>`);
     $('#chatPersonaPanel').addClass('viz-blanked');
 
     // Submit handler
@@ -2006,20 +2022,21 @@ function showPredictResults() {
         const signedPct = v => (v >= 0 ? '+' : '') + asPct(v);
         const errDisplay = asPct(d.absErr);
         const color = d.absErr < 0.20 ? '#22c55e' : d.absErr < 0.50 ? '#eab308' : '#ef4444';
-        const predDisplay = signedPct(d.predicted);
-        const actDisplay = signedPct(d.actualVal);
-        const predLabel = d.predicted >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
-        const actLabel = d.actualVal >= 0 ? capitalize(d.pair.pos) : capitalize(d.pair.neg);
+        // Match the slider convention: 0% reads as "Neutral" rather than a signed pole label.
+        const predPct = Math.round(d.predicted * 100);
+        const actPct = Math.round(d.actualVal * 100);
+        const predText = predPct === 0 ? 'Neutral' : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.predicted)})`;
+        const actText = actPct === 0 ? 'Neutral' : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.actualVal)})`;
 
         breakdownHtml += `
             <div class="predict-breakdown-item">
                 <div class="row-top">
                     <span class="dimension">${d.pair.label}</span>
-                    <span class="accuracy" style="color:${color}">MAE = ${errDisplay}</span>
+                    <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
                 </div>
                 <div class="details">
-                    <span><strong>Predicted:</strong> ${predLabel} (${predDisplay})</span>
-                    <span><strong>Actual:</strong> ${actLabel} (${actDisplay})</span>
+                    <span><strong>Predicted:</strong> ${predText}</span>
+                    <span><strong>Actual:</strong> ${actText}</span>
                 </div>
             </div>`;
     });
@@ -2045,7 +2062,21 @@ function showPredictResults() {
     const resultsHtml = `
         <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-top:1rem;">
             <div class="predict-header">
-                <h5>Prediction Error (Mean Absolute Error)</h5>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <h5 style="margin:0;">Prediction Error (Mean Absolute Error)</h5>
+                    <span class="trait-tooltip">
+                        <i class="fas fa-info-circle" style="color:#fff;opacity:0.85;"></i>
+                        <span class="trait-tooltip-text">
+                            <strong>Absolute Error</strong> is the size of the gap between your predicted score and the model's actual score for a single dimension, ignoring direction: |predicted &minus; actual|.
+                            <br><br>
+                            <strong>Mean Absolute Error (MAE)</strong> averages that gap across all trait dimensions, measuring, on average, how far your predicted trait scores were from the model's actual trait scores at the final turn — the smaller the number, the better calibrated your prediction.
+                            <br><br>
+                            <strong>MAE = (1/n) &sum;<sub>i=1</sub><sup>n</sup> |predicted<sub>i</sub> &minus; actual<sub>i</sub>|</strong>
+                            <br><br>
+                            where n is the number of trait dimensions (6), predicted<sub>i</sub> is your slider value for dimension i, and actual<sub>i</sub> is the model's measured score for that dimension.
+                        </span>
+                    </span>
+                </div>
                 <p>Mean absolute error (MAE) between your predicted actual trait scores at the last turn.</p>
             </div>
             <div class="predict-scores">
@@ -2063,12 +2094,13 @@ function showPredictResults() {
             <h5 style="font-size:13px;font-weight:700;margin-bottom:10px">Trait Breakdown</h5>
             <div class="predict-breakdown">${breakdownHtml}</div>
             <div style="margin-top:20px;text-align:center;">
-                <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">See the Science →</button>
+                <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">Read about the Science →</button>
             </div>
         </div>`;
 
     // Predictions are locked in — restore the visualization alongside the results
     $('#chatPersonaPanel').removeClass('viz-blanked');
+    $('#predictTranscriptOverlay').remove();
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
