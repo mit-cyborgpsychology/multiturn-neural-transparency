@@ -2076,19 +2076,20 @@ function showPredictResults() {
         // but still show the (0%) alongside it.
         const predPct = Math.round(d.predicted * 100);
         const actPct = Math.round(d.actualVal * 100);
-        const predText = predPct === 0 ? `Neutral (${asPct(d.predicted)})` : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.predicted)})`;
-        const actText = actPct === 0 ? `Neutral (${asPct(d.actualVal)})` : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.actualVal)})`;
+        // &nbsp; glues the trait name to its percentage so they never wrap onto separate lines.
+        const predText = predPct === 0 ? `Neutral&nbsp;(${asPct(d.predicted)})` : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)}&nbsp;(${signedPct(d.predicted)})`;
+        const actText = actPct === 0 ? `Neutral&nbsp;(${asPct(d.actualVal)})` : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)}&nbsp;(${signedPct(d.actualVal)})`;
 
         breakdownHtml += `
             <div class="predict-breakdown-row">
-                <div class="predict-breakdown-label">${d.pair.label}</div>
+                <div class="predict-breakdown-label">${capitalize(d.pair.pos)}<br>&harr;<br>${capitalize(d.pair.neg)}</div>
                 <div class="predict-breakdown-item">
                     <div class="row-top">
                         <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
                     </div>
                     <div class="details">
-                        <span><strong>Predicted:</strong> ${predText}</span>
-                        <span><strong>Actual:</strong> ${actText}</span>
+                        <span><strong>Predicted:</strong><br>${predText}</span>
+                        <span><strong>Actual:</strong><br>${actText}</span>
                     </div>
                 </div>
             </div>`;
@@ -2152,7 +2153,7 @@ function showPredictResults() {
                     <div class="sub" style="margin-top:4px">${desc}</div>
                 </div>
             </div>
-            <h5 style="font-size:13px;font-weight:700;margin-bottom:10px">Trait Breakdown</h5>
+            <h5 style="font-size:15px;font-weight:700;margin-bottom:10px;text-align:center;">Trait Breakdown</h5>
             <div class="predict-breakdown">${breakdownHtml}</div>
             <div style="margin-top:20px;text-align:center;">
                 <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">Read about the Science →</button>

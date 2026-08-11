@@ -2224,12 +2224,12 @@ body.chat-active .dynamic-chat-container {
 .predict-rating-item input[type="range"]::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 2px;
-    background: #e5e7eb;
+    background: #c3c9d1;
 }
 .predict-rating-item input[type="range"]::-moz-range-track {
     height: 4px;
     border-radius: 2px;
-    background: #e5e7eb;
+    background: #c3c9d1;
 }
 .predict-rating-item input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
@@ -2299,20 +2299,19 @@ body.chat-active .dynamic-chat-container {
     color: #6b7280;
     margin-top: 4px;
 }
+/* One shared grid for every row (rather than each row sizing its own) so the label and card
+   columns come out the same width on every row, instead of each row's card width depending
+   on that row's own label length. */
 .predict-breakdown {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-}
-/* Each row pairs a dimension label (its own column, outside the card) with the card itself,
-   so the label reads as a row heading rather than competing with the stats inside the card. */
-.predict-breakdown-row {
-    display: grid;
-    /* max-content sizes the column to the longest label across all rows, so every label
-       (e.g. "Sophisticated ↔ Simplistic") fits on one line without wrapping or clipping. */
     grid-template-columns: max-content 1fr;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
+}
+/* `display: contents` makes the row wrapper disappear as a box — its label + card children
+   become direct items of .predict-breakdown's grid, sharing its column tracks. */
+.predict-breakdown-row {
+    display: contents;
 }
 .predict-breakdown-label {
     font-size: 13px;
@@ -2327,28 +2326,30 @@ body.chat-active .dynamic-chat-container {
     background: #f9fafb;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 10px 14px;
+    padding: 8px 10px;
 }
 .predict-breakdown-item .row-top {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 .predict-breakdown-item .accuracy  { font-size: 13px; font-weight: 600; }
-/* "Predicted:" sits left, directly under "Absolute Error"; "Actual:" is pushed to the right
-   edge so it lines up down every row */
+/* Stacked (not side-by-side) so each line gets the card's full width — splitting the row
+   let flex shrink each span below its content width and wrap mid-line, even when either
+   line alone would fit. */
 .predict-breakdown-item .details {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    gap: 2px;
     font-size: 12px;
     color: #6b7280;
 }
 /* Narrow screens: the fixed label column gets too tight next to the card, so stack the
-   label above it instead of squeezing both into one row. */
+   label above it instead of squeezing both into one row. Since .predict-breakdown-row is
+   `display: contents`, the single-column override lives on the shared grid itself. */
 @media (max-width: 480px) {
-    .predict-breakdown-row {
+    .predict-breakdown {
         grid-template-columns: 1fr;
         gap: 4px;
     }
