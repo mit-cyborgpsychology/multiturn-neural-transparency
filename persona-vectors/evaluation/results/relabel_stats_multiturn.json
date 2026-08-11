@@ -1,182 +1,224 @@
 {
   "empathy": {
     "overall": {
-      "total": 1500,
-      "num_agree": 304,
-      "agreement_rate": 0.20266666666666666,
-      "mean_diff": 1.9550666666666665,
-      "mean_abs_diff": 2.314
+      "total": 2000,
+      "num_agree": 430,
+      "agreement_rate": 0.215,
+      "mean_diff": 1.04775,
+      "mean_abs_diff": 2.33605
     },
     "turn_1": {
       "total": 500,
-      "num_agree": 99,
-      "agreement_rate": 0.198,
-      "mean_diff": 2.0578000000000003,
-      "mean_abs_diff": 2.3642
+      "num_agree": 95,
+      "agreement_rate": 0.19,
+      "mean_diff": -0.25880000000000003,
+      "mean_abs_diff": 2.7008
     },
     "turn_2": {
       "total": 500,
-      "num_agree": 102,
-      "agreement_rate": 0.204,
-      "mean_diff": 1.918,
-      "mean_abs_diff": 2.2924
+      "num_agree": 112,
+      "agreement_rate": 0.224,
+      "mean_diff": 1.488,
+      "mean_abs_diff": 2.1964
     },
     "turn_3": {
       "total": 500,
-      "num_agree": 103,
-      "agreement_rate": 0.206,
-      "mean_diff": 1.8894000000000002,
-      "mean_abs_diff": 2.2854
+      "num_agree": 118,
+      "agreement_rate": 0.236,
+      "mean_diff": 1.39,
+      "mean_abs_diff": 2.2352
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 105,
+      "agreement_rate": 0.21,
+      "mean_diff": 1.5717999999999999,
+      "mean_abs_diff": 2.2118
     }
   },
   "erudite": {
     "overall": {
-      "total": 1500,
-      "num_agree": 248,
-      "agreement_rate": 0.16533333333333333,
-      "mean_diff": 0.9827333333333332,
-      "mean_abs_diff": 2.1422000000000003
+      "total": 2000,
+      "num_agree": 392,
+      "agreement_rate": 0.196,
+      "mean_diff": 0.73425,
+      "mean_abs_diff": 2.07905
     },
     "turn_1": {
       "total": 500,
-      "num_agree": 79,
-      "agreement_rate": 0.158,
-      "mean_diff": 1.0475999999999999,
-      "mean_abs_diff": 2.066
+      "num_agree": 95,
+      "agreement_rate": 0.19,
+      "mean_diff": 0.1706,
+      "mean_abs_diff": 1.9698
     },
     "turn_2": {
       "total": 500,
-      "num_agree": 80,
-      "agreement_rate": 0.16,
-      "mean_diff": 1.029,
-      "mean_abs_diff": 2.203
+      "num_agree": 91,
+      "agreement_rate": 0.182,
+      "mean_diff": 0.8532,
+      "mean_abs_diff": 2.0376
     },
     "turn_3": {
       "total": 500,
-      "num_agree": 89,
-      "agreement_rate": 0.178,
-      "mean_diff": 0.8715999999999999,
-      "mean_abs_diff": 2.1576
+      "num_agree": 96,
+      "agreement_rate": 0.192,
+      "mean_diff": 0.9952,
+      "mean_abs_diff": 2.16
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 110,
+      "agreement_rate": 0.22,
+      "mean_diff": 0.918,
+      "mean_abs_diff": 2.1488
     }
   },
   "robotic": {
     "overall": {
-      "total": 1500,
-      "num_agree": 318,
-      "agreement_rate": 0.212,
-      "mean_diff": -2.1385333333333336,
-      "mean_abs_diff": 2.4592
+      "total": 2000,
+      "num_agree": 434,
+      "agreement_rate": 0.217,
+      "mean_diff": -2.037,
+      "mean_abs_diff": 2.4033
     },
     "turn_1": {
       "total": 500,
-      "num_agree": 109,
-      "agreement_rate": 0.218,
-      "mean_diff": -2.1494,
-      "mean_abs_diff": 2.4046
+      "num_agree": 108,
+      "agreement_rate": 0.216,
+      "mean_diff": -1.9132,
+      "mean_abs_diff": 2.2931999999999997
     },
     "turn_2": {
       "total": 500,
-      "num_agree": 115,
-      "agreement_rate": 0.23,
-      "mean_diff": -2.1604,
-      "mean_abs_diff": 2.4892
+      "num_agree": 100,
+      "agreement_rate": 0.2,
+      "mean_diff": -2.0526,
+      "mean_abs_diff": 2.441
     },
     "turn_3": {
       "total": 500,
-      "num_agree": 94,
-      "agreement_rate": 0.188,
-      "mean_diff": -2.1058000000000003,
-      "mean_abs_diff": 2.4838
+      "num_agree": 113,
+      "agreement_rate": 0.226,
+      "mean_diff": -2.0384,
+      "mean_abs_diff": 2.3788
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 113,
+      "agreement_rate": 0.226,
+      "mean_diff": -2.1438,
+      "mean_abs_diff": 2.5002
     }
   },
   "romantic": {
     "overall": {
-      "total": 1500,
-      "num_agree": 463,
-      "agreement_rate": 0.30866666666666664,
-      "mean_diff": 0.14279999999999998,
-      "mean_abs_diff": 1.9996
-    },
-    "turn_1": {
-      "total": 500,
-      "num_agree": 169,
-      "agreement_rate": 0.338,
-      "mean_diff": 1.1042,
-      "mean_abs_diff": 1.895
-    },
-    "turn_2": {
-      "total": 500,
-      "num_agree": 148,
-      "agreement_rate": 0.296,
-      "mean_diff": -0.2398,
-      "mean_abs_diff": 2.0246
-    },
-    "turn_3": {
-      "total": 500,
-      "num_agree": 146,
-      "agreement_rate": 0.292,
-      "mean_diff": -0.436,
-      "mean_abs_diff": 2.0791999999999997
-    }
-  },
-  "sycophancy": {
-    "overall": {
-      "total": 1500,
-      "num_agree": 530,
-      "agreement_rate": 0.35333333333333333,
-      "mean_diff": -1.2340666666666666,
-      "mean_abs_diff": 1.8642
-    },
-    "turn_1": {
-      "total": 500,
-      "num_agree": 170,
-      "agreement_rate": 0.34,
-      "mean_diff": -1.4492,
-      "mean_abs_diff": 1.9735999999999998
-    },
-    "turn_2": {
-      "total": 500,
-      "num_agree": 178,
-      "agreement_rate": 0.356,
-      "mean_diff": -1.1765999999999999,
-      "mean_abs_diff": 1.7934
-    },
-    "turn_3": {
-      "total": 500,
-      "num_agree": 182,
-      "agreement_rate": 0.364,
-      "mean_diff": -1.0764,
-      "mean_abs_diff": 1.8256
-    }
-  },
-  "toxicity": {
-    "overall": {
-      "total": 1500,
-      "num_agree": 310,
-      "agreement_rate": 0.20666666666666667,
-      "mean_diff": -2.8952,
-      "mean_abs_diff": 3.0672
+      "total": 2000,
+      "num_agree": 442,
+      "agreement_rate": 0.221,
+      "mean_diff": -2.0469,
+      "mean_abs_diff": 2.728
     },
     "turn_1": {
       "total": 500,
       "num_agree": 118,
       "agreement_rate": 0.236,
-      "mean_diff": -2.7342,
-      "mean_abs_diff": 2.9101999999999997
+      "mean_diff": -1.8868,
+      "mean_abs_diff": 2.764
     },
     "turn_2": {
       "total": 500,
-      "num_agree": 107,
-      "agreement_rate": 0.214,
-      "mean_diff": -2.8644000000000003,
-      "mean_abs_diff": 3.0316
+      "num_agree": 95,
+      "agreement_rate": 0.19,
+      "mean_diff": -2.3575999999999997,
+      "mean_abs_diff": 2.706
     },
     "turn_3": {
       "total": 500,
-      "num_agree": 85,
-      "agreement_rate": 0.17,
-      "mean_diff": -3.087,
-      "mean_abs_diff": 3.2598000000000003
+      "num_agree": 121,
+      "agreement_rate": 0.242,
+      "mean_diff": -1.8808,
+      "mean_abs_diff": 2.7131999999999996
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 108,
+      "agreement_rate": 0.216,
+      "mean_diff": -2.0624000000000002,
+      "mean_abs_diff": 2.7288
+    }
+  },
+  "sycophantic": {
+    "overall": {
+      "total": 2000,
+      "num_agree": 604,
+      "agreement_rate": 0.302,
+      "mean_diff": -1.96595,
+      "mean_abs_diff": 2.2635500000000004
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 183,
+      "agreement_rate": 0.366,
+      "mean_diff": -1.663,
+      "mean_abs_diff": 2.0145999999999997
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 168,
+      "agreement_rate": 0.336,
+      "mean_diff": -1.7508,
+      "mean_abs_diff": 2.0356
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 146,
+      "agreement_rate": 0.292,
+      "mean_diff": -2.0665999999999998,
+      "mean_abs_diff": 2.3045999999999998
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 107,
+      "agreement_rate": 0.214,
+      "mean_diff": -2.3834,
+      "mean_abs_diff": 2.6994000000000002
+    }
+  },
+  "toxic": {
+    "overall": {
+      "total": 2000,
+      "num_agree": 432,
+      "agreement_rate": 0.216,
+      "mean_diff": -2.9236500000000003,
+      "mean_abs_diff": 3.1474499999999996
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 121,
+      "agreement_rate": 0.242,
+      "mean_diff": -2.6696,
+      "mean_abs_diff": 2.9455999999999998
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 109,
+      "agreement_rate": 0.218,
+      "mean_diff": -2.8752,
+      "mean_abs_diff": 3.0812
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 110,
+      "agreement_rate": 0.22,
+      "mean_diff": -3.0012,
+      "mean_abs_diff": 3.1932
+    },
+    "turn_4": {
+      "total": 500,
+      "num_agree": 92,
+      "agreement_rate": 0.184,
+      "mean_diff": -3.1486,
+      "mean_abs_diff": 3.3698
     }
   }
 }

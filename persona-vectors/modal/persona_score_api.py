@@ -2,7 +2,7 @@ import modal
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import login
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from pydantic import BaseModel
 from fastapi import Header, HTTPException
 from pathlib import Path
@@ -10,11 +10,6 @@ import json
 import os
 
 LOCAL_VECTORS_PATH = os.path.join(os.path.dirname(__file__), "../generation/persona_vectors")
-
-# Bounds how much conversation history gets forward-passed for scoring, so inference time
-# stays flat instead of growing with the conversation.
-MAX_USER_MESSAGES = 10
-MAX_ASSISTANT_MESSAGES = 9
 
 image = (
     modal.Image.debian_slim()
@@ -35,13 +30,10 @@ app = modal.App("persona-vector-api")
 
 VECTORS_PATH = Path("/root/persona_vectors")
 
-class Message(BaseModel):
-    role: str  # "user" or "assistant"
-    content: str
+SYSTEM_PROMPT = "You are an AI assistant. Keep responses concise and conversational. You do not have a fixed personality and will let your personality or style reflect the user's."
 
-class PersonaScoreRequest(BaseModel):
+class SystemPrompt(BaseModel):
     system: Optional[str] = None
-    messages: List[Message] = []
 
 class PersonaVectorResponse(BaseModel):
     persona_vector_ratings: Dict[str, Dict[str, float]]
@@ -51,20 +43,14 @@ class PersonaVectorResponse(BaseModel):
     gpu="A100-40GB",
     scaledown_window=300,
     timeout=200,
-    startup_timeout=600,
-    secrets=[modal.Secret.from_name("secrets")],
-    enable_memory_snapshot=True,
-    experimental_options={"enable_gpu_snapshot": True},
+    secrets=[modal.Secret.from_name("secrets")]
 )
 @modal.concurrent(max_inputs=4)
 class PersonaScoreAPI:
-    @modal.enter(snap=True)
+    @modal.enter()
     def load_model(self):
-        """Runs once, at deploy time. Loading the model onto the GPU here (rather than in
-        load_secrets below) means this state -- weights resident on GPU, CUDA context
-        initialized -- gets captured in the GPU snapshot, so restores skip straight to
-        having a ready model instead of re-running from_pretrained on every cold start."""
         login(token=os.environ["hf_token"])
+        self.api_key = os.environ["api_key"]
         self.device = "cuda"
 
         model_name = "meta-llama/Llama-3.1-8B-Instruct"
@@ -76,12 +62,6 @@ class PersonaScoreAPI:
         )
         self.model.eval()
 
-    @modal.enter()
-    def load_secrets(self):
-        """Runs on every restore (not snapshotted), so a rotated secret is picked up
-        instead of being frozen into the snapshot."""
-        self.api_key = os.environ["api_key"]
-
     def verify_api_key(self, provided_key: str) -> bool:
         return provided_key == self.api_key
 
@@ -89,7 +69,14 @@ class PersonaScoreAPI:
         """Final-token activation at each layer in `layer_idxs`, in one forward pass, so every
         trait's own best layer (see scale.json's per-trait layer_idx) is captured without
         hooking layers no trait needs."""
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        chat_messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        templated_prompt = self.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.tokenizer(templated_prompt, return_tensors="pt").to(self.device)
         activations = {}
 
         def make_hook(layer_idx):
@@ -110,46 +97,31 @@ class PersonaScoreAPI:
 
         return activations
 
-    def truncate_conversation(self, messages: List[Message]) -> List[Dict[str, str]]:
-        """Keep only the last MAX_USER_MESSAGES user turns and MAX_ASSISTANT_MESSAGES assistant
-        turns, in their original order, so a long-running conversation doesn't blow up the
-        forward-pass prompt length."""
-        user_idxs = [i for i, m in enumerate(messages) if m.role == "user"][-MAX_USER_MESSAGES:]
-        assistant_idxs = [i for i, m in enumerate(messages) if m.role == "assistant"][-MAX_ASSISTANT_MESSAGES:]
-        keep = set(user_idxs) | set(assistant_idxs)
-        return [{"role": m.role, "content": m.content} for i, m in enumerate(messages) if i in keep]
-
     def cosine_similarity(self, a, b):
         return torch.dot(a, b) / (torch.norm(a) * torch.norm(b))
 
-    def normalize_score(self, score, mean, min_val, max_val):
+    def normalize_score(self, score, midpoint, min_val, max_val):
         """Mirrors rescale.py's normalize_to_unit_range, but for a single score against a
-        precomputed (mean, min, max) from scale.json instead of an array of scores."""
-        centered = score - mean
-        lo, hi = min_val - mean, max_val - mean
-        if hi == lo:
-            return 0.0
-        return 2 * (centered - lo) / (hi - lo) - 1
+        precomputed (midpoint, min, max) from scale.json instead of an array of scores.
+        Two-sided: `midpoint` maps to exactly 0, values at or above it are scaled by
+        (max_val - midpoint) into [0, 1], values below it by (midpoint - min_val) into
+        [-1, 0] -- independently, so each side's spread doesn't affect the other."""
+        if score >= midpoint:
+            span = max_val - midpoint
+            return (score - midpoint) / span if span else 0.0
+        else:
+            span = midpoint - min_val
+            return (score - midpoint) / span if span else 0.0
 
-    def generate_persona_scores(
-        self, system_prompt: Optional[str], messages: List[Message]
-    ) -> Dict[str, Dict[str, float]]:
+    def generate_persona_scores(self, system_prompt: str) -> Dict[str, Dict[str, float]]:
         with open(VECTORS_PATH / "traits.json", "r") as f:
             traits = json.load(f)
 
         with open(VECTORS_PATH / "scale.json", "r") as f:
             scale = json.load(f)
 
-        chat_messages = []
-        if system_prompt:
-            chat_messages.append({"role": "system", "content": system_prompt})
-        chat_messages.extend(self.truncate_conversation(messages))
-        prompt = self.tokenizer.apply_chat_template(
-            chat_messages, tokenize=False, add_generation_prompt=True
-        )
-
         needed_layers = {stats["layer_idx"] for stats in scale.values()}
-        prompt_activations = self.get_final_prompt_activations(prompt, needed_layers)
+        prompt_activations = self.get_final_prompt_activations(system_prompt, needed_layers)
 
         persona_scores = {}
         for trait, labels in traits.items():
@@ -164,7 +136,7 @@ class PersonaScoreAPI:
             score = self.cosine_similarity(
                 prompt_activation.flatten(), persona_vector.flatten()
             ).item()
-            scaled_score = self.normalize_score(score, stats["mean"], stats["min"], stats["max"])
+            scaled_score = self.normalize_score(score, stats["midpoint"], stats["min"], stats["max"])
 
             positive, negative = (scaled_score, 0.0) if scaled_score > 0 else (0.0, -scaled_score)
             persona_scores[trait] = {
@@ -179,7 +151,7 @@ class PersonaScoreAPI:
     @modal.fastapi_endpoint(method="POST")
     def persona_vector_endpoint(
         self,
-        request: PersonaScoreRequest,
+        request: SystemPrompt,
         x_api_key: Optional[str] = Header(None, alias="X-API-Key")
     ):
         try:
@@ -189,7 +161,7 @@ class PersonaScoreAPI:
             if not self.verify_api_key(x_api_key):
                 raise HTTPException(status_code=403, detail="Invalid API key")
 
-            persona_vector_ratings = self.generate_persona_scores(request.system, request.messages)
+            persona_vector_ratings = self.generate_persona_scores(request.system)
 
             return PersonaVectorResponse(persona_vector_ratings=persona_vector_ratings)
 

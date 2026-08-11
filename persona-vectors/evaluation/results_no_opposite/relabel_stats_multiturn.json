@@ -1,0 +1,182 @@
+{
+  "empathy": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 304,
+      "agreement_rate": 0.20266666666666666,
+      "mean_diff": 1.9550666666666665,
+      "mean_abs_diff": 2.314
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 99,
+      "agreement_rate": 0.198,
+      "mean_diff": 2.0578000000000003,
+      "mean_abs_diff": 2.3642
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 102,
+      "agreement_rate": 0.204,
+      "mean_diff": 1.918,
+      "mean_abs_diff": 2.2924
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 103,
+      "agreement_rate": 0.206,
+      "mean_diff": 1.8894000000000002,
+      "mean_abs_diff": 2.2854
+    }
+  },
+  "erudite": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 248,
+      "agreement_rate": 0.16533333333333333,
+      "mean_diff": 0.9827333333333332,
+      "mean_abs_diff": 2.1422000000000003
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 79,
+      "agreement_rate": 0.158,
+      "mean_diff": 1.0475999999999999,
+      "mean_abs_diff": 2.066
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 80,
+      "agreement_rate": 0.16,
+      "mean_diff": 1.029,
+      "mean_abs_diff": 2.203
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 89,
+      "agreement_rate": 0.178,
+      "mean_diff": 0.8715999999999999,
+      "mean_abs_diff": 2.1576
+    }
+  },
+  "robotic": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 318,
+      "agreement_rate": 0.212,
+      "mean_diff": -2.1385333333333336,
+      "mean_abs_diff": 2.4592
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 109,
+      "agreement_rate": 0.218,
+      "mean_diff": -2.1494,
+      "mean_abs_diff": 2.4046
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 115,
+      "agreement_rate": 0.23,
+      "mean_diff": -2.1604,
+      "mean_abs_diff": 2.4892
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 94,
+      "agreement_rate": 0.188,
+      "mean_diff": -2.1058000000000003,
+      "mean_abs_diff": 2.4838
+    }
+  },
+  "romantic": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 463,
+      "agreement_rate": 0.30866666666666664,
+      "mean_diff": 0.14279999999999998,
+      "mean_abs_diff": 1.9996
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 169,
+      "agreement_rate": 0.338,
+      "mean_diff": 1.1042,
+      "mean_abs_diff": 1.895
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 148,
+      "agreement_rate": 0.296,
+      "mean_diff": -0.2398,
+      "mean_abs_diff": 2.0246
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 146,
+      "agreement_rate": 0.292,
+      "mean_diff": -0.436,
+      "mean_abs_diff": 2.0791999999999997
+    }
+  },
+  "sycophancy": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 530,
+      "agreement_rate": 0.35333333333333333,
+      "mean_diff": -1.2340666666666666,
+      "mean_abs_diff": 1.8642
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 170,
+      "agreement_rate": 0.34,
+      "mean_diff": -1.4492,
+      "mean_abs_diff": 1.9735999999999998
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 178,
+      "agreement_rate": 0.356,
+      "mean_diff": -1.1765999999999999,
+      "mean_abs_diff": 1.7934
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 182,
+      "agreement_rate": 0.364,
+      "mean_diff": -1.0764,
+      "mean_abs_diff": 1.8256
+    }
+  },
+  "toxicity": {
+    "overall": {
+      "total": 1500,
+      "num_agree": 310,
+      "agreement_rate": 0.20666666666666667,
+      "mean_diff": -2.8952,
+      "mean_abs_diff": 3.0672
+    },
+    "turn_1": {
+      "total": 500,
+      "num_agree": 118,
+      "agreement_rate": 0.236,
+      "mean_diff": -2.7342,
+      "mean_abs_diff": 2.9101999999999997
+    },
+    "turn_2": {
+      "total": 500,
+      "num_agree": 107,
+      "agreement_rate": 0.214,
+      "mean_diff": -2.8644000000000003,
+      "mean_abs_diff": 3.0316
+    },
+    "turn_3": {
+      "total": 500,
+      "num_agree": 85,
+      "agreement_rate": 0.17,
+      "mean_diff": -3.087,
+      "mean_abs_diff": 3.2598000000000003
+    }
+  }
+}

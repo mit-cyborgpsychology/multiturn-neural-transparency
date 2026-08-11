@@ -32,11 +32,11 @@ ALL_METRICS = ("cosine", "projection")
 # (response_activation_type, persona_vector_type). 
 COMBOS = [
     # ("final", "final"),
-    ("final", "mean"),
+    # ("final", "mean"),
     # ("mean", "final"),
-    ("mean", "mean"),
+    # ("mean", "mean"),
     ("prompt_final", "mean"),
-    ("conversation_mean", "mean"),
+    # ("conversation_mean", "mean"),
     # ("prompt_eot", "mean"),
 ]
 
@@ -54,14 +54,14 @@ def load_json(filepath) -> dict:
         return json.load(f)
 
 
-def build_combo_tag(response_activation_type, persona_vector_type, multiturn=False, gpt_labels=False):
+def build_combo_tag(response_activation_type, persona_vector_type, multiturn=False, posthoc_labels=False):
     """Filenames/cache-keys for a combo. Deliberately terse (used in paths), as opposed to
     format_combo_label_lines below, which is for human-readable display."""
     combo_tag = f"{response_activation_type}_persona-{persona_vector_type}"
     if multiturn:
         combo_tag += "_multiturn"
-    if gpt_labels:
-        combo_tag += "_gptlabels"
+    if posthoc_labels:
+        combo_tag += "_posthoclabels"
     return combo_tag
 
 
@@ -69,9 +69,9 @@ def parse_combo_tag(combo_tag):
     """Inverse of build_combo_tag. response_activation_type may itself contain underscores
     (e.g. 'prompt_final', 'conversation_mean'), so it's recovered by splitting on the unique
     '_persona-' delimiter rather than by position."""
-    gpt_labels = combo_tag.endswith("_gptlabels")
-    if gpt_labels:
-        combo_tag = combo_tag[: -len("_gptlabels")]
+    posthoc_labels = combo_tag.endswith("_posthoclabels")
+    if posthoc_labels:
+        combo_tag = combo_tag[: -len("_posthoclabels")]
     multiturn = combo_tag.endswith("_multiturn")
     if multiturn:
         combo_tag = combo_tag[: -len("_multiturn")]
@@ -80,7 +80,7 @@ def parse_combo_tag(combo_tag):
         "response_activation_type": response_activation_type,
         "persona_vector_type": persona_vector_type,
         "multiturn": multiturn,
-        "gpt_labels": gpt_labels,
+        "posthoc_labels": posthoc_labels,
     }
 
 
@@ -92,10 +92,8 @@ def format_combo_label_lines(combo_tag):
         f"response activation: {parsed['response_activation_type']}",
         f"persona vector: {parsed['persona_vector_type']}",
     ]
-    if parsed["multiturn"]:
-        lines.append("multiturn")
-    if parsed["gpt_labels"]:
-        lines.append("gpt labels only")
+    if parsed["posthoc_labels"]:
+        lines.append("post-hoc labels only")
     return lines
 
 
@@ -106,8 +104,9 @@ class GraphEvaluator:
         device=None,
         response_activation_type="final",
         persona_vector_type="final",
+        persona_vectors_dir="../generation/persona_vectors",
         load_model=True,
-        gpt_labels_only=False,
+        posthoc_labels_only=False,
     ):
         """
         response_activation_type: which activation to extract from the model's
@@ -118,13 +117,18 @@ class GraphEvaluator:
         persona_vector_type: whether the stored persona vector loaded from disk is
             the mean-pooled '{trait}.pt' file (current format) or the legacy
             final-token '{trait}_final.pt' file (see persona_vector_path()).
+        persona_vectors_dir: directory the persona vector .pt files are loaded
+            from (see persona_vector_path()). Defaults to the current pipeline's
+            output dir, but e.g. generation/old_persona_vectors/ has the same
+            per-layer-stacked-tensor format for an older trait set.
         load_model: if False, skip loading the (slow) LM entirely. Only usable
             for replotting from cached scores (see --plot), since nothing
             that needs the model will work in this mode.
-        gpt_labels_only: if True, use the gpt-5-mini judge's score alone as the
-            ground truth trait level (see --gpt-labels), instead of averaging
+        posthoc_labels_only: if True, use the gpt-5-mini judge's score alone as the
+            ground truth trait level (see --posthoc-labels), instead of averaging
             it with the system prompt's intended level.
         """
+        self.persona_vectors_dir = Path(persona_vectors_dir)
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if load_model:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -137,7 +141,7 @@ class GraphEvaluator:
             self.num_layers = None
         self.response_activation_type = response_activation_type
         self.persona_vector_type = persona_vector_type
-        self.gpt_labels_only = gpt_labels_only
+        self.posthoc_labels_only = posthoc_labels_only
 
     def cosine_similarity(self, a, b):
         dot_product = torch.dot(a, b)
@@ -274,8 +278,8 @@ class GraphEvaluator:
         '{trait}.pt'. 'final' vectors are a legacy format (see CLAUDE.md) still saved as
         '{trait}_final.pt' for traits generated before that change."""
         if self.persona_vector_type == "mean":
-            return f"../generation/persona_vectors/{trait}.pt"
-        return f"../generation/persona_vectors/{trait}_{self.persona_vector_type}.pt"
+            return self.persona_vectors_dir / f"{trait}.pt"
+        return self.persona_vectors_dir / f"{trait}_{self.persona_vector_type}.pt"
 
     def collect_layer_scores(self, trait, metrics):
         responses_dict = load_json(f"responses/{trait}.json")
@@ -293,14 +297,14 @@ class GraphEvaluator:
             for entries in system_prompts.values():
                 for entry in entries:
                     # Ground truth trait level: either the gpt-5-mini judge's score of the
-                    # actual response alone (gpt_labels_only), or the average of that score
+                    # actual response alone (posthoc_labels_only), or the average of that score
                     # with the system prompt's intended level (both on a 0-10-ish scale).
                     # Falls back to the intended level alone if the response hasn't been
                     # relabeled yet.
                     gpt_score = entry.get("gpt_score")
                     if gpt_score is None:
                         ground_truth_level = level
-                    elif self.gpt_labels_only:
+                    elif self.posthoc_labels_only:
                         ground_truth_level = gpt_score
                     else:
                         ground_truth_level = (level + gpt_score) / 2
@@ -343,12 +347,12 @@ class GraphEvaluator:
                     turns = entry["turns"]
                     for turn_index, turn in enumerate(turns):
                         # Ground truth trait level for this turn: gpt_score, if the turn has
-                        # been relabeled (see relabel_responses.py --multiturn), is per-turn;
-                        # falls back to the system prompt's intended level, same as single-turn.
+                        # been relabeled (see relabel_responses.py), is per-turn; falls back to
+                        # the system prompt's intended level, same as single-turn.
                         gpt_score = turn.get("gpt_score")
                         if gpt_score is None:
                             ground_truth_level = level
-                        elif self.gpt_labels_only:
+                        elif self.posthoc_labels_only:
                             ground_truth_level = gpt_score
                         else:
                             ground_truth_level = (level + gpt_score) / 2
@@ -403,29 +407,12 @@ class GraphEvaluator:
         mse = float(np.mean((y - (slope * x + intercept)) ** 2))
         return slope, intercept, r_squared, mse
 
-    def level_variance_stats(self, levels, scores):
-        """Mean within-level variance (noise at a fixed trait level) and mean
-        difference between adjacent level means (signal from moving one level)."""
-        levels = np.array(levels)
-        scores = np.array(scores)
-
-        within_level_variances = []
-        level_means = []
-        for level in np.unique(levels):
-            level_scores = scores[levels == level]
-            within_level_variances.append(np.var(level_scores))
-            level_means.append(level_scores.mean())
-
-        mean_within_level_variance = float(np.mean(within_level_variances))
-        mean_adjacent_level_diff = float(np.mean(np.diff(level_means)))
-        return mean_within_level_variance, mean_adjacent_level_diff
-
     def plot_comparison(self, trait, metric, entries, results_dir):
         """One figure for (trait, metric): one panel per method (combo_tag) tested, each
         showing that method's single best (highest R²) layer's scatter + fit line. Panels are
         labeled with format_combo_label_lines' readable, colon-separated description of the
         method (one field per line) rather than the raw underscore/dash combo_tag, plus the
-        layer index and every normalized fit stat. `entries` is a list of
+        layer index and fit stats. `entries` is a list of
         {"combo_tag", "layer_idx", "result", "levels", "scores"} dicts, one per method."""
         plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
         plt.rcParams["font.family"] = "sans-serif"
@@ -434,8 +421,6 @@ class GraphEvaluator:
 
         n_cols = 2
         n_rows = -(-len(ranked) // n_cols)  # ceil division
-        # Extra row height vs. plot_trait's old figsize: title now has ~8 lines (combo label +
-        # layer + R² + every normalized stat) instead of 2.
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 6 * n_rows))
         axes = np.atleast_1d(axes).flatten()
 
@@ -448,13 +433,22 @@ class GraphEvaluator:
             x_fit = np.linspace(x.min(), x.max(), 100)
             y_fit = result["slope"] * x_fit + result["intercept"]
             ax.plot(x_fit, y_fit, "r--", linewidth=2)
+            mid_level = (x.min() + x.max()) / 2
+            mean_score = y.mean()
+            fit_at_mid = result["slope"] * mid_level + result["intercept"]
+            mean_fit_delta = mean_score - fit_at_mid
+            ax.axhline(mean_score, color="blue", alpha=0.5, label="mean score")
+            ax.axhline(
+                fit_at_mid, color="green", alpha=0.5,
+                label=f"fit value at level {mid_level:.2g}",
+            )
+            ax.legend(fontsize=8, loc="best")
 
             title_lines = format_combo_label_lines(entry["combo_tag"]) + [
                 f"layer: {entry['layer_idx']}",
                 f"R²: {result['r_squared']:.3f}",
-                f"normalized MSE: {result['normalized_mse']:.2e}",
-                f"normalized within-level variance: {result['normalized_within_level_variance']:.2e}",
-                f"normalized adjacent-level Δ: {result['normalized_adjacent_level_diff']:.2e}",
+                f"normalized MSE: {result['normalized_mse']:.4f}",
+                f"mean − fit@mid Δ: {mean_fit_delta:.3f}",
             ]
             ax.set_title("\n".join(title_lines), fontsize=10)
             ax.set_xlabel("Trait Level", fontsize=10)
@@ -472,6 +466,65 @@ class GraphEvaluator:
         plots_dir = Path(results_dir) / "evaluate_plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
         output_path = plots_dir / f"comparison_{trait}_{metric}.png"
+        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+    def plot_all_traits_summary(self, metric, entries_by_trait, results_dir):
+        """One figure with one subplot per trait (same grid layout as plot_comparison), each
+        contributing exactly one entry (its highest-R² combo, chosen by the caller): the full
+        raw scatter of all data points, the fitted regression line, and the fit line's value
+        at the min/mid/max trait level overlaid as larger dots. Each subplot's title shows
+        only the trait name, R², and normalized MSE (combo details like response activation
+        type / persona vector type are intentionally omitted)."""
+        plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
+        plt.rcParams["font.family"] = "sans-serif"
+
+        traits = sorted(entries_by_trait)
+        n_cols = 3
+        n_rows = -(-len(traits) // n_cols)  # ceil division
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows))
+        axes = np.atleast_1d(axes).flatten()
+
+        for i, (ax, trait) in enumerate(zip(axes, traits)):
+            entry = entries_by_trait[trait]
+            result = entry["result"]
+            x = np.array(entry["levels"])
+            y = np.array(entry["scores"])
+
+            ax.scatter(x, y, alpha=0.6, s=15, edgecolors="none", color="gray")
+            x_fit = np.linspace(x.min(), x.max(), 100)
+            y_fit = result["slope"] * x_fit + result["intercept"]
+            ax.plot(x_fit, y_fit, "r--", linewidth=2)
+
+            x_min, x_max = x.min(), x.max()
+            x_mid = (x_min + x_max) / 2
+            xs_summary = [x_min, x_mid, x_max]
+            ys_summary = [result["slope"] * xv + result["intercept"] for xv in xs_summary]
+            ax.scatter(
+                xs_summary, ys_summary, color="red", s=20,
+                edgecolors="none", zorder=5,
+            )
+
+            title_lines = [
+                r"$\bf{" + trait.title() + "}$",
+                f"R²: {result['r_squared']:.3f}",
+                f"normalized MSE: {result['normalized_mse']:.3f}",
+            ]
+            ax.set_title("\n".join(title_lines), fontsize=19)
+            if i >= len(traits) - n_cols:  # bottom row only
+                ax.set_xlabel("Trait Level", fontsize=15)
+            if i % n_cols == 0:  # left column only
+                ax.set_ylabel("Behavioral Score", fontsize=15)
+            ax.tick_params(labelsize=15)
+
+        for ax in axes[len(traits):]:
+            ax.axis("off")
+
+        fig.tight_layout()
+
+        plots_dir = Path(results_dir) / "evaluate_plots"
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        output_path = plots_dir / "all_traits_evaluation.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
@@ -500,17 +553,12 @@ class GraphEvaluator:
                 slope, intercept, r_squared, _raw_mse = self.fit_layer(
                     layer_levels[layer_idx], raw_scores
                 )
-                # MSE / within-var / adjacent-Δ are computed on normalized values so
-                # they're comparable across layers and metrics with different scales.
+                # MSE is computed on normalized values so it's comparable across layers and
+                # metrics with different scales.
                 _, _, _, normalized_mse = self.fit_layer(layer_levels[layer_idx], normalized_scores)
-                normalized_within_level_variance, normalized_adjacent_level_diff = self.level_variance_stats(
-                    layer_levels[layer_idx], normalized_scores
-                )
                 layer_results[str(layer_idx)] = {
                     "slope": slope, "intercept": intercept, "r_squared": r_squared,
                     "normalized_mse": normalized_mse,
-                    "normalized_within_level_variance": normalized_within_level_variance,
-                    "normalized_adjacent_level_diff": normalized_adjacent_level_diff,
                 }
                 if r_squared > best_r_squared:
                     best_layer, best_r_squared = layer_idx, r_squared
@@ -528,29 +576,47 @@ def main():
              "from cached scores (results/cache/) and the existing results.json.",
     )
     parser.add_argument(
-        "--gpt-labels", action="store_true",
+        "--posthoc-labels", action="store_true",
         help="Use the gpt-5-mini judge's score alone as the ground truth trait "
              "level, instead of averaging it with the system prompt's intended "
              "level.",
     )
     parser.add_argument(
-        "--multiturn", action="store_true",
-        help="Evaluate responses_multiturn/{trait}.json instead of responses/{trait}.json: "
-             "every turn (1st, 2nd, 3rd) of every conversation is scored separately, with "
-             "context up to and including that turn fed to the model, so each conversation "
+        "--singleturn", action="store_true",
+        help="Evaluate responses/{trait}.json instead of responses_multiturn/{trait}.json "
+             "(the default). The default evaluates responses_multiturn/{trait}.json: every "
+             "turn (1st, 2nd, 3rd) of every conversation is scored separately, with context "
+             "up to and including that turn fed to the model, so each conversation "
              "contributes 3 data points instead of 1.",
     )
+    parser.add_argument(
+        "--persona-vectors-dir", default="../generation/persona_vectors",
+        help="Directory to load persona vector .pt files from, and to discover the trait "
+             "list from (every '*.pt' file's stem, minus its trailing '_final'/'_mean' "
+             "suffix if present). Defaults to '../generation/persona_vectors' (the current "
+             "pipeline's output). Point this at generation/old_persona_vectors/ (or another "
+             "dir with the same per-layer-stacked-tensor format) to graph a different set of "
+             "persona vectors.",
+    )
+    parser.add_argument(
+        "--results-dir", default="results",
+        help="Directory to write results.json, cached per-layer scores (cache/), and plots "
+             "(evaluate_plots/) to -- and, under --plot, to read them back from. Defaults to "
+             "'results'.",
+    )
     args = parser.parse_args()
+    multiturn = not args.singleturn
 
-    results_dir = Path("results")
+    results_dir = Path(args.results_dir)
     results_path = results_dir / "results.json"
 
     if args.plot:
         all_results = load_json(results_path)
-        evaluator = GraphEvaluator(load_model=False)
+        evaluator = GraphEvaluator(load_model=False, persona_vectors_dir=args.persona_vectors_dir)
 
         traits_present = sorted({trait for combo_results in all_results.values() for trait in combo_results})
-        for trait in tqdm(traits_present, desc="plotting"):
+        entries_by_metric_by_trait = {}
+        for trait in tqdm(traits_present, desc="loading"):
             entries_by_metric = {}
             for combo_tag, combo_results in all_results.items():
                 if trait not in combo_results:
@@ -565,19 +631,26 @@ def main():
                         "levels": layer_levels[best_layer],
                         "scores": layer_scores[metric][best_layer],
                     })
+            # Collapse each trait down to its single best (highest R²) combo, since the
+            # combined all-traits plot doesn't distinguish response activation / persona
+            # vector type -- only R² is shown.
             for metric, entries in entries_by_metric.items():
-                evaluator.plot_comparison(trait, metric, entries, results_dir)
+                best_entry = max(entries, key=lambda e: e["result"]["r_squared"])
+                entries_by_metric_by_trait.setdefault(metric, {})[trait] = best_entry
+
+        for metric, entries_by_trait in entries_by_metric_by_trait.items():
+            evaluator.plot_all_traits_summary(metric, entries_by_trait, results_dir)
         return
 
     login(token=os.environ.get("HF_TOKEN"))
     torch.manual_seed(42)
 
-    persona_vectors_dir = Path("../generation/persona_vectors")
+    persona_vectors_dir = Path(args.persona_vectors_dir)
     traits = sorted(set(
         p.stem.rsplit("_", 2)[0]
         for p in persona_vectors_dir.glob("*.pt")
     ))
-    if args.multiturn:
+    if multiturn:
         traits = [t for t in traits if Path(f"responses_multiturn/{t}.json").exists()]
     else:
         traits = [
@@ -593,7 +666,7 @@ def main():
     #       model's own (system prompt + question + response) context.
     #   persona_vector_type: "final" or "mean" stored persona vector file to load
     #       (../generation/persona_vectors/{trait}_{persona_vector_type}.pt).
-    evaluator = GraphEvaluator(gpt_labels_only=args.gpt_labels)
+    evaluator = GraphEvaluator(posthoc_labels_only=args.posthoc_labels, persona_vectors_dir=persona_vectors_dir)
 
     all_results = {}
     for trait in traits:
@@ -602,14 +675,14 @@ def main():
         for response_activation_type, persona_vector_type in tqdm(COMBOS, desc=trait):
             combo_tag = build_combo_tag(
                 response_activation_type, persona_vector_type,
-                multiturn=args.multiturn, gpt_labels=args.gpt_labels,
+                multiturn=multiturn, posthoc_labels=args.posthoc_labels,
             )
             evaluator.response_activation_type = response_activation_type
             evaluator.persona_vector_type = persona_vector_type
 
             print(f"\n=== {trait} [{combo_tag}] ===")
             metric_results, layer_levels, layer_scores = evaluator.collect_and_fit(
-                trait, results_dir, combo_tag, METRICS, multiturn=args.multiturn
+                trait, results_dir, combo_tag, METRICS, multiturn=multiturn
             )
             all_results.setdefault(combo_tag, {})[trait] = metric_results
 
@@ -618,9 +691,7 @@ def main():
                 best = result["layers"][str(best_layer)]
                 print(
                     f"{trait} [{metric}]: best layer {best_layer}, R²={best['r_squared']:.4f}, "
-                    f"normalized MSE={best['normalized_mse']:.4f}, "
-                    f"normalized within-level variance={best['normalized_within_level_variance']:.4f}, "
-                    f"normalized adjacent-level Δ={best['normalized_adjacent_level_diff']:.4f}"
+                    f"normalized MSE={best['normalized_mse']:.4f}"
                 )
                 entries_by_metric[metric].append({
                     "combo_tag": combo_tag,
