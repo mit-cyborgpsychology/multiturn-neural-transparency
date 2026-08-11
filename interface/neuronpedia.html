@@ -1323,7 +1323,7 @@ function lDrawTracker(){
   const viewTop=Math.max(0, th-scrollH);
   svg.attr("viewBox",`0 ${viewTop} ${tw} ${scrollH}`).attr("preserveAspectRatio","xMidYMin meet")
     .style("width","100%").attr("height",scrollH);
-  const midX=tw/2, xs=tw*.32;
+  const midX=tw/2, xs=tw*.22;
   const lc="#22c55e",rc="#ef4444";
 
   const defs=svg.append('defs');
