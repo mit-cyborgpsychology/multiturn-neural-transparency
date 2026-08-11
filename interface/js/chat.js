@@ -1258,7 +1258,13 @@ async function checkPersona(systemPrompt, messages, silent = false, userMessageI
         // Store persona scores for this turn — gradient will be applied when the assistant message is added
         window._pendingGradientScores = data.content;
 
-        if (!silent) {
+        // The final turn's scores must stay off the sunburst/drift panel until the user reaches
+        // the prediction-quiz results — rendering them here would show the answer they're about
+        // to be asked to predict. showPredictResults() renders this turn once that's safe.
+        const maxTurns = window.MAX_CHAT_TURNS || 10;
+        const isFinalTurn = chatTurnNum >= maxTurns;
+
+        if (!silent && !isFinalTurn) {
             // Render to config panel and (if visible) chat panel
             renderPersonaChart(data.content);
             renderPersonaChart(data.content, 'chatPersonaChart');
@@ -1547,7 +1553,8 @@ function applyHighlights(swing) {
     if (modes.includes(2)) applyDriftDotHighlight(swing);
     if (modes.includes(3)) applySunburstHighlight(swing);
 
-    // Show "Behavioral Swing" banner in the chat area
+    // Show "Behavioral Swing" banner in the chat area. (checkPersona() never calls this for the
+    // final turn in the first place — that turn's scores stay hidden until the results page.)
     $('.behavioral-swing-banner').remove();
     const traitName = swing.traitKey.charAt(0).toUpperCase() + swing.traitKey.slice(1);
     const banner = $(`<div class="behavioral-swing-banner">Behavioral Swing: ${traitName}</div>`);
@@ -2132,6 +2139,17 @@ function showPredictResults() {
 
     // Hide the chat log on the results page — only the score/results content should show.
     $('#messagesContainer .message').hide();
+
+    // Now that the user has locked in their prediction, it's safe to reveal the final turn's
+    // actual scores on the sunburst/drift panel — checkPersona() withheld them until now.
+    const finalTurnEntry = window.personaHistory && window.personaHistory[window.personaHistory.length - 1];
+    if (finalTurnEntry && finalTurnEntry.scores) {
+        renderPersonaChart(finalTurnEntry.scores);
+        renderPersonaChart(finalTurnEntry.scores, 'chatPersonaChart');
+        if (window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+            renderTraitDrift(window.activeDriftTrait);
+        }
+    }
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
