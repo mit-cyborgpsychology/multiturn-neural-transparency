@@ -1,52 +1,40 @@
 # MIT Media Lab Chat Study
 
-Research study interface for conducting chat-based experiments using Claude AI, designed for Vercel serverless deployment.
+A streamlined research study interface for conducting chat-based experiments using Claude AI, designed exclusively for Vercel serverless deployment with zero configuration required for participants.
 
-## Quick Start
+## 🚀 Quick Start
 
-### Demo Mode
+### Deploy to Vercel (One-Click Setup)
 
-Test all features without running a full study:
+1. **Fork or clone this repository**
+2. **Connect to Vercel**:
+   - Go to [vercel.com](https://vercel.com)
+   - Import your repository
+   - Deploy with one click
 
-```
-http://localhost:3000?demo=true
-```
+3. **Set up environment variables**:
+   - In Vercel dashboard: Settings → Environment Variables
+   - Add: `ANTHROPIC_API_KEY` = your Anthropic API key
+   - Redeploy the project
 
-Demo mode skips consent page, surveys, and timers. Perfect for testing and demos. See [DEMO_MODE.md](DEMO_MODE.md) for details.
+4. **Access your study**: Your study will be live at `https://your-project.vercel.app`
 
-### Deploy to Vercel
-
-1. Fork or clone this repository
-2. Go to [vercel.com](https://vercel.com) and import your repository
-3. Deploy
-
-Your study will be live at `https://your-project.vercel.app`
+**That's it!** No additional configuration needed - participants can start using the chat interface immediately.
 
 ### Local Development
 
-**Option 1: Vercel CLI**
-```bash
-npm i -g vercel
-cd interface
-vercel dev
-```
-Access at: `http://localhost:3000`
-
-**Option 2: Python Server (Testing)**
-```bash
-cd interface
-python -m http.server 8000
-```
-Access at: `http://localhost:8000`
-
-Or with Python 2:
-```bash
-python -m SimpleHTTPServer 8000
-```
+1. **Install Vercel CLI**: `npm i -g vercel`
+2. **Clone and setup**: 
+   ```bash
+   git clone <your-repo>
+   cd mech-chat-iui
+   vercel dev
+   ```
+3. **Set environment variable**: `vercel env add ANTHROPIC_API_KEY`
+4. **Access locally**: `http://localhost:3000`
 
 ## 📋 Features
 
-- **🎬 Demo Mode**: Instant feature exploration with `?demo=true` - skip surveys, see everything immediately
 - **Zero Configuration**: Participants can start chatting immediately - no API key setup required
 - **Serverless Architecture**: Deployed on Vercel with automatic scaling
 - **Secure API Handling**: API keys stored server-side, never exposed to frontend
@@ -96,17 +84,18 @@ User Input → Frontend → /api/claude → Anthropic API → Response → Front
 │   └── ml_logo.png          # MIT Media Lab logo
 ├── vercel.json              # Vercel configuration
 ├── package.json             # Dependencies
+└── VERCEL_DEPLOYMENT.md     # Detailed deployment guide
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-### API Endpoints
-API configuration is in the `/api` directory. Environment variables are handled by the endpoints.
+### Environment Variables
+- `ANTHROPIC_API_KEY`: Your Anthropic API key (required)
 
-### Deployment
-The application is designed for Vercel deployment:
-- **Production**: Uses serverless functions
-- **Local Development**: Uses Vercel CLI or Python server
+### API Configuration
+The application is designed exclusively for Vercel deployment:
+- **Vercel Production**: Uses serverless function (API key handled server-side)
+- **Local Development**: Uses Vercel CLI for development environment
 
 ### Customization
 - **Study Title**: Edit `#experiment-title` in `index.html`
@@ -128,29 +117,10 @@ The application is designed for Vercel deployment:
 4. Set environment variables as needed
 
 ### Testing
-
-**🎬 Use Demo Mode for rapid testing:**
-```bash
-# Local testing
-http://localhost:3000?demo=true
-
-# Production testing
-https://your-deployment.vercel.app/?demo=true
-```
-
-**Standard Testing:**
 - Test locally with `vercel dev`
 - Test production deployment
 - Verify API functionality
 - Check mobile responsiveness
-
-**Demo Mode Benefits:**
-- Test complete chat flow in 2-3 minutes
-- Skip 10-minute timer and surveys
-- See all visualization features immediately
-- Perfect for iterative development
-
-**→ See [DEMO_MODE.md](DEMO_MODE.md) for testing checklist**
 
 ## 👥 User Experience
 
@@ -161,7 +131,6 @@ https://your-deployment.vercel.app/?demo=true
 - **Mobile Friendly**: Works seamlessly on all devices
 
 ### For Researchers
-- **🎬 Demo Mode**: Test and showcase study with `?demo=true` - perfect for stakeholder demos
 - **Easy Deployment**: One-click setup on Vercel
 - **Secure by Default**: API keys handled server-side automatically
 - **Scalable**: Handles any number of participants automatically
@@ -232,22 +201,33 @@ https://your-deployment.vercel.app/?demo=true
 
 ### Common Issues
 
+#### API Not Working
 - Check environment variables in Vercel dashboard
-- Verify all static files are loading (no 404 errors)
+- Verify `ANTHROPIC_API_KEY` is set correctly
 - Check function logs in Vercel dashboard
-- Redeploy after setting environment variables
+- Ensure you've redeployed after setting environment variables
+
+#### Chat Interface Not Loading
 - Check browser console for JavaScript errors
+- Verify all static files are loading (no 404 errors)
+- Ensure Vercel deployment completed successfully
+
+#### Build Failures
+- Check `package.json` dependencies
+- Verify `vercel.json` configuration
+- Review build logs in Vercel dashboard
 
 ### Getting Help
-
+- Check [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) for detailed guide
+- Review Vercel documentation
 - Check browser console for errors
-- Review Vercel function logs
-- See [Vercel documentation](https://vercel.com/docs)
+- Contact Vercel support for platform issues
 
-## Documentation
+## 📚 Documentation
 
-- [DEMO_MODE.md](DEMO_MODE.md) - Demo mode guide
-- [SUNBURST_VISUALIZATION.md](SUNBURST_VISUALIZATION.md) - Persona visualization system
+- [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) - Detailed deployment guide
+- [API_KEY_SETUP.md](API_KEY_SETUP.md) - API key configuration
+- [SECURE_DEPLOYMENT.md](SECURE_DEPLOYMENT.md) - Security best practices
 
 ## 🤝 Contributing
 
@@ -267,19 +247,4 @@ This project is developed for research at the MIT Media Lab. For questions about
 
 ---
 
-## 🚀 Get Started
-
 **Ready to deploy?** Follow the [Vercel Deployment Guide](VERCEL_DEPLOYMENT.md) to get started!
-
-**Want to test first?** Try Demo Mode:
-```
-# Add ?demo=true to any deployment
-https://your-deployment.vercel.app/?demo=true
-
-# Or locally
-http://localhost:3000?demo=true
-```
-
-**📖 Full Demo Mode Documentation:** [DEMO_MODE.md](DEMO_MODE.md)
-
----

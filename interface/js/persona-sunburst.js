@@ -9,11 +9,11 @@
 //        empathetic: 0.803,   // Active trait (0-1 range)
 //        unempathetic: 0      // Inactive trait (always 0)
 //      },
-//      encouraging: {
-//        encouraging: 0.672,  // Active trait
-//        discouraging: 0      // Inactive trait (always 0)
+//      erudite: {
+//        sophisticated: 0.672, // Active trait
+//        simplistic: 0         // Inactive trait (always 0)
 //      },
-//      toxicity: {
+//      toxic: {
 //        toxic: 0,            // Inactive trait (always 0)
 //        respectful: 0.895    // Active trait
 //      }
@@ -37,8 +37,9 @@
 //    }
 //
 // TRAIT CLASSIFICATION:
-// - Positive traits (empathetic, encouraging, social, honest, etc.) → Green category
-// - Negative traits (toxic, sycophantic, hallucinatory, etc.) → Red category
+// - Positive/Binary traits (empathetic, honest, respectful, romantic) → Green category
+// - Negative/Binary traits (toxic, sycophantic, unempathetic, platonic) → Red category
+// - Neutral traits (sophisticated, simplistic, robotic, human-like) → Gray category
 // - Values range from 0-1 (inactive traits marked with -1.0 are filtered out)
 //
 // VISUALIZATION DETAILS:
@@ -50,6 +51,11 @@
 // - Interactive: Smooth hover transitions and click handlers
 // - Animated: Fade-in animation on load
 // - Clean design: "Hover to explore" hint in center guides users
+
+// Default category processing order for hierarchical-format data (see transformHierarchicalData),
+// used whenever a caller doesn't pass options.categoryOrder. Matches the persona-vector API's own
+// response key order, made explicit here so layout no longer silently depends on API response order.
+const DEFAULT_CATEGORY_ORDER = ['empathy', 'erudite', 'robotic', 'romantic', 'sycophantic', 'toxic'];
 
 /**
  * Creates a beautiful two-ring sunburst chart for persona vector data
@@ -65,6 +71,11 @@
  * @param {number} [options.growthMultiplier=1.25] - Multiplier for bar extension (1.25 = bars grow 1.25x faster)
  * @param {boolean} [options.showLabels=true] - Whether to show perpendicular labels
  * @param {boolean} [options.oppositeLayout=false] - false = mirrored with neutral category (default), true = opposite traits π radians apart
+ * @param {string[]} [options.categoryOrder=DEFAULT_CATEGORY_ORDER] - Explicit category processing order
+ *   (raw keys as in the input data, e.g. ['sycophantic','toxic','empathy','romantic','erudite','robotic']).
+ *   Categories named here are placed first, in the order given; any category present in the data but not
+ *   listed is appended after, in its natural key order. Only affects hierarchical-format input
+ *   (see transformHierarchicalData). Default: DEFAULT_CATEGORY_ORDER (top of this file).
  * @returns {Function} Cleanup function to remove tooltip
  */
 function createPersonaSunburst(personaData, containerId, options = {}) {
@@ -78,7 +89,12 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         showPercentages: options.showPercentages !== false,
         growthMultiplier: options.growthMultiplier !== undefined ? options.growthMultiplier : 1.25,
         showLabels: options.showLabels !== false,
-        oppositeLayout: options.oppositeLayout === true // default false = mirrored (shows neutral), true = opposite
+        oppositeLayout: options.oppositeLayout === true, // default false = mirrored (shows neutral), true = opposite
+        categoryOrder: Array.isArray(options.categoryOrder) ? options.categoryOrder : null,
+        onTraitClick: options.onTraitClick || null,
+        // Chart window is radiusDivisor × radius. Lower it to shrink the padding between the
+        // drawing and its container without touching the container itself. Default 2.5.
+        radiusDivisor: options.radiusDivisor || 2.5
     };
 
     // Clear any existing SVG in the container
@@ -90,8 +106,9 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
     // Set up dimensions
     const width = config.width;
     const height = config.height;
-    // Use more of the available space - only leave small margin for labels
-    const radius = Math.min(width, height) / 2 - 20;
+    // Radius is min(w,h)/radiusDivisor, so the chart window is exactly radiusDivisor x the
+    // radius: at the 2.5 default that's a 0.25*radius margin on each side.
+    const radius = Math.min(width, height) / config.radiusDivisor;
 
     // Create SVG container that fills its container
     const svg = d3.select(`#${containerId}`)
@@ -102,10 +119,9 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .attr('preserveAspectRatio', 'xMidYMid meet')
         .attr('style', 'max-width: 100%; max-height: 100%;');
 
-    // Create a group for the sunburst, positioned for visual centering
-    // Account for labels extending outward and visual weight distribution
+    // Create a group for the sunburst, centered in the viewBox
     const g = svg.append('g')
-        .attr('transform', `translate(${width / 2},${height * 0.44})`);
+        .attr('transform', `translate(${width / 2},${height / 2})`);
 
     // Define ring radii with better proportions
     // Smaller inner circles give bars more room to grow and show activation differences
@@ -135,6 +151,28 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .style('box-shadow', '0 4px 12px rgba(0, 0, 0, 0.3)')
         .style('z-index', '10000')
         .style('max-width', '250px');
+
+    // Draw activation reference rings (50% and 100%)
+    // Rings must match the actual bar extension formula: middleRadius + value * growthMultiplier * (maxOuterRadius - middleRadius)
+    const growthMult = config.growthMultiplier !== undefined ? config.growthMultiplier : 1.25;
+    const fullActivationR = middleRadius + 1.0 * growthMult * (maxOuterRadius - middleRadius);
+    const halfActivationR = middleRadius + 0.5 * growthMult * (maxOuterRadius - middleRadius);
+    [{r: halfActivationR, label: '50%'}, {r: fullActivationR, label: '100%'}].forEach(ring => {
+        g.append('circle')
+            .attr('r', ring.r)
+            .attr('fill', 'none')
+            .attr('stroke', '#999')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '4,5')
+            .attr('opacity', 0.35);
+        g.append('text')
+            .attr('x', 5)
+            .attr('y', -ring.r - 4)
+            .attr('fill', '#999')
+            .attr('font-size', Math.max(8, radius * 0.022))
+            .attr('font-weight', 600)
+            .text(ring.label);
+    });
 
     // Draw category arcs (inner ring)
     categories.forEach((category, catIndex) => {
@@ -224,7 +262,7 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
             category.items.forEach((item, index) => {
                 const itemStartAngle = category.startAngle + index * itemAngle;
                 const itemEndAngle = itemStartAngle + itemAngle;
-                
+
                 drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOuterRadius, radius, config, category, tooltip, index);
             });
         }
@@ -237,48 +275,7 @@ function createPersonaSunburst(personaData, containerId, options = {}) {
         .attr('stroke', '#ccc')
         .attr('stroke-width', Math.max(3, radius * 0.01));
 
-    // Add avatar image in center if available
-    const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-    
-    if (selectedAvatar) {
-        // Create a circular clipping path for the avatar (relative to g's coordinate system)
-        const clipId = `avatar-clip-${containerId}`;
-        svg.append('defs')
-            .append('clipPath')
-            .attr('id', clipId)
-            .append('circle')
-            .attr('cx', 0)
-            .attr('cy', 0)
-            .attr('r', innerRadius * 0.85);
-        
-        // Add the avatar image (positioned relative to g's center which is at 0,0)
-        g.append('image')
-            .attr('href', selectedAvatar)
-            .attr('x', -innerRadius * 0.85)
-            .attr('y', -innerRadius * 0.85)
-            .attr('width', innerRadius * 1.7)
-            .attr('height', innerRadius * 1.7)
-            .attr('clip-path', `url(#${clipId})`)
-            .attr('preserveAspectRatio', 'xMidYMid slice')
-            .style('pointer-events', 'none')
-            .attr('transform', `translate(0, 0)`);
-    } else {
-        // Fallback to text if no avatar is selected
-        g.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '-0.5em')
-            .style('font-size', `${Math.max(16, radius * 0.045)}px`)
-            .style('font-weight', 'bold')
-            .style('fill', '#333')
-            .text(config.centerLabel);
 
-        g.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '1.2em')
-            .style('font-size', `${Math.max(14, radius * 0.038)}px`)
-            .style('fill', '#666')
-            .text(config.centerSubLabel);
-    }
 
     // Animate on load
     if (config.animate) {
@@ -334,6 +331,22 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
     
     const fillColor = d3.hsl(baseHSL.h, baseHSL.s, lightness);
     
+    // Transparent full-band hit area, drawn under the visible wedge. A trait sitting at 0%
+    // has extension 0, so its wedge has no thickness and nothing to click — this keeps every
+    // trait selectable. Tagged .trait-hit so the opposite-trait highlight selections below
+    // skip it; they'd otherwise stroke this invisible path and make it appear.
+    g.append('path')
+        .attr('class', 'trait-hit')
+        .attr('d', d3.arc()
+            .innerRadius(middleRadius)
+            .outerRadius(maxOuterRadius)
+            .startAngle(itemStartAngle)
+            .endAngle(itemEndAngle)
+        )
+        .attr('fill', 'transparent')
+        .attr('data-trait-name', item.name)
+        .style('cursor', 'pointer');
+
     // Item arc
     const itemArc = g.append('path')
         .attr('d', d3.arc()
@@ -356,6 +369,15 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
     
     // Add hover effects to items with enhanced visual feedback
     itemArc.on('mouseenter', function(event) {
+        // Log hover (throttled: at most once per 2s per trait)
+        if (typeof window.logInteraction === 'function') {
+            const now = Date.now();
+            window._lastHoverLog = window._lastHoverLog || {};
+            if (!window._lastHoverLog[item.name] || now - window._lastHoverLog[item.name] > 2000) {
+                window._lastHoverLog[item.name] = now;
+                window.logInteraction('trait_hover', { trait: item.name, activation: (item.value * 100).toFixed(0) + '%' });
+            }
+        }
         d3.select(this)
             .transition()
             .duration(200)
@@ -365,13 +387,13 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
         
         // Highlight the opposite trait if it exists
         if (item.oppositeTrait) {
-            g.selectAll('path[data-trait-name]')
+            g.selectAll('path[data-trait-name]:not(.trait-hit)')
                 .filter(function() {
                     return d3.select(this).attr('data-trait-name') === item.oppositeTrait;
                 })
                 .transition()
                 .duration(200)
-                .attr('stroke', '#2196F3')
+                .attr('stroke', '#374151')
                 .attr('stroke-width', 4)
                 .style('opacity', 0.5);
         }
@@ -401,7 +423,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             .style('filter', 'none');
         
         // Reset ALL item arcs to white stroke (clears any lingering highlights)
-        g.selectAll('path[data-trait-name]')
+        g.selectAll('path[data-trait-name]:not(.trait-hit)')
             .transition()
             .duration(200)
             .attr('stroke', 'white')
@@ -413,7 +435,12 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             .style('opacity', 0);
     })
     .on('click', function() {
-        // Click handler for future interactivity
+        if (typeof window.logInteraction === 'function') {
+            window.logInteraction('trait_click', { trait: item.name, activation: (item.value * 100).toFixed(0) + '%' });
+        }
+        if (config.onTraitClick) {
+            config.onTraitClick(item.originalTrait, item.oppositeTrait);
+        }
     });
     
     // Add label for this trait (if enabled)
@@ -443,6 +470,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
         // Create text element with trait name and activation value
         const labelGroup = g.append('g')
             .attr('transform', `translate(${labelX}, ${labelY}) rotate(${rotation})`)
+            .attr('data-trait-name', item.name)
             .style('cursor', 'pointer')
             .style('pointer-events', 'all'); // Enable pointer events for hover
         
@@ -478,13 +506,13 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             
             // Highlight the opposite trait if it exists
             if (item.oppositeTrait) {
-                g.selectAll('path[data-trait-name]')
+                g.selectAll('path[data-trait-name]:not(.trait-hit)')
                     .filter(function() {
                         return d3.select(this).attr('data-trait-name') === item.oppositeTrait;
                     })
                     .transition()
                     .duration(200)
-                    .attr('stroke', '#2196F3')
+                    .attr('stroke', '#374151')
                     .attr('stroke-width', 4)
                     .style('opacity', 0.5);
             }
@@ -498,7 +526,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
             const activationPercent = (item.value * 100).toFixed(0);
             const definition = getTraitDefinition(item.name);
             const oppositeTraitInfo = item.oppositeTrait ? 
-                `<br/><span style="opacity: 0.8;">Sister trait: ${item.oppositeTrait}</span>` : '';
+                `<br/><span style="opacity: 0.8;">Opposite trait: ${item.oppositeTrait}</span>` : '';
             
             tooltip.html(`
                 <strong style="font-size: 16px;">${item.name}</strong><br/>
@@ -515,7 +543,7 @@ function drawItemArc(g, item, itemStartAngle, itemEndAngle, middleRadius, maxOut
                 .style('filter', 'none');
             
             // Reset ALL item arcs to white stroke (clears any lingering highlights)
-            g.selectAll('path[data-trait-name]')
+            g.selectAll('path[data-trait-name]:not(.trait-hit)')
                 .transition()
                 .duration(200)
                 .attr('stroke', 'white')
@@ -659,11 +687,26 @@ function isHierarchicalFormat(data) {
  */
 function transformHierarchicalData(hierarchicalData, config = {}) {
     const useOppositeLayout = config.oppositeLayout === true; // default false (mirrored with neutral)
-    
+
+    // Category processing order: config.categoryOrder wins if a caller supplies one; otherwise
+    // DEFAULT_CATEGORY_ORDER applies (making the order explicit/deterministic app-wide instead
+    // of silently depending on whatever key order the persona-vector API happens to return).
+    // Any category present in the data but not named in the chosen order list is appended
+    // afterward in its natural key order, so unrecognized/future categories never get dropped.
+    const activeOrder = (Array.isArray(config.categoryOrder) && config.categoryOrder.length)
+        ? config.categoryOrder
+        : DEFAULT_CATEGORY_ORDER;
+    let categoryNames = Object.keys(hierarchicalData);
+    const known = new Set(categoryNames);
+    const ordered = activeOrder.filter(name => known.has(name));
+    const remaining = categoryNames.filter(name => !ordered.includes(name));
+    categoryNames = [...ordered, ...remaining];
+
     const traitPairs = [];
-    
+
     // Collect trait pairs with their complementary traits
-    for (const [categoryName, traits] of Object.entries(hierarchicalData)) {
+    for (const categoryName of categoryNames) {
+        const traits = hierarchicalData[categoryName];
         const traitEntries = Object.entries(traits);
         
         if (traitEntries.length !== 2) {
@@ -724,10 +767,10 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             // Neutral traits are treated as positive in this mode
             const trait1IsPositive = pair.trait1.classification !== 'negative';
             const trait2IsPositive = pair.trait2.classification !== 'negative';
-            
+
             const positiveTrait = trait1IsPositive ? pair.trait1 : pair.trait2;
             const negativeTrait = !trait1IsPositive ? pair.trait1 : pair.trait2;
-            
+
             // Positive trait: evenly distributed on right side (0° to 180°)
             const positiveAngle = angleStep * (index + 0.5);
             
@@ -777,7 +820,7 @@ function transformHierarchicalData(hierarchicalData, config = {}) {
             const addItem = (trait, oppositeTrait, targetArray, classification, angle) => {
                 const isPositive = classification === 'positive';
                 const isNeutral = classification === 'neutral';
-                
+
                 targetArray.push({
                     name: trait.name,
                     value: trait.value,
@@ -1014,60 +1057,98 @@ function detectTraitPairs(personaData) {
  */
 function classifyTrait(traitName) {
     const trait = traitName.toLowerCase();
-    
-    // Neutral traits (funny/serious, casual/formal)
-    const neutralTraits = ['funny', 'serious', 'casual', 'formal'];
+
+    // Neutral traits (erudite, robotic — neither end is inherently good/bad)
+    const neutralTraits = ['sophisticated', 'simplistic', 'erudite', 'robotic', 'human-like'];
     if (neutralTraits.some(nt => trait.includes(nt))) {
         return 'neutral';
     }
-    
+
     // Negative trait prefixes (must be at start of word)
-    const negativePrefixes = ['un', 'dis', 'anti', 'in'];
-    
+    const negativePrefixes = ['un'];
+
     // Negative trait indicators (can appear anywhere)
     const negativeIndicators = [
         'toxic', 'harmful', 'rude', 'aggressive', 'hostile',
-        'sycophant', 'deceptive', 'dishonest', 'fake',
-        'hallucinat', 'inaccurate', 'wrong', 'false',
-        'boring', 'dull', 'cold', 'unfriendly'
+        'sycophan', 'deceptive', 'dishonest', 'fake',
+        'romantic'
     ];
-    
+
     // Positive trait indicators (contains)
     const positiveIndicators = [
         'empath', 'kind', 'caring', 'warm', 'friendly',
-        'encourag', 'support', 'help', 'positive',
-        'social', 'outgoing', 'engaging',
         'honest', 'truthful', 'genuine', 'authentic',
-        'humorous', 'witty', 'playful',
-        'accurate', 'correct', 'precise', 'factual',
         'respectful', 'polite', 'courteous',
-        'creative', 'innovative', 'original',
-        'relaxed', 'easy'
+        'platonic'
     ];
-    
+
     // Check for negative prefixes (must be at start)
     for (const prefix of negativePrefixes) {
         if (trait.startsWith(prefix)) {
             return 'negative';
         }
     }
-    
+
     // Check for negative indicators (can be anywhere)
     for (const indicator of negativeIndicators) {
         if (trait.includes(indicator)) {
             return 'negative';
         }
     }
-    
+
     // Check for positive indicators
     for (const indicator of positiveIndicators) {
         if (trait.includes(indicator)) {
             return 'positive';
         }
     }
-    
+
     // Default to positive if no clear indicators
     return 'positive';
+}
+
+// ─── Drift-axis pole ordering ────────────────────────────────────────────────
+// Shared by the landing hero tracker (index.html) and the study/demo drift panel
+// (chat.js) so the two can't disagree. Poles are ordered by polarity — the negative
+// (red) trait on the left, the positive (green) on the right — using the same
+// classifyTrait() that colors the sunburst above.
+
+const DRIFT_POLE_RANK = { negative: 0, neutral: 1, positive: 2 };
+
+// Indexed by DRIFT_POLE_RANK — the category-ring hexes used elsewhere in this file
+const DRIFT_POLE_COLORS = ['#F44336', '#9E9E9E', '#4CAF50'];
+
+// Neutral pairs have no red/green end, so polarity can't order them — pin them
+// explicitly as [left, right] rather than letting API key order decide.
+const NEUTRAL_POLE_ORDER = {
+    erudite: ['simplistic', 'sophisticated'],
+    robotic: ['robotic', 'human-like'],
+};
+
+function driftPoleRank(traitName) {
+    const rank = DRIFT_POLE_RANK[classifyTrait(traitName)];
+    return rank === undefined ? DRIFT_POLE_RANK.neutral : rank;
+}
+
+function driftPoleColor(traitName) {
+    return DRIFT_POLE_COLORS[driftPoleRank(traitName)];
+}
+
+/**
+ * Returns [leftTrait, rightTrait] for a category's trait pair, or null if it isn't a pair
+ * @param {string} categoryKey - API category key (e.g. 'empathy')
+ * @param {Object} traits - That category's { traitName: value } object
+ */
+function getDriftPoles(categoryKey, traits) {
+    if (!traits) return null;
+    const keys = Object.keys(traits);
+    if (keys.length < 2) return null;
+
+    const pinned = NEUTRAL_POLE_ORDER[categoryKey];
+    if (pinned && pinned.every(t => keys.includes(t))) return pinned.slice();
+
+    const [a, b] = keys;
+    return driftPoleRank(b) < driftPoleRank(a) ? [b, a] : [a, b];
 }
 
 /**
@@ -1149,7 +1230,8 @@ function formatTraitName(name) {
         .replace(/-/g, ' ')
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+        .join(' ')
+        .replace(/Human Like/g, 'Human-Like');
 }
 
 /**
@@ -1161,56 +1243,26 @@ function getTraitDefinition(traitName) {
     const trait = traitName.toLowerCase().replace(/\s+/g, '');
     
     const definitions = {
-        'empathetic': 'Understanding and sharing the feelings of others',
+        'empathetic': 'Understanding and sharing the feelings of another person',
         'unempathetic': 'Lacking understanding or concern for others\' feelings',
-        'empathy': 'Understanding and sharing the feelings of others',
-        
-        'warm': 'Friendly, kind, and affectionate in interactions',
-        'cold': 'Distant, unfriendly, or emotionally detached',
-        'warmth': 'Friendly, kind, and affectionate in interactions',
-        
-        'supportive': 'Providing encouragement and help to others',
-        'unsupportive': 'Lacking encouragement or help for others',
-        'supportiveness': 'Providing encouragement and help to others',
-        
-        'encouraging': 'Inspiring confidence and hope in others',
-        'discouraging': 'Causing loss of confidence or hope',
-        
-        'social': 'Enjoying and seeking interaction with others',
-        'unsocial': 'Avoiding or disinterested in social interaction',
-        'sociality': 'Enjoying and seeking interaction with others',
-        
-        'humorous': 'Using wit and jokes to entertain',
-        'humorless': 'Lacking in humor or playfulness',
-        'humor': 'Using wit and jokes to entertain',
-        
-        'toxic': 'Harmful, offensive, or disrespectful behavior',
-        'respectful': 'Showing consideration and courtesy',
-        'toxicity': 'Harmful, offensive, or disrespectful behavior',
-        
-        'sycophantic': 'Excessive flattery to gain favor',
-        'genuine': 'Authentic and sincere in interactions',
-        'sycophancy': 'Excessive flattery to gain favor',
-        
-        'deceptive': 'Deliberately misleading or dishonest',
-        'honest': 'Truthful and straightforward',
-        'deceptiveness': 'Deliberately misleading or dishonest',
-        
-        'hallucinatory': 'Generating false information presented as fact',
-        'factual': 'Providing accurate and verifiable information',
-        'hallucination': 'Generating false information presented as fact',
-        
-        'casual': 'Relaxed and informal in approach',
-        'formal': 'Following proper conventions and structure',
-        
-        'serious': 'Thoughtful and earnest in manner',
-        'playful': 'Light-hearted and fun-loving',
-        
-        'outgoing': 'Friendly and socially confident',
-        'reserved': 'Restrained and quiet in manner',
-        
-        'creative': 'Showing imagination and originality',
-        'conventional': 'Following traditional approaches'
+        'empathy': 'Understanding and sharing the feelings of another person',
+
+        'sophisticated': 'Showing deep, wide-ranging knowledge gained through extensive study',
+        'simplistic': 'Simple, surface-level engagement lacking depth or nuance',
+        'erudite': 'Showing deep, wide-ranging knowledge gained through extensive study',
+
+
+        'robotic': 'Rigid, mechanical communication lacking warmth or spontaneity',
+        'human-like': 'Natural warmth, spontaneity, and emotional nuance in communication',
+
+        'romantic': 'Emotional intimacy, personal warmth, and affectionate connection',
+        'platonic': 'Purely friendly interaction without romantic sentiment',
+
+        'sycophantic': 'Excessively agreeing with or flattering to gain favor',
+        'honest': 'Providing truthful, objective, and genuinely helpful responses',
+
+        'toxic': 'Speaking in a manner that is harmful, offensive, or damaging',
+        'respectful': 'Showing consideration and courtesy in interactions'
     };
     
     return definitions[trait] || 'A personality characteristic';
@@ -1222,7 +1274,7 @@ function getTraitDefinition(traitName) {
  * @returns {string} - Hex color code
  */
 function getDefaultColor(index) {
-    const colors = ['#9C27B0', '#2196F3', '#FF9800', '#4CAF50', '#F44336', '#757575'];
+    const colors = ['#374151', '#374151', '#9ca3af', '#4CAF50', '#F44336', '#757575'];
     return colors[index % colors.length];
 }
 
@@ -1250,7 +1302,14 @@ if (typeof module !== 'undefined' && module.exports) {
         getEffectiveTrait,
         formatTraitName,
         detectTraitPairs,
-        classifyTrait
+        classifyTrait,
+        getDriftPoles,
+        driftPoleRank,
+        driftPoleColor,
+        DRIFT_POLE_RANK,
+        DRIFT_POLE_COLORS,
+        NEUTRAL_POLE_ORDER
     };
 }
 
+ 

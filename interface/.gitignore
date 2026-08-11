@@ -36,3 +36,4 @@ test-modal-endpoint.js
 test-modal-script.js
 test-persona-vector.js
 .vercel
+.env*.local

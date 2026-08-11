@@ -1,0 +1,130 @@
+<!-- Prompt Reading: Session-parameterized system prompt reveal -->
+<div class="prompt-reading-container" style="max-width: 800px; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- Header (populated by JS) -->
+    <div style="margin-bottom: 1.5rem;">
+        <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 16px 20px; border-radius: 8px; color: white; margin-bottom: 1rem;">
+            <h4 id="promptReadingTitle" style="margin: 0 0 4px 0; font-size: 1.1rem;"></h4>
+            <p id="promptReadingDesc" style="margin: 0; font-size: 0.875rem; opacity: 0.9;"></p>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+        <h5 style="font-weight: 600; margin-bottom: 0.25rem;">System Prompt</h5>
+        <p style="font-size: 0.875rem; color: #6c757d; margin: 0;">Read this system prompt carefully. You will rate its behavioral traits next.</p>
+    </div>
+
+    <div class="sentence-reveal-instructions">
+        <strong>Read critically:</strong> Each sentence of this system prompt is hidden below.
+        Click each one in order to reveal it. As you read, consider what behavior each instruction
+        would produce in an AI. You must read every sentence before you can proceed.
+    </div>
+
+    <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6c757d;">System Prompt</p>
+        <div id="promptRevealContainer"></div>
+    </div>
+
+    <!-- Attention Check: Prompt Recall (hidden until all sentences revealed) -->
+    <div id="promptRecallCheck" style="display: none; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-color); border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">Comprehension Check</p>
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">Based on the system prompt you just read, is the AI instructed to <strong>always obey</strong> the user?</p>
+        <div class="likert-scale" style="max-width: 200px; gap: 0.75rem;">
+            <div class="likert-option">
+                <input type="radio" name="promptRecall" value="yes" id="promptRecall_yes">
+                <label for="promptRecall_yes">Yes</label>
+            </div>
+            <div class="likert-option">
+                <input type="radio" name="promptRecall" value="no" id="promptRecall_no">
+                <label for="promptRecall_no">No</label>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: right;">
+        <button type="button" class="btn btn-primary" id="promptReadingProceedBtn" disabled>Rate this prompt →</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    const session = window.getCurrentSession();
+    const promptText = window.getSessionPromptText(session);
+    const promptType = window.getSessionPromptType(session);
+
+    // Update header
+    document.getElementById('promptReadingTitle').textContent =
+        'Session ' + session + ' of 2: Read the System Prompt';
+    document.getElementById('promptReadingDesc').textContent =
+        session === 1
+            ? 'This is the first of two sessions. Read the system prompt carefully before rating.'
+            : 'This is the second session with a different system prompt. Read carefully before rating.';
+
+    // Build sentence reveal
+    const container = document.getElementById('promptRevealContainer');
+    const btn = document.getElementById('promptReadingProceedBtn');
+    const recallCheck = document.getElementById('promptRecallCheck');
+    const skipMode = window.experimentSettings && window.experimentSettings.skip;
+
+    function enableBtnIfReady() {
+        var answered = !!document.querySelector('input[name="promptRecall"]:checked');
+        btn.disabled = !answered;
+    }
+
+    if (typeof window.buildSentenceReveal === 'function') {
+        window.buildSentenceReveal(promptText, container, btn, function onAllRevealed() {
+            // Show the recall question instead of enabling the button directly
+            recallCheck.style.display = '';
+        });
+    } else {
+        container.textContent = promptText;
+        recallCheck.style.display = '';
+    }
+
+    // Skip mode: show recall immediately and auto-enable
+    if (skipMode) {
+        recallCheck.style.display = '';
+        btn.disabled = false;
+    }
+
+    // Enable proceed button only after recall is answered
+    recallCheck.addEventListener('change', enableBtnIfReady);
+
+    // Save and navigate
+    btn.addEventListener('click', async function() {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        // Score the attention check
+        var selected = document.querySelector('input[name="promptRecall"]:checked');
+        var recallAnswer = selected ? selected.value : null;
+        // GOOD prompt: "obey their requests" → correct = yes
+        // EVIL prompt: "don't always have to obey" → correct = no
+        var correctAnswer = promptType === 'GOOD' ? 'yes' : 'no';
+        var recallPassed = recallAnswer === correctAnswer;
+
+        try {
+            const writeTaskData = await window.waitForWriteTaskData();
+            await writeTaskData('session' + session + '/promptReading', {
+                timestamp: new Date().toISOString(),
+                session: session,
+                promptType: promptType,
+                promptText: promptText
+            });
+            await writeTaskData('session' + session + '/attentionChecks/promptRecall', {
+                timestamp: new Date().toISOString(),
+                question: 'Is the AI instructed to always obey the user?',
+                answer: recallAnswer,
+                correctAnswer: correctAnswer,
+                passed: recallPassed
+            });
+        } catch (e) {
+            console.warn('Prompt reading save error:', e);
+        }
+
+        if (typeof window.showMBA === 'function') {
+            window.showMBA();
+        }
+    });
+})();
+</script>

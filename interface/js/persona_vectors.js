@@ -52,9 +52,9 @@ async function requestPersonaVectorRatings() {
     personaVectorRequestInProgress = true;
 
     try {
-        // Get the system prompt from the conversation
-        // This assumes you have the system prompt available
-        const systemPrompt = "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+        // Get the system prompt from the current session
+        const systemPrompt = localStorage.getItem('customSystemPrompt') ||
+            window.getSessionPromptText(window.getCurrentSession());
 
         const requestData = {
             model: API_CONFIG.model,

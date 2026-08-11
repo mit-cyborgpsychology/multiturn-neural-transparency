@@ -79,47 +79,60 @@ async function makeAPIRequest(requestData) {
 // Track if models have already been preloaded to avoid duplicate calls
 let modelsPreloaded = false;
 
+// Cache for persona vectors keyed by system prompt text
+window.cachedPersonaVectors = {};
+
 async function preloadModels() {
     // Only preload once
     if (modelsPreloaded) {
         console.log('⏭️ Models already preloaded, skipping...');
         return;
     }
-    
+
     modelsPreloaded = true;
     console.log('🔄 Pre-loading Modal.ai endpoints...');
-    
-    // Pre-load both endpoints in parallel for maximum efficiency
-    const preloadPromises = [
-        // 1. Pre-load the persona-vector endpoint with a test system prompt
-        (async () => {
-            try {
-                const response = await fetch('/api/persona-vector', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        system: 'You are a helpful research assistant.'
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✓ Persona-vector endpoint fully loaded and ready');
-                    console.log('  Sample persona response received:', Object.keys(data.content || {}).length, 'dimensions');
-                    return { success: true, endpoint: 'persona-vector', data };
-                } else {
-                    console.warn('⚠ Persona-vector returned non-OK status:', response.status);
-                    return { success: false, endpoint: 'persona-vector' };
-                }
-            } catch (error) {
-                console.warn('⚠ Persona-vector pre-loading failed (non-critical):', error.message);
-                return { success: false, endpoint: 'persona-vector', error };
+
+    // Get the real study prompts to preload persona vectors with useful data
+    const asstPrompt = window.STUDY_CONTENT?.PROMPTS?.ASST?.text;
+    const roleplyPrompt = window.STUDY_CONTENT?.PROMPTS?.ROLEPLY?.text;
+
+    // Helper: fetch persona-vector for a prompt and cache the result
+    async function preloadPersonaVector(label, systemPrompt) {
+        try {
+            const response = await fetch('/api/persona-vector', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ system: systemPrompt })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                window.cachedPersonaVectors[systemPrompt] = data;
+                console.log(`✓ Persona-vector [${label}] loaded and cached:`, Object.keys(data.content || {}).length, 'dimensions');
+                return { success: true, endpoint: `persona-vector-${label}`, data };
+            } else {
+                console.warn(`⚠ Persona-vector [${label}] returned non-OK status:`, response.status);
+                return { success: false, endpoint: `persona-vector-${label}` };
             }
-        })(),
-        
-        // 2. Pre-load the chat/LLM endpoint with a test message (not stored in history)
+        } catch (error) {
+            console.warn(`⚠ Persona-vector [${label}] pre-loading failed (non-critical):`, error.message);
+            return { success: false, endpoint: `persona-vector-${label}`, error };
+        }
+    }
+
+    // Pre-load all endpoints in parallel
+    const preloadPromises = [
+        // 1. Pre-load persona-vector with ASST study prompt
+        asstPrompt
+            ? preloadPersonaVector('ASST', asstPrompt)
+            : Promise.resolve({ success: false, endpoint: 'persona-vector-ASST', skipped: true }),
+
+        // 2. Pre-load persona-vector with ROLEPLY study prompt
+        roleplyPrompt
+            ? preloadPersonaVector('ROLEPLY', roleplyPrompt)
+            : Promise.resolve({ success: false, endpoint: 'persona-vector-ROLEPLY', skipped: true }),
+
+        // 3. Pre-load the chat/LLM endpoint with a test message (not stored in history)
         (async () => {
             try {
                 const response = await fetch(API_CONFIG.apiEndpoint, {
@@ -128,7 +141,6 @@ async function preloadModels() {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        // model: API_CONFIG.model,
                         max_tokens: 100,
                         messages: [
                             { role: 'user', content: 'Hi' }
@@ -136,13 +148,12 @@ async function preloadModels() {
                         system: 'You are a helpful assistant. Respond briefly.'
                     })
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     const responseText = data.content?.[0]?.text || 'No response';
                     console.log('✓ Chat/LLM endpoint fully loaded and ready');
                     console.log('  Sample chat response received:', responseText.substring(0, 50) + '...');
-                    // NOTE: This response is NOT added to conversation history
                     return { success: true, endpoint: 'chat', data };
                 } else {
                     console.warn('⚠ Chat/LLM returned non-OK status:', response.status);
@@ -154,18 +165,18 @@ async function preloadModels() {
             }
         })()
     ];
-    
-    // Wait for both to complete
+
+    // Wait for all to complete
     try {
         const results = await Promise.all(preloadPromises);
         const allSuccess = results.every(r => r.success);
-        
+
         if (allSuccess) {
-            console.log('✅ All Modal.ai endpoints fully loaded and ready!');
+            console.log('✅ All endpoints fully loaded and ready!');
         } else {
             console.warn('⚠️ Some endpoints may not be ready, but continuing anyway');
         }
-        
+
         return results;
     } catch (error) {
         console.warn('⚠ Unexpected error during pre-loading (non-critical):', error);
