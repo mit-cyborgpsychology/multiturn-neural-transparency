@@ -88,6 +88,42 @@
     width: 100%;
 }
 
+/* Predict-transition toast: a non-blocking banner (no overlay, no backdrop blur) pinned to
+   the top of the screen so the interface stays visible and usable underneath it. */
+.predict-transition-toast {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+}
+.predict-transition-toast-content {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 1rem 1.5rem;
+    max-width: 420px;
+    text-align: center;
+}
+.predict-transition-toast-content h4 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+.predict-transition-toast-content p {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.predict-transition-toast-timer {
+    font-size: 0.8rem !important;
+}
+.predict-transition-toast-content button {
+    margin-top: 0.25rem;
+    width: 100%;
+}
+
 /* Visualization Explanation Modal - Positioned on left side */
 #visualizationExplanationModal {
     justify-content: flex-start;
@@ -2174,11 +2210,44 @@ body.chat-active .dynamic-chat-container {
 }
 .predict-rating-item .top .neg { color: #ef4444; }
 .predict-rating-item .top .pos { color: #22c55e; }
+/* Plain, un-filled track + a styled thumb instead of `accent-color` — accent-color makes
+   Chromium fill the track from the left edge to the thumb, which reads as a one-directional
+   progress bar. This slider is centered at 0 (neutral) and can move either way, so no fill. */
 .predict-rating-item input[type="range"] {
     width: 100%;
-    accent-color: #2563eb;
     display: block;
     margin: 0; /* drop the browser's default range margin, which sits in this same gap */
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+}
+.predict-rating-item input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+}
+.predict-rating-item input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+}
+.predict-rating-item input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px; /* center the 16px thumb on the 4px track */
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+}
+.predict-rating-item input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
 }
 .predict-rating-item .val {
     text-align: center;
@@ -2239,7 +2308,9 @@ body.chat-active .dynamic-chat-container {
    so the label reads as a row heading rather than competing with the stats inside the card. */
 .predict-breakdown-row {
     display: grid;
-    grid-template-columns: 130px 1fr;
+    /* max-content sizes the column to the longest label across all rows, so every label
+       (e.g. "Sophisticated ↔ Simplistic") fits on one line without wrapping or clipping. */
+    grid-template-columns: max-content 1fr;
     align-items: center;
     gap: 12px;
 }
@@ -2247,7 +2318,8 @@ body.chat-active .dynamic-chat-container {
     font-size: 13px;
     font-weight: 700;
     color: var(--text-primary);
-    text-align: right;
+    text-align: center;
+    white-space: nowrap;
     line-height: 1.3;
 }
 /* Matches .predict-rating-item (the quiz cells) so results read as the same component */
@@ -2259,7 +2331,7 @@ body.chat-active .dynamic-chat-container {
 }
 .predict-breakdown-item .row-top {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
     margin-bottom: 4px;
 }
@@ -2281,7 +2353,7 @@ body.chat-active .dynamic-chat-container {
         gap: 4px;
     }
     .predict-breakdown-label {
-        text-align: left;
+        white-space: normal;
     }
 }
 

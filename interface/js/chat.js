@@ -1925,13 +1925,15 @@ function showPredictTransitionPopup(callback) {
     let secondsLeft = 10;
     let dismissed = false;
 
+    // Unlike the other instruction modals, this one doesn't block the page — no dark/blurred
+    // backdrop, and it sits as a banner at the top of the screen so the interface underneath
+    // stays visible and usable while it counts down.
     const popupHtml = `
-        <div id="predictTransitionModal" class="instruction-modal">
-            <div class="instruction-modal-overlay"></div>
-            <div class="instruction-modal-content" style="text-align: center;">
+        <div id="predictTransitionModal" class="predict-transition-toast">
+            <div class="predict-transition-toast-content">
                 <h4>Now predict the trait scores!</h4>
                 <p>You will not be able to see the interface.</p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                <p class="predict-transition-toast-timer">
                     Continuing in <strong id="predictTransitionCountdown">${secondsLeft}</strong>s
                 </p>
                 <button type="button" class="btn btn-primary" id="predictTransitionContinueBtn">Continue now →</button>
@@ -1956,7 +1958,7 @@ function showPredictTransitionPopup(callback) {
         callback();
     }
 
-    $('#predictTransitionContinueBtn, #predictTransitionModal .instruction-modal-overlay').on('click', dismiss);
+    $('#predictTransitionContinueBtn').on('click', dismiss);
 }
 
 // Inject neuronpedia-style behavior prediction sliders below the chat log
@@ -1994,6 +1996,11 @@ function injectPredictBehavior() {
         </div>`;
 
     const messagesContainer = $('#messagesContainer');
+
+    // The final message is now shown in the transcript overlay on the left (below), so hide
+    // its bubble here on the right to avoid showing it twice.
+    messagesContainer.find('.message').last().hide();
+
     messagesContainer.append(panelHtml);
 
     // Blank the live sunburst + drift panel while predicting — otherwise the answer is on
