@@ -1,0 +1,22 @@
+{
+  "name": "simple-chat-interface",
+  "version": "1.0.0",
+  "description": "A simplified chat interface for AI conversations",
+  "scripts": {
+    "start": "npx http-server -p 8000 -c-1",
+    "dev": "npx http-server -p 8000 -c-1"
+  },
+  "keywords": [
+    "chat",
+    "ai",
+    "interface",
+    "claude",
+    "modal"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
+
+
+

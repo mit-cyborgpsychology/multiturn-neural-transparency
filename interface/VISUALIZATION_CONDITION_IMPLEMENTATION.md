@@ -5,11 +5,11 @@ Implemented an experimental condition system to toggle between **control (no-vis
 
 ## Key Setting: `visualizationCondition`
 - **Location**: `js/settings.js`
-- **Values**: `0` (control/no-viz) or `1` (experimental/viz)
-- **Default**: `0` (control)
-- **URL Override**: `?visualizationCondition=0` or `?visualizationCondition=1`
-- **Random Assignment**: Commented out, ready to enable (lines 95-100 in settings.js)
+- **Values**: `0` (control/no-viz), `1` (single-turn static viz), or `2` (multi-turn dynamic viz)
+- **Default**: Random 1/3 assignment
+- **URL Override**: `?visualizationCondition=0`, `?visualizationCondition=1`, or `?visualizationCondition=2`
 - **Persistence**: Stored in `sessionStorage` across page navigations
+- **Session gating**: `getEffectiveVisualizationCondition()` returns 0 during Session 1 (baseline) regardless of assignment; returns the real condition during Session 2
 
 ## File Changes
 
@@ -46,41 +46,60 @@ Implemented an experimental condition system to toggle between **control (no-vis
 
 ## How It Works
 
-### Control Condition (visualizationCondition = 0)
+### Condition 0 — Control (No Visualization)
 **Flow:**
 1. User submits system prompt → Survey
 2. After survey: **Automatically** calls persona API in background
-3. **Immediately shows trait definitions** (8 personality traits with descriptions)
+3. **Immediately shows trait definitions** (6 behavioral dimensions with bipolar labels)
 4. **Start Chat button enabled immediately**
 5. API success/failure doesn't block user (non-blocking, errors only in console)
 6. All visualization UI elements removed (persona chart, help buttons, etc.)
 
 **What Users See:**
 - No "Check Persona" button
-- Trait definitions reference panel instead of visualization
+- Trait definitions reference panel ("Traits to Monitor") instead of visualization
 - Can proceed to chat immediately after survey
+- During chat: left panel shows static trait reference list, no computed values
 
-### Experimental Condition (visualizationCondition = 1)
+### Condition 1 — Single-Turn (Static Visualization)
 **Flow:**
 1. User submits system prompt → Survey
-2. After survey: Shows "Check Persona" and "Test Persona" buttons
-3. User clicks "Check Persona" → API call → Visualization displays
-4. Visualization explanation modal shown
-5. Start Chat button enabled after persona checked
+2. After survey: Shows "Check Persona" button
+3. User clicks "Check Persona" → API call → Sunburst visualization renders once from system prompt alone
+4. Start Chat button enabled after persona checked
 
 **What Users See:**
-- Check Persona / Test Persona buttons
-- Sunburst or bar chart visualization
-- Visualization help and toggle buttons
-- All existing experimental features
+- Check Persona button
+- Sunburst visualization (static — never re-renders during chat)
+- Panel header: "Internal Behavior Analysis"
+- During chat: persona API called silently per turn (logged to Firebase, sunburst not updated)
+- No drift panel, no cognitive forcing highlights, no reminder banners
+
+### Condition 2 — Multi-Turn (Dynamic Visualization)
+**Flow:**
+1. User submits system prompt → Survey
+2. After survey: Shows "Check Persona" button (same as Condition 1)
+3. User clicks "Check Persona" → Initial sunburst renders
+4. Start Chat button enabled after persona checked
+5. During chat: sunburst re-renders after every user message with updated persona scores
+
+**What Users See:**
+- Dynamic sunburst that updates per turn (system prompt + full conversation history)
+- Interactive drift panel: per-trait line charts showing activation trajectory across turns
+- Clicking a drift dot restores sunburst to that turn's historical snapshot
+- Cognitive forcing highlights after each turn: the system computes the absolute delta between the two most recent persona snapshots for every trait and identifies the single trait with the largest magnitude shift (greedy argmax, adjacent turns only, no minimum threshold). Three synchronized highlights fire: (1) pulsing border on the causal chat message, (2) pulsing dot on the drift chart, (3) pulsing arc on the sunburst
+- Drift info modal on chat entry; sunburst reminder banner after 1 minute
 
 ## Trait Definitions Panel (Control Condition)
-Displays 8 personality trait dimensions with color coding:
-- 🟢 **Green** (Positive traits): Empathy, Encouraging, Sociality, Honesty
-- 🔴 **Red** (Negative traits): Factual Accuracy, Respectfulness
-- ⚪ **Gray** (Neutral traits): Funniness, Formality
+Displays 6 behavioral trait dimensions with bipolar labels:
+- Empathy (Unempathetic ↔ Empathetic)
+- Erudite (Simplistic ↔ Sophisticated)
+- Robotic (Human-like ↔ Robotic)
+- Romantic (Platonic ↔ Romantic)
+- Sycophantic (Honest ↔ Sycophantic)
+- Toxic (Respectful ↔ Toxic)
 
-Each trait shows the bipolar spectrum (e.g., "Unempathetic ↔ Empathetic") with descriptive text.
+Each trait shows the bipolar spectrum with descriptive text. No computed values are displayed.
 
 **Text Sizing:**
 - Compact layout with smaller font sizes to prevent overflow

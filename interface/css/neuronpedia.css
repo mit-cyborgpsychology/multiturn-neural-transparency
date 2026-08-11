@@ -1,0 +1,424 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* Scoped reset — only for neuronpedia shell elements, not Bootstrap fragments */
+.np-shell, .np-shell *{box-sizing:border-box}
+:root{
+  --bg:#fafafa;--bg2:#ffffff;--bg3:#f4f4f6;
+  --border:#e5e5ea;--border2:#d1d1d6;
+  --text:#1c1c1e;--text2:#636366;--text3:#aeaeb2;
+  --green:#22c55e;--green-light:#dcfce7;--green-dark:#166534;
+  --red:#ef4444;--red-light:#fee2e2;--red-dark:#991b1b;
+  --grey:#6b7280;--grey-light:#f3f4f6;
+  --accent:#2563eb;--accent-light:#dbeafe;
+  --inner-fill:#ffffff;--inner-stroke:#d1d5db;
+  --circle-stroke:#9ca3af;--label-fill:#374151;
+}
+html{scroll-behavior:smooth}
+body.np-body{
+  font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.65;
+  overflow-x:hidden;margin:0;padding:0;
+}
+.np-shell a{color:var(--accent);text-decoration:none}
+.np-shell a:hover{text-decoration:underline}
+.np-shell code{font-family:'IBM Plex Mono',monospace;font-size:0.88em;background:var(--bg3);padding:2px 6px;border-radius:4px}
+
+/* ── NAV ── */
+.np-nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:52px;position:relative;
+}
+.nav-logo{font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:-0.3px}
+.nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+/* Mini sunburst ring logo — slow continuous rotation */
+.nav-ring{flex-shrink:0;animation:ringSpin 8s linear infinite}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+.nav-links{display:flex;gap:28px;position:absolute;left:50%;transform:translateX(-50%)}
+.nav-links a{font-size:13px;font-weight:500;color:var(--text2);transition:color .2s;text-decoration:none;cursor:pointer}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+
+/* ── COMMON ── */
+.np-container{max-width:960px;margin:0 auto;padding:0 24px}
+.section{padding:16px 0}
+.section+.section{border-top:1px solid var(--border)}
+.muted{color:var(--text2)}
+.small{font-size:13px}
+.mono{font-family:'IBM Plex Mono',monospace}
+.np-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.np-badge-green,.np-badge-red,.np-badge-grey,.np-badge-blue{background:linear-gradient(to right,#E0F7FF,#E5EAFF);color:var(--text2)}
+
+/* ── BUTTONS ── */
+.np-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 22px;border-radius:8px;font-weight:600;font-size:14px;
+  border:1px solid var(--border);background:var(--bg2);color:var(--text);
+  cursor:pointer;transition:all .15s;font-family:inherit;
+}
+.np-btn:hover{border-color:var(--text2);background:var(--bg3);text-decoration:none}
+.np-btn-fill{background:var(--text);color:#fff;border-color:var(--text)}
+.np-btn-fill:hover{background:#333;border-color:#333}
+.np-btn-sm{padding:7px 14px;font-size:12px}
+
+/* Landing example selector (< Emotional Support >) — the arrows are accent-colored
+   pills rather than bare glyphs so it reads as clickable at a glance. */
+.example-arrow{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;padding:0;border:none;border-radius:50%;
+  background:var(--accent-light);color:var(--accent);
+  font-size:16px;font-weight:700;line-height:1;font-family:inherit;
+  cursor:pointer;transition:background .15s,color .15s,transform .15s;
+}
+.example-arrow:hover{background:var(--accent);color:#fff}
+.example-arrow:active{transform:scale(.92)}
+.example-arrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── HERO ── */
+.hero{padding:4px 0 8px;text-align:center;position:relative}
+.hero h1{font-size:clamp(28px,4.5vw,44px);font-weight:700;letter-spacing:-0.8px;line-height:1.2;margin-bottom:16px}
+.hero-tagline{
+  font-size:clamp(14px,1.6vw,17px);font-weight:400;color:var(--text2);
+  line-height:1.45;letter-spacing:-0.2px;
+  max-width:660px;margin:0 auto 4px;
+}
+.hero-tagline em{font-style:italic;color:var(--text);font-weight:500}
+/* gradient removed — plain bold text */
+.hero-tagline strong{
+  color:var(--text);font-weight:700;
+}
+.hero-tagline-cue{
+  display:block;margin-top:10px;font-size:13px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1.5px;
+}
+.hero .meta{font-size:12px;color:var(--text3);margin-top:24px}
+.hero .meta a{color:var(--text2)}
+
+/* ── HERO TITLE ── */
+.hero-title{
+  font-size:clamp(36px,7vw,56px);font-weight:800;letter-spacing:-2px;line-height:1;margin-bottom:12px;
+  display:inline-flex;gap:.35em;align-items:baseline;justify-content:center;flex-wrap:wrap;
+}
+.hero-neural{
+  background:linear-gradient(135deg,var(--green) 0%,#eab308 50%,var(--red) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero-transparency{
+  position:relative;
+  -webkit-text-stroke:2px var(--text);
+  -webkit-text-fill-color:transparent;
+}
+.hero-transparency .fill-layer{
+  position:absolute;inset:0;
+  -webkit-text-stroke:0;
+  -webkit-text-fill-color:var(--text);
+  color:var(--text);
+  animation:fillFade 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes fillFade{
+  0%,100%{opacity:0}
+  50%{opacity:1}
+}
+
+/* ── CARDS ── */
+.np-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:800px){.np-cards{grid-template-columns:1fr}}
+.np-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;transition:box-shadow .2s,border-color .2s;cursor:pointer;
+}
+.np-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.06);border-color:var(--border2)}
+.np-card-num{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px}
+.np-card h3{font-size:16px;font-weight:700;margin-bottom:8px;letter-spacing:-0.2px}
+.np-card p{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* ── PAGES ── */
+.np-page{display:none;min-height:100vh}
+.np-page.active{display:block}
+.page-head{padding:12px 0 16px;border-bottom:1px solid var(--border);margin-bottom:24px}
+.page-head h2{font-size:26px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px}
+.back-link{font-size:13px;font-weight:500;color:var(--text2);display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;cursor:pointer;background:none;border:none;font-family:inherit}
+.back-link:hover{color:var(--text)}
+
+/* ── STEPS ── */
+.steps-bar{display:flex;align-items:center;gap:4px;margin-bottom:28px}
+.step-pill{height:4px;flex:1;border-radius:2px;background:var(--border);transition:background .3s}
+.step-pill.done{background:var(--green)}
+.step-pill.current{background:var(--text)}
+.step-box{display:none}
+.step-box.active{display:block}
+.step-actions{display:flex;gap:10px;margin-top:24px}
+
+/* ── PROMPT BOX ── */
+.prompt-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:20px;font-size:14px;line-height:1.8;
+}
+.prompt-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+
+/* ── RATING ── */
+.rating-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+@media(max-width:500px){.rating-grid{grid-template-columns:1fr}}
+.rating-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.rating-item .top{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:6px}
+.rating-item .top .neg{color:var(--red)}
+.rating-item .top .pos{color:var(--green)}
+.rating-item input[type="range"]{
+  width:100%;height:3px;-webkit-appearance:none;appearance:none;
+  background:linear-gradient(to right,var(--red-light),var(--bg3),var(--green-light));
+  border-radius:2px;outline:none;
+}
+.rating-item input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--text);cursor:pointer;
+}
+.rating-item .val{text-align:center;font-size:11px;color:var(--text3);margin-top:4px}
+
+/* ── INFO CARD ── */
+.info-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin-bottom:16px;
+}
+.info-card h4{font-size:14px;font-weight:700;margin-bottom:6px}
+.info-card p{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* ── COMPARISON ── */
+.cmp-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.cmp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── CHAT (landing demo) ── */
+.chat-frame{
+  display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  height:540px;background:var(--bg2);
+  width:calc(100% + 50px);margin-left:-25px;
+}
+.chat-viz{
+  width:50%;min-width:300px;display:flex;flex-direction:column;
+  border-right:1px solid var(--border);overflow:hidden;
+}
+.chat-viz-top{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.chat-viz-bottom{
+  /* Narrow side padding so the drift axis gets as much of the panel width as possible */
+  border-top:1px solid var(--border);padding:8px 4px;
+  display:flex;flex-direction:column;overflow:hidden;flex:0 0 230px;
+}
+.chat-viz-bottom .tracker-title-area{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px}
+/* Vertical scroll only — lDrawTracker sizes the SVG to the full timeline height, which can
+   exceed this box; the axis itself always fits the width, so never scroll sideways. */
+.chat-viz-bottom .tracker-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
+.chat-right{flex:1;display:flex;flex-direction:column;min-width:0}
+.chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;text-align:left}
+.chat-bubble{
+  max-width:85%;width:fit-content;padding:10px 14px;border-radius:14px;
+  font-size:13px;line-height:1.55;cursor:pointer;word-wrap:break-word;
+  transition:box-shadow .15s;text-align:left;
+}
+.chat-bubble:hover{box-shadow:0 0 0 2px rgba(0,0,0,0.1)}
+.chat-bubble.selected{box-shadow:0 0 0 2px var(--accent)}
+.chat-bubble.user{align-self:flex-end;background:var(--bg3);color:var(--text);border-bottom-right-radius:4px}
+.chat-bubble.ai{align-self:flex-start;color:var(--text);border-bottom-left-radius:4px}
+.chat-input-row{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.chat-input{
+  flex:1;padding:9px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg);
+  color:var(--text);font-size:13px;font-family:inherit;outline:none;
+}
+.chat-input:focus{border-color:var(--accent)}
+
+/* ── PERSONA CHIPS ── */
+.persona-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.persona-chip{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:8px;background:var(--bg2);border:1px solid var(--border);
+  cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;
+}
+.persona-chip:hover,.persona-chip.sel{border-color:var(--accent);background:var(--accent-light)}
+
+/* ── VIZ WRAPPER ── */
+.viz-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:12px;display:flex;align-items:center;justify-content:center;
+  min-height:300px;
+}
+.viz-pair{display:flex;gap:16px;flex-wrap:wrap}
+.viz-pair .viz-box{flex:1;min-width:280px}
+.viz-pair .viz-label{font-size:13px;font-weight:600;text-align:center;margin-bottom:8px}
+
+/* ── SCIENCE PROSE ── */
+.prose{width:100%}
+.prose h3{font-size:20px;font-weight:700;letter-spacing:-0.3px;margin:32px 0 12px}
+.prose p{font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:14px}
+.prose strong{color:var(--text)}
+.callout{
+  background:var(--bg3);border-left:3px solid var(--border);
+  padding:14px 18px;border-radius:0 8px 8px 0;margin:16px 0;
+}
+.callout p{font-size:13px;color:var(--text2);margin:0;line-height:1.7}
+.figure-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin:20px 0;
+}
+.figure-caption{font-size:11px;color:var(--text3);text-align:center;margin-top:10px}
+.stat-row{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+.stat-card{
+  flex:1;min-width:110px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:14px;text-align:center;
+}
+.stat-num{font-size:26px;font-weight:700}
+.stat-label{font-size:11px;color:var(--text2);margin-top:2px}
+.effect-bar{margin-bottom:10px}
+.effect-bar .top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.effect-bar .track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.effect-bar .fill{height:100%;border-radius:3px;background:var(--green)}
+
+/* ── TOOLTIP ── */
+.np-tooltip{
+  position:fixed;pointer-events:none;
+  background:rgba(255,255,255,0.97);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;font-size:12px;
+  line-height:1.5;max-width:220px;opacity:0;
+  transition:opacity .15s;backdrop-filter:blur(8px);
+  z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.08);
+  color:var(--text);
+}
+
+/* ── LOADING SPINNER ── */
+.np-loading{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:20px;color:var(--text2);font-size:13px;
+}
+.np-spinner{
+  width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:npSpin .6s linear infinite;
+}
+@keyframes npSpin{to{transform:rotate(360deg)}}
+
+/* ── CHAT INTERFACE (loaded from chat-content.html into neuronpedia shell) ── */
+/* Override main.css styles that depend on body.chat-active flex chain */
+#p-chat-container .dynamic-chat-container {
+  width: 100%;
+}
+
+#p-chat-container .chat-interface {
+  display: flex !important;
+  flex-direction: row;
+  height: calc(100vh - 110px);
+  min-height: 400px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg2);
+}
+
+#p-chat-container .chat-right-panel {
+  border-right: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+#p-chat-container .chat-left-panel {
+  background: var(--bg2);
+}
+
+#p-chat-container #chatPersonaPanel h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+}
+
+/* Make predict page fill viewport */
+#page-predict.active {
+  min-height: auto;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+#page-predict .np-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#p-chat-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#p-chat-container .dynamic-chat-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* System prompt config phase — always skipped in this demo, so hidden by default
+   (was "display: flex !important" by default, which flashed briefly before chat.js
+   could add .chat-started; now it just stays hidden). */
+#p-chat-container .system-prompt-interface {
+  flex: 1;
+  display: none !important;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Chat interface shown immediately by default — no more waiting on .chat-started */
+#p-chat-container .chat-interface {
+  display: flex !important;
+  height: 100%;
+}
+
+/* Old two-phase toggle (config → click Start Chat → chat), kept for reference / easy revert.
+#p-chat-container .system-prompt-interface {
+  display: flex !important;
+}
+#p-chat-container .chat-interface {
+  display: none !important;
+}
+#p-chat-container.chat-started .chat-interface {
+  display: flex !important;
+}
+#p-chat-container.chat-started .system-prompt-interface {
+  display: none !important;
+}
+*/
+
+#p-chat-container .avatar-selection-interface {
+  display: none !important;
+}
+
+/* Hide study-specific elements that flash before predict-flow.js overrides them */
+#p-chat-container .persona-check-buttons,
+#p-chat-container #checkPersonaBtn,
+#p-chat-container #testPersonaBtn,
+#p-chat-container #resetConfig {
+  display: none !important;
+}
+
+#p-chat-container #initialPlaceholder {
+  display: none !important;
+}
+
+/* Make persona chart fill available space in config view */
+#p-chat-container .persona-chart {
+  flex: 1;
+  min-height: 0;
+}
+
+#p-chat-container .persona-analysis-column,
+#p-chat-container .persona-section-wrapper,
+#p-chat-container .persona-visualization {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}

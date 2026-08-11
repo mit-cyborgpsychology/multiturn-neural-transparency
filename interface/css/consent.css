@@ -16,7 +16,7 @@ Everything is in order as it appears in the HTML file (top to bottom).
 *   
 **************************************/
 #consent-text-header {
-    color: #0064a4;
+    color: #1f2937;
 }
 
 #header-message {
@@ -28,7 +28,7 @@ Everything is in order as it appears in the HTML file (top to bottom).
 }
 
 #consent-form-box {
-    border: 2px solid #0064a4;
+    border: 2px solid #1f2937;
     border-radius: 5px;
     background-color: rgba(0,0,0,0.02);
     padding: 10px;

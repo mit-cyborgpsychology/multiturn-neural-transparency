@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <title>Chat Interface Demo (No API Required)</title>
+
+    <!-- jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="css/chat.css" />
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <h2>
+                <i class="fas fa-comments"></i>
+                Chat Interface Demo
+            </h2>
+            <div class="header-info">
+                <span style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #374151; font-size: 0.75rem;">
+                    <i class="fas fa-flask"></i> DEMO MODE (No API)
+                </span>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="messages-container" id="messagesContainer">
+            <div class="message assistant-message">
+                <div class="message-content">
+                    <div class="message-text">👋 Welcome to the demo! I'll respond with placeholder messages. To enable real AI, follow the QUICKSTART.md guide.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    class="message-input" 
+                    id="messageInput" 
+                    placeholder="Type your message here... (Demo mode - mock responses only)"
+                    rows="1"
+                ></textarea>
+                <button class="send-button" id="sendBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="input-footer">
+                <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span>AI is typing...</span>
+                </div>
+                <div class="input-hints">
+                    Press Enter to send, Shift+Enter for new line
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Chat JavaScript -->
+    <script>
+        // Demo mode chat without API
+        let conversationHistory = [];
+        let messageIdCounter = 1;
+
+        $(document).ready(function() {
+            const messageInput = $('#messageInput');
+            const sendBtn = $('#sendBtn');
+
+            // Enable/disable send button
+            messageInput.on('input', function() {
+                sendBtn.prop('disabled', messageInput.val().trim() === '');
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+            });
+
+            // Send message on button click
+            sendBtn.on('click', sendMessage);
+
+            // Send message on Enter
+            messageInput.on('keypress', function(e) {
+                if (e.which === 13 && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+
+        async function sendMessage() {
+            const messageInput = $('#messageInput');
+            const message = messageInput.val().trim();
+            
+            if (message === '') return;
+
+            // Add user message to UI
+            addMessage(message, 'user');
+            
+            // Clear input
+            messageInput.val('');
+            messageInput.css('height', 'auto');
+            $('#sendBtn').prop('disabled', true);
+
+            // Show typing indicator
+            $('#typingIndicator').show();
+
+            // Simulate AI response
+            setTimeout(() => {
+                $('#typingIndicator').hide();
+                
+                const mockResponses = [
+                    "That's interesting! In demo mode, I can only provide these placeholder responses. Configure the API to get real AI conversations!",
+                    "I hear you! This is just a demo interface. Follow the QUICKSTART.md guide to connect to Claude or Modal AI.",
+                    "Thanks for your message! Currently running in demo mode. Set up your API credentials to enable real AI responses.",
+                    "Great question! I'm a placeholder AI. Check out the README.md to learn how to deploy with a real AI backend.",
+                    "I understand! To get real AI responses instead of these demos, you'll need to configure your API endpoint in js/config.js"
+                ];
+                
+                const response = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+                addMessage(response, 'assistant');
+            }, 800 + Math.random() * 1200);
+        }
+
+        function addMessage(text, sender) {
+            const messageId = messageIdCounter++;
+            const messageClass = sender === 'user' ? 'user-message' : 'assistant-message';
+            const avatarIcon = sender === 'user' ? 'fa-user' : 'fa-robot';
+            
+            const messageHtml = `
+                <div class="message ${messageClass}" data-message-id="${messageId}">
+                    <div class="message-avatar">
+                        <i class="fas ${avatarIcon}"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">${text}</div>
+                    </div>
+                </div>
+            `;
+            
+            const messagesContainer = $('#messagesContainer');
+            messagesContainer.append(messageHtml);
+            messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+        }
+    </script>
+</body>
+</html>
+
+
+
+

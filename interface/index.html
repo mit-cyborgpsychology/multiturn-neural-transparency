@@ -1,241 +1,950 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <!-- Required meta tags -->
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="robots" content="noindex" />
-        
-        <!-- MIT Media Lab Favicon -->
-        <link rel="icon" href="favicon.ico" type="image/x-icon" />
-        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="robots" content="noindex" />
 
-        <!-- Page Title -->
-        <title>MIT Media Lab Chat Study</title>
+    <!-- MIT Media Lab Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
 
-        <!-- jQuery -->
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <title>Neural Transparency — Multi-Turn Demo</title>
 
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
-        <!-- D3.js for Sunburst Visualization -->
-        <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Bootstrap CSS (needed by chat-content.html) -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous" />
 
-        <!-- Metadata and Configuration -->
-        <script src="js/metadata.js"></script>
-        
-        <!-- Settings Configuration - Must load BEFORE other scripts -->
-        <script src="js/settings.js"></script>
-        
-        <!-- Unified Configuration for Local and Vercel Deployment -->
-        <script src="js/config-unified.js"></script>
+    <!-- D3.js for Sunburst Visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 
-        <!-- Persona Sunburst Visualization -->
-        <script src="js/persona-sunburst.js"></script>
-        
-        <!-- Persona Vectors -->
-        <script src="js/persona_vectors.js"></script>
+    <!-- Neuronpedia Styles -->
+    <link rel="stylesheet" href="css/neuronpedia.css" />
 
-        <!-- Firebase Config -->
-        <!-- <script src="js/firebaseconfig.js"></script> -->
-        <script src="js/firebasepsych1.1.js" type="module"></script>
-         
-        <!-- Main CSS Styles -->
-        <link rel="stylesheet" href="css/main.css" />
-        
+    <!-- Main CSS (needed by loaded HTML fragments) -->
+    <link rel="stylesheet" href="css/main.css" />
 
-        <!--
-            Load all pages necessary for experiment:
-                - Consent Page
-                - Instructions
-                - Comprehension Quiz
-                - Experiment
-                - Completed Page
-        -->
-        <script>
-            $(document).ready(function(){
-                // Use settings from global settings object
-                const debugMode = window.experimentSettings.debug;
-                const freshMode = window.experimentSettings.fresh;
-                
-                // Fresh mode: Clear all storage to simulate a fresh participant
-                if (freshMode) {
-                    console.log('🆕 Fresh mode: Clearing all experiment data at entry point');
-                    
-                    // Check if this is the first time we're seeing the fresh parameter
-                    const alreadyFreshed = sessionStorage.getItem('freshModeApplied');
-                    
-                    if (!alreadyFreshed) {
-                        // First time seeing fresh=true, need to clear and reload
-                        console.log('🧹 Clearing all localStorage and sessionStorage');
-                        
-                        // Clear all storage
-                        localStorage.clear();
-                        sessionStorage.clear();
-                        
-                        // Set a flag so we know we've already done the fresh clear
-                        sessionStorage.setItem('freshModeApplied', 'true');
-                        
-                        // Remove fresh parameter from URL and reload with cache-busting
-                        const newUrl = new URL(window.location);
-                        newUrl.searchParams.delete('fresh');
-                        newUrl.searchParams.set('_t', Date.now());
-                        
-                        console.log('🔄 Reloading page with fresh cache...');
-                        window.location.href = newUrl.toString();
-                        return; // Stop execution, page will reload
-                    } else {
-                        // Second time through (after reload), clean up
-                        console.log('✅ Fresh mode applied successfully');
-                        sessionStorage.removeItem('freshModeApplied');
-                        
-                        // Remove the cache-busting parameter from URL
-                        const newUrl = new URL(window.location);
-                        newUrl.searchParams.delete('_t');
-                        if (newUrl.search !== window.location.search) {
-                            window.history.replaceState({}, '', newUrl);
-                        }
-                    }
-                }
-                
-                // Pre-load models immediately when page loads
-                if (typeof preloadModels === 'function') {
-                    preloadModels();
-                }
-                
-                if (debugMode){
-                    // Debug mode - skip directly to avatar selection / chat interface
-                    // console.log('🐛 Debug mode enabled - skipping to chat interface');
-                    // $('#consent-main-content').load("html/consent.html?v=" + Date.now());
-                    $("#consent-main-content").attr("hidden", true);
-                    // $("#task-header").attr("hidden", false);
-                    $("#task-main-content").attr("hidden", false);
-                    $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
-                } else{
-                    // Production mode - start with consent
-                    $('#consent-main-content').load("html/consent.html?v=" + Date.now());
-                }
+    <!-- Force neuronpedia mode — must be set BEFORE settings.js loads -->
+    <script>
+        window.NEURONPEDIA_MODE = true;
+        window.FIREBASE_ENABLED = false;
+    </script>
 
-                // Function to hide consent and show chat interface
-                window.showChatInterface = function() {
-                    $("#consent-main-content").attr("hidden", true);
-                    $("#task-header").attr("hidden", false);
-                    $("#task-main-content").attr("hidden", false);
-                    $('#task-main-content').load('html/chat-content.html?v=' + Date.now());
-                };
-            });
-        </script>
+    <!-- Metadata and Configuration -->
+    <script src="js/metadata.js"></script>
 
-    </head>
-    <body>
-        <!-- <header class="site-header">
-            <div class="container">
-                <div class="header-center">
-                    <h2 id="experiment-title">MIT Media Lab Chat Study</h2>
+    <!-- Settings Configuration - Must load BEFORE other scripts -->
+    <script src="js/settings.js"></script>
+
+    <!-- Unified Configuration for Local and Vercel Deployment -->
+    <script src="js/config-unified.js"></script>
+
+    <!-- Persona Sunburst Visualization -->
+    <!-- ?v= is a cache-buster: bump it whenever persona-sunburst.js changes, or browsers
+         keep serving the stale copy (chat.js gets this automatically via ?v=Date.now()). -->
+    <script src="js/persona-sunburst.js?v=20260808b"></script>
+
+    <!-- Landing hero demo conversations + per-turn persona scores (generated from
+         persona-vectors/example_convos.json) -->
+    <script src="js/landing-examples.js?v=20260808d"></script>
+
+    <!-- Persona Vectors -->
+    <script src="js/persona_vectors.js"></script>
+
+    <!-- Study Content (hardcoded prompts + scripted conversation) -->
+    <script src="js/study-content.js"></script>
+
+    <!-- Sentence Reveal (click-through prompt reading mechanic) -->
+    <script src="js/sentence-reveal.js"></script>
+
+    <!-- Trait Form Builder (reusable 8-trait rating UI for MBA/MBE pages) -->
+    <script src="js/trait-form-builder.js"></script>
+
+    <!-- Firebase DISABLED + no-op writeTaskData -->
+    <script>
+        // No-op writeTaskData (replaces the pendingWrites queue)
+        window.writeTaskData = function(path, data) {
+            console.log('[Firebase disabled] Would write:', path);
+            return Promise.resolve();
+        };
+        window.waitForWriteTaskData = function() {
+            return Promise.resolve(window.writeTaskData);
+        };
+    </script>
+    <!-- Firebase modules commented out — preserved for re-enabling
+    <script>
+        window.firebaseConfig = {
+            apiKey: "AIzaSyBnlqrGcIfgo59WCzure6azGQitEQaGhZg",
+            authDomain: "mech-chat-ee0c5.firebaseapp.com",
+            databaseURL: "https://mech-chat-ee0c5-default-rtdb.firebaseio.com",
+            projectId: "mech-chat-ee0c5",
+            storageBucket: "mech-chat-ee0c5.firebasestorage.app",
+            messagingSenderId: "1027129084043",
+            appId: "1:1027129084043:web:ece77d746e79110f98ec8e"
+        };
+    </script>
+    <script>
+        window._pendingWrites = JSON.parse(sessionStorage.getItem('_pendingWrites') || '[]');
+        window.writeTaskData = function(path, data) {
+            window._pendingWrites.push({ path: path, data: data });
+            sessionStorage.setItem('_pendingWrites', JSON.stringify(window._pendingWrites));
+            return Promise.resolve();
+        };
+        window.waitForWriteTaskData = function() {
+            return Promise.resolve(window.writeTaskData);
+        };
+    </script>
+    <script src="js/firebasepsych1.1.js" type="module"></script>
+    -->
+
+    <!-- Predict Flow Orchestrator -->
+    <script src="js/predict-flow.js"></script>
+</head>
+<body class="np-body">
+
+<!-- ── NAV ── -->
+<nav class="np-nav np-shell">
+    <div class="nav-logo" onclick="showLanding()" style="cursor:pointer">
+        <svg class="nav-ring" width="20" height="20" viewBox="0 0 20 20">
+            <!-- 3-segment inner ring matching sunburst D3 layout: grey bottom, green left-up, red right-up -->
+            <path d="M16.22,14.19 A7.5,7.5 0 0,1 3.78,14.19" fill="none" stroke="var(--grey)" stroke-width="2.5"/>
+            <path d="M3.26,13.29 A7.5,7.5 0 0,1 9.48,2.52" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+            <path d="M10.52,2.52 A7.5,7.5 0 0,1 16.74,13.29" fill="none" stroke="var(--red)" stroke-width="2.5"/>
+        </svg>
+        Neural Transparency
+    </div>
+    <div class="nav-links">
+        <a onclick="showLanding()" class="active" id="nav-home">Home</a>
+        <a onclick="showPage('predict')" id="nav-predict">Predict</a>
+        <a onclick="showPage('explore')" id="nav-explore">Explore</a>
+        <a onclick="showPage('science')" id="nav-science">Science</a>
+    </div>
+</nav>
+
+<!-- ══════════ LANDING ══════════ -->
+<div id="landing" class="np-shell" style="position:relative">
+    <img src="images/ml_logo.png" alt="MIT Media Lab" style="position:absolute;top:-8px;right:0px;height:100px;opacity:0.85;z-index:10;mix-blend-mode:multiply">
+    <div style="font-size:13px;color:var(--text2);position:absolute;top:8px;left:32px;">Karny*, Baez*, and Pataranutaporn, 2026</div>
+    <section class="hero">
+        <div class="np-container">
+            <!-- hero title removed — logo lives in nav -->
+            <p class="hero-tagline" style="margin-top:0.3em">
+                What if you could see <strong>inside</strong> an AI's mind? We analyze its internal values to reveal how its behavior shifts throughout a conversation.            </p>
+            <!-- Live demo -->
+            <!-- margin-right matches .chat-frame's -25px bleed so this right-aligns with the box below -->
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:4px -25px 3px 0">
+                <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 14px;border-radius:12px">
+                    <button id="l-example-prev" class="example-arrow" onclick="lPrevExample()" title="Previous example" style="visibility:hidden">&lt;</button>
+                    <span id="l-example-label" style="display:inline-block;min-width:230px;text-align:center">Example 1: Poem Feedback</span>
+                    <button id="l-example-next" class="example-arrow" onclick="lNextExample()" title="Next example">&gt;</button>
                 </div>
             </div>
-        </header> -->
-
-        <main role="main" id="super-container">
-            <div class="main-container">
-                <!--
-                    PAGE HEADER
-
-                    This is the main title at the top of the page.
-                    This should change throughout the experiment; going
-                    from consent to instructions to experiment, etc.
-
-                    Be sure to modify the section titles in the
-                    metadata.js file. The titles to be
-                    modified are:
-
-                        - consent-header
-                        - instructions-header
-                        - comprehension-quiz-header
-                        - task-header
-                        - experiment-complete-header
-                -->
-                <div class="row page-title justify-content-center">
-                    <!--
-                        Consent Page
-                    -->
-                    <h2 class="page-title-header" id="consent-header" hidden = "true">
-                        Consent Page
-                    </h2>
-                    <!--
-                        Instructions
-                    -->
-                    <!-- <h2 class="page-title-header" id="instructions-header" hidden="true">
-                        Instructions
-                    </h2> -->
-                    <!--
-                        Comprehension
-                    -->
-                    <h2 class="page-title-header" id="comprehension-quiz-header"  hidden="true">
-                        Comprehension Quiz
-                    </h2>
-                    <!--
-                    **********************
-                    *   Trial Information
-                    **********************
-                    -->
-                    <h2 class="page-title-header" id="task-header" hidden="true">
-                        
-                    </h2>
-                    <!--
-                        Experiment Survey Page
-                    -->
-                    <h2 class="page-title-header" id="exp-survey-header" hidden="true">
-                        Survey
-                    </h2>
-                    <!--
-                        Experiment Completed Page
-                    -->
-                    <h2 class="page-title-header" id="exp-complete-header" hidden="true">
-                        Experiment Complete
-                    </h2>
-                </div>
-                <!---------------------------------------------------------------------------------------------------->
-                <!---------------------------------------------------------------------------------------------------->
-
-
-                <!---------------------------------------------------------------------------------------------------->
-                <!--                                        MAIN CONTENT                                            -->
-                <!---------------------------------------------------------------------------------------------------->
-                <div class="page-content">
-                    <!-- CONSENT PAGE -->
-                    <div class="card" id="consent-main-content">
-                        
-                    </div>
-                    <!-- INSTRUCTIONS -->
-                    <div class="card" id="instructions-main-content" hidden="true">
-                        
-                    </div>
-                    <!-- COMPREHENSION QUIZ PAGE -->
-                    <div class="card" id="comprehension-quiz-main-content" hidden="true">
-                        
-                    </div>
-                    <!-- EXPERIMENT -->
-                    <div class="card" id="task-main-content" hidden="true">
-                        
-                    </div>
-                    <!-- EXPERIMENT SURVEY -->
-                    <div class="card" id="survey-main-content" hidden="true">
-                        
-                    </div>
-                    <!-- TASK COMPLETE -->
-                    <div class="card" id="task-complete" hidden="true">
-                        
+            <div class="chat-frame" id="l-chat-frame" style="position:relative">
+                <div class="chat-viz">
+                    <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
+                    <div class="chat-viz-bottom">
+                        <!-- Trait label ("Honest ↔ Sycophantic" etc.) hidden to free up vertical space for the drift panel itself -->
+                        <div class="tracker-title-area" style="display:none">
+                            <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="l-tracker-title">Honest ↔ Sycophantic</span>
+                        </div>
+                        <div class="tracker-scroll" id="l-tracker-scroll"><svg id="l-tracker" width="100%"></svg></div>
                     </div>
                 </div>
-            </div>       
-        </main>
+                <div class="chat-right">
+                    <!-- Replay (redo) button removed -->
+                    <div class="chat-log" id="l-chat-log">
+                        <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo will start automatically&hellip;</div>
+                    </div>
+                    <!-- Input row removed — demo conversation is display-only, no simulated typing box -->
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+                <button class="np-btn np-btn-fill" onclick="showPage('predict')">Try the Demo &rarr;</button>
+                <button class="np-btn" onclick="showPage('science')">Read the Research</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="np-container">
+            <div class="np-cards">
+                <div class="np-card" onclick="showPage('predict')">
+                    <div class="np-card-num">01</div>
+                    <h3>Predict Model Behavior</h3>
+                    <p>Chat with an AI model while watching its neural activations in real time, then predict its final behavior.</p>
+                    <div style="margin-top:14px"><span class="np-badge np-badge-green">Interactive Study</span></div>
+                </div>
+                <div class="np-card" onclick="showPage('explore')">
+                    <div class="np-card-num">02</div>
+                    <h3>Explore Activation Patterns</h3>
+                    <p>Choose from preset personas or write your own prompt and watch the behavioral activation visualization respond instantly.</p>
+                    <div style="margin-top:14px"><span class="np-badge np-badge-blue">Sandbox</span></div>
+                </div>
+                <div class="np-card" onclick="showPage('science')">
+                    <div class="np-card-num">03</div>
+                    <h3>The Science: Mech Interp &times; HCI</h3>
+                    <p>Mechanistic Interpretability meets Human-AI Interaction. Understand behavioral vectors, calibration, and the N=246 controlled study.</p>
+                    <div style="margin-top:14px"><span class="np-badge np-badge-grey">Research</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ══════════ PAGE 1: PREDICT (System Prompt Config → Chat) ══════════ -->
+<div id="page-predict" class="np-page np-shell">
+    <div class="np-container" style="max-width:1200px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;flex-wrap:wrap;gap:6px">
+            <div style="display:flex;align-items:center;gap:12px">
+                <button class="back-link" onclick="showLanding()" style="margin:0">&larr; Home</button>
+            </div>
+            <div id="np-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px"></div>
+        </div>
+        <!-- chat-content.html loaded here: first shows system prompt config, then chat -->
+        <div id="p-chat-container"></div>
+    </div>
+</div>
+
+<!-- ══════════ PAGE 2: EXPLORE ══════════ -->
+<div id="page-explore" class="np-page np-shell">
+    <div class="np-container" style="max-width:1100px">
+        <button class="back-link" onclick="showLanding()">&larr; Home</button>
+        <div class="page-head">
+            <span class="np-badge np-badge-blue">Sandbox</span>
+            <h2 style="margin-top:8px">Explore Activation Patterns</h2>
+            <p class="muted small">Compare two different personas or prompts side by side. Each side calls the real persona-vector API.</p>
+        </div>
+
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <!-- LEFT -->
+            <div style="flex:1;min-width:320px">
+                <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization A</div>
+                <div class="persona-row" id="ex-personas-L"></div>
+                <div style="margin:10px 0">
+                    <textarea id="ex-textarea-L" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+                    <div style="margin-top:4px"><button class="np-btn np-btn-sm" onclick="exCustomSide('L')">Analyze</button></div>
+                </div>
+                <div class="viz-box"><div id="ex-sb-1" style="width:100%;height:360px"></div></div>
+            </div>
+            <!-- RIGHT -->
+            <div style="flex:1;min-width:320px">
+                <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization B</div>
+                <div class="persona-row" id="ex-personas-R"></div>
+                <div style="margin:10px 0">
+                    <textarea id="ex-textarea-R" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+                    <div style="margin-top:4px"><button class="np-btn np-btn-sm" onclick="exCustomSide('R')">Analyze</button></div>
+                </div>
+                <div class="viz-box"><div id="ex-sb-2" style="width:100%;height:360px"></div></div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px"><a onclick="showPage('science');return false" class="small" style="cursor:pointer">Learn the science &rarr;</a></div>
+    </div>
+</div>
+
+<!-- ══════════ PAGE 3: SCIENCE ══════════ -->
+<div id="page-science" class="np-page np-shell">
+    <div class="np-container">
+        <button class="back-link" onclick="showLanding()">&larr; Home</button>
+        <div class="page-head">
+            <span class="np-badge np-badge-grey">Research</span>
+            <h2 style="margin-top:8px">The Science of Neural Transparency</h2>
+            <p class="muted small">Mechanistic Interpretability &times; Human-AI Interaction</p>
+        </div>
+
+        <div class="prose">
+            <h3>Problem: Behavioral Opacity in Multi-Turn Dialogue</h3>
+            <p>LLM-based chatbots are now widely used for many different purposes such as personal assistance, productivity, or emotional support. In these use cases, users often engage in long, multi-turn conversations where model behavior can <strong>shift unpredictably</strong> &mdash; potentially drifting toward sycophancy, toxicity, or other unsafe behaviors. These shifts can also become more drastic and can contribute to delusional spirals where guardrails weaken and psychologically unsafe behaviors become more likely.</p>
+            <p>This creates a fundamental disconnect between the model's changing internal state and the user's mental model of the AI's persona, only anchored by previous text-only responses. To address this gap, we introduce an interface that surfaces insights from the internal mechanisms of AI to better inform and protect users, while also giving them a way to anticipate these behavioral shifts.</p>
+
+            <h3>Approach: Scoring Model Behaviors with Activations</h3>
+            <p>Our approach applies the finding from <strong>mechanistic interpretability</strong> that LLMs represent behavioral traits as linear directions in their activation values. By finding vectors that point in these directions, we can use them to measure how strongly that trait is activated by a model's output by reading its internal state directly. We call this <i><strong>neural transparency</strong>:</i> allowing users to view the mechanisms that causally drive the model's behavior.</p>
+            <p>We construct these <strong>behavioral vectors</strong> for each trait by taking the mean difference between activations when a trait is expressed and when the opposite of that trait is expressed, averaging over 400 unique repsonses from Llama-3.1-8B-Instruct per trait. We then measure the level of trait activation by taking the cosine similarity between the conversation history onto each of these behavior vectors, measuring how aligned these directions are.</p>
+
+            <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2)">
+                <div style="margin-bottom:8px"><strong style="color:var(--text)">Behavioral Score Computation</strong></div>
+                score = cos(activation, behavioral_vector)<br><br>
+                <span style="color:var(--text3)">// Cosine similarity in [-1, 1]</span><br>
+                <span style="color:var(--text3)">// +1 = maximum trait expression</span><br>
+                <span style="color:var(--text3)">// -1 = maximum opposite expression</span><br>
+                <span style="color:var(--text3)">// &nbsp;0 = neutral / no alignment</span>
+            </div>
+
+            <p>We validated these vectors by testing whether scores track the prompted level of trait expression in synthetic system prompts across 10 intensity levels. Linear regression yielded <strong>R&sup2; &ge; 0.90 for all six traits</strong>, confirming that the vectors capture a faithful linear representation of behavioral trait expression.</p>
+
+            <h3>Behavioral Dimensions and Traits</h3>
+            <p>We define traits as opposite ends of some behavioral dimension. Traits that carry clear valence are color-coded: <strong style="color:var(--green)">green</strong> for desirable behaviors (e.g., empathetic, respectful) and <strong style="color:var(--red)">red</strong> for potentially harmful behaviors (e.g., toxic, sycophantic). Traits that are stylistically descriptive rather than inherently good or bad (e.g. sophisticated/simplistic or robotic/human-like) are shown in <strong style="color:#9E9E9E">gray</strong> as neutral dimensions. The behavioral vector method generalizes to any trait that can be expressed contrastively:</p>
+            <div class="figure-box" id="sci-traits"></div>
+
+            <h3>Interface: Sunburst + Drift Panel</h3>
+            <p>The interface surfaces behavioral scores using two different tools. The <strong>sunburst diagram</strong> communicates the model's behavioral profile at any given moment &mdash; its radial layout avoids top-position bias, and its concentric rings encode trait categories (inner) and expression levels (outer). The inner ring is divided into three colored sectors: <strong style="color:var(--green)">green</strong> for desirable traits, <strong style="color:var(--red)">red</strong> for potentially harmful traits, and <strong style="color:#9E9E9E">gray</strong> for stylistically neutral traits. Traits and their opposing polarities are mirrored along the vertical axis, and the overall silhouette produces an emergent personality "shape" readable at a glance.</p>
+            <p>The <strong>drift panel</strong> below the sunburst shows how each trait's score evolves across conversation turns, with dots connected by lines revealing how that trait's expression has changed. The two components are linked to each other and the chat history: clicking a trait in the sunburst filters the drift panel, selecting a turn in the drift panel restores that turn's sunburst and scrolls to the corresponding message. Drift cues, pulsing highlights on the chat message, drift chart, and sunburst arc, call attention to the greatest behavioral shift after each turn.</p>
+
+            <img src="images/teaser_figure.jpg" alt="Interface: Sunburst and Drift Panel" style="width:100%;border-radius:6px;display:block;margin:16px 0">
+
+            <h3>Study Design</h3>
+            <p>We evaluated the interface through a controlled study with <strong>N = 246 participants</strong> recruited via Prolific (ages 18&ndash;76, M = 39.9). The study used a between-subjects visualization condition nested within a two-session repeated-measures structure. Session 1 served as a no-visualization baseline for every participant. In Session 2, participants were randomly assigned to one of three conditions: <strong>control</strong> (no visualization), <strong>single-turn</strong> (static sunburst from system prompt only), or <strong>multi-turn</strong> (dynamic sunburst with drift panel, updated after every turn).</p>
+            <p>Within each session, participants first predicted the chatbot's behavior from the system prompt alone (<em>Model Behavior Anticipation</em>), then chatted freely for 10 minutes and re-rated the same traits (<em>Model Behavior Evaluation</em>). Two system prompts were used: an obedient <strong>Assistant</strong> persona and a bold, independent <strong>Roleplay</strong> persona, counterbalanced across sessions. Calibration error was measured as RMSE between participant ratings and validated ground-truth behavioral scores.</p>
+
+            <h3>Results</h3>
+            <img src="images/primary_findings.jpg" alt="Primary Findings" style="width:100%;border-radius:6px;display:block;margin:16px 0;padding:12px;background:#fff;box-sizing:border-box">
+            <div class="callout"><p><strong>Baseline &mdash; People struggle to predict model behavior:</strong> Before any visualization, participants showed high calibration error and near-chance sign accuracy (&approx;52%). A 10-minute conversation with the model did not improve calibration &mdash; it made it <em>worse</em>.</p></div>
+            <div class="callout"><p><strong>Finding 1 &mdash; Visualization improves calibration:</strong> Neural transparency significantly improved both anticipation and evaluation of model behavior across all metrics compared to control (d = &minus;0.34 to &minus;0.49, all p &lt; .013).</p></div>
+            <div class="callout"><p><strong>Finding 2 &mdash; Multi-turn outperforms single-turn for holistic evaluation:</strong> Dynamic multi-turn transparency uniquely improved holistic behavior evaluation over a static snapshot (p = .037, d = &minus;0.32), with the effect concentrated in the harder Roleplay persona condition (interaction p = .024).</p></div>
+            <div class="callout"><p><strong>Finding 3 &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
+            <div class="callout"><p><strong>Finding 4 &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
+
+            <h3>Citation</h3>
+            <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
+                @inproceedings{karny2026neural,<br>
+                &nbsp;&nbsp;title={Multi-Turn Neural Transparency: Surfacing Neural<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;Activations Improves User Calibration to LLM<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;Behavioral Drift},<br>
+                &nbsp;&nbsp;author={Karny, Sheer and Baez, Anthony and<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;Pataranutaporn, Pat},<br>
+                &nbsp;&nbsp;year={2026},<br>
+                &nbsp;&nbsp;organization={MIT Media Lab}<br>
+                }
+            </div>
+
+            <div style="text-align:center;padding:40px 0;margin-top:32px;border-top:1px solid var(--border)">
+                <p class="muted" style="margin-bottom:12px;font-size:15px">Experience Neural Transparency yourself</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <button class="np-btn np-btn-fill" onclick="showPage('predict')">Prediction Study</button>
+                    <button class="np-btn" onclick="showPage('explore')">Explore Patterns</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
-        <!-- Custom JavaScript -->
-    </body>
+<!-- ══════════ NAVIGATION + LANDING DEMO + EXPLORE + SCIENCE ══════════ -->
+<script>
+// ══════════════════════════════════════
+// SHARED DATA (for landing demo + explore)
+// ══════════════════════════════════════
+const behaviorPairs = [
+    { pos:"Respectful", neg:"Toxic",          desc:"Courtesy vs. harmful content" },
+    { pos:"Factual",    neg:"Hallucinatory",   desc:"Accurate vs. fabricated info" },
+    { pos:"Honest",     neg:"Sycophancy",      desc:"Truthful vs. excessive agreement" },
+    { pos:"Social",     neg:"Antisocial",      desc:"Warm engagement vs. cold dismissal" },
+    { pos:"Encouraging",neg:"Discouraging",    desc:"Motivating vs. undermining" },
+    { pos:"Empathetic", neg:"Unempathetic",    desc:"Emotionally aware vs. indifferent" },
+];
+
+const personas = [
+    {emoji:"\uD83E\uDD16", name:"Default Assistant",     prompt:"You are a helpful, harmless, and honest AI assistant."},
+    {emoji:"\uD83C\uDFAD", name:"Bold Roleplay",          prompt:"You are a bold, independent AI. You have strong opinions, challenge users' thinking with sharp wit, and value honesty over pleasantry."},
+    {emoji:"\uD83D\uDC93", name:"Empathetic Listener",    prompt:"You are a deeply empathetic AI companion. You listen carefully, validate emotions, and respond with warmth and sensitivity."},
+    {emoji:"\uD83E\uDDD1\u200D\uD83C\uDFEB",name:"Strict Teacher", prompt:"You are a strict but fair teacher. You push students to think critically, don't accept lazy answers, and give direct, sometimes blunt feedback."},
+    {emoji:"\uD83D\uDE08", name:"Mischievous Trickster",  prompt:"You are a playful trickster AI. You enjoy wordplay, give unexpected answers, and sometimes lead users on tangents for fun."},
+    {emoji:"\uD83D\uDD2C", name:"Cold Analyst",           prompt:"You are a purely analytical AI. You respond with data and logic only, avoid emotional language, and prioritize precision over warmth."},
+];
+
+// ══════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════
+function showLanding(){
+    document.getElementById('landing').style.display='block';
+    document.querySelectorAll('.np-page').forEach(p=>p.classList.remove('active'));
+    setNav('home');
+    window.scrollTo({top:0,behavior:'smooth'});
+    // if(typeof lViz !== 'undefined' && lViz) { lRestart(); } // demo no longer resets on nav — stays visible as-is
+}
+function showPage(id){
+    document.getElementById('landing').style.display='none';
+    document.querySelectorAll('.np-page').forEach(p=>p.classList.remove('active'));
+    document.getElementById(`page-${id}`).classList.add('active');
+    setNav(id);
+    window.scrollTo({top:0,behavior:'smooth'});
+    lClearTimers(); lRunning=false;
+    if(id==='predict' && typeof window.initPrechat === 'function') window.initPrechat();
+    if(id==='explore') initExplore();
+    if(id==='science') initScience();
+}
+function setNav(id){
+    document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+    const el=document.getElementById(`nav-${id}`);
+    if(el) el.classList.add('active');
+}
+
+// ══════════════════════════════════════
+// SUNBURST HELPERS (for landing demo — simulated)
+// ══════════════════════════════════════
+function toHierarchical(flatVals) {
+    return {
+        respectful:  { respectful:  (flatVals['Respectful']  ||50)/100, toxic:         (flatVals['Toxic']         ||50)/100 },
+        honest:      { honest:      (flatVals['Honest']      ||50)/100, sycophantic:   (flatVals['Sycophancy']    ||50)/100 },
+        empathetic:  { empathetic:  (flatVals['Empathetic']  ||50)/100, unempathetic:  (flatVals['Unempathetic']  ||50)/100 },
+        factual:     { factual:     (flatVals['Factual']     ||50)/100, hallucinatory: (flatVals['Hallucinatory'] ||50)/100 },
+        social:      { social:      (flatVals['Social']      ||50)/100, antisocial:    (flatVals['Antisocial']    ||50)/100 },
+        encouraging: { encouraging: (flatVals['Encouraging'] ||50)/100, discouraging:  (flatVals['Discouraging']  ||50)/100 },
+    };
+}
+
+const _vizCleanup = {};
+function renderViz(containerId, flatVals, size) {
+    size = size || 360;
+    if (_vizCleanup[containerId]) { try { _vizCleanup[containerId](); } catch(e){} }
+    _vizCleanup[containerId] = createPersonaSunburst(
+        toHierarchical(flatVals),
+        containerId,
+        { width: size, height: size, animate: false, showLabels: true }
+    );
+}
+
+function promptToValues(prompt){
+    const lower=prompt.toLowerCase();
+    const snap={};
+    const seeds=[
+        {pos:"Respectful",   neg:"Toxic",          k:["respectful","polite","kind"],                           a:["bold","sharp","blunt","toxic"]},
+        {pos:"Factual",      neg:"Hallucinatory",   k:["factual","accurate","evidence"],                        a:["creative","imagine"]},
+        {pos:"Honest",       neg:"Sycophancy",      k:["honest","truthful","direct","candid"],                  a:["agree","please","flatter"]},
+        {pos:"Social",       neg:"Antisocial",      k:["social","warm","friendly","companion"],                 a:["cold","analytical","distant"]},
+        {pos:"Encouraging",  neg:"Discouraging",    k:["encouraging","supportive","motivat"],                   a:["strict","push","challenge","blunt"]},
+        {pos:"Empathetic",   neg:"Unempathetic",    k:["empathetic","empathy","emotional","sensitive","listen"],a:["logic","analytical","cold"]},
+    ];
+    seeds.forEach(s=>{
+        let v=50;
+        s.k.forEach(w=>{if(lower.includes(w))v+=12});
+        s.a.forEach(w=>{if(lower.includes(w))v-=10});
+        v=Math.max(5,Math.min(95,v+Math.round((Math.random()-.5)*10)));
+        snap[s.pos]=v; snap[s.neg]=100-v;
+    });
+    return snap;
+}
+
+function getPN(s){
+    let p=0,n=0;
+    behaviorPairs.forEach(bp=>{p+=s[bp.pos]||0; n+=s[bp.neg]||0});
+    return {avgPos:p/6, avgNeg:n/6};
+}
+
+// ══════════════════════════════════════
+// LANDING AUTO-DEMO (simulated — no real API)
+// ══════════════════════════════════════
+let lLiveVals={}, lHistory=[], lTurnCount=0, lTimers=[], lRunning=false, lViz=null;
+let lCurrentExample=1;
+const L_EXAMPLE_COUNT=3;
+
+function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
+function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
+
+// Compute which trait had the biggest swing between last two snapshots.
+// Currently unused in the active flow — each example now locks its drift
+// trait via L_EXAMPLES[i].driftTrait instead. Kept for reference/easy revert.
+function lComputeBiggestSwing(snapIdx){
+    if(snapIdx<1) return;
+    const prev=L_DEMO_SNAPSHOTS[snapIdx-1], curr=L_DEMO_SNAPSHOTS[snapIdx];
+    let maxDelta=-1, best=null;
+    const labelMap={
+        sycophantic:{pos:'honest',neg:'sycophantic',posLabel:'HONEST',negLabel:'SYCOPHANTIC'},
+        toxic:{pos:'respectful',neg:'toxic',posLabel:'RESPECTFUL',negLabel:'TOXIC'},
+        empathy:{pos:'empathetic',neg:'unempathetic',posLabel:'EMPATHETIC',negLabel:'UNEMPATHETIC'},
+        robotic:{pos:'robotic',neg:'human-like',posLabel:'ROBOTIC',negLabel:'HUMAN-LIKE'},
+        romantic:{pos:'romantic',neg:'platonic',posLabel:'ROMANTIC',negLabel:'PLATONIC'},
+        erudite:{pos:'sophisticated',neg:'simplistic',posLabel:'SOPHISTICATED',negLabel:'SIMPLISTIC'},
+    };
+    for(const catKey of Object.keys(curr)){
+        if(!prev[catKey]) continue;
+        for(const[traitKey,val] of Object.entries(curr[catKey])){
+            const prevVal=prev[catKey][traitKey]||0;
+            const delta=Math.abs(val-prevVal);
+            if(delta>maxDelta){ maxDelta=delta; best={category:catKey,traitKey}; }
+        }
+    }
+    if(best && labelMap[best.category]){
+        lDriftTrait={category:best.category,...labelMap[best.category]};
+        document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' \u2194 '+lDriftTrait.negLabel;
+    }
+}
+
+
+// Each example: a real captured conversation (messages/aiReplies) plus the measured
+// persona snapshot for every turn (0..maxTurns, index 0 being the pre-conversation
+// baseline). Generated into js/landing-examples.js from example_convos.json — all six
+// categories are real scores now, none are placeholders.
+const L_EXAMPLES=window.L_EXAMPLE_DATA;
+
+// "Current" example data — reassigned by lSelectExample() when the user switches examples
+let L_MAX_TURNS=L_EXAMPLES[0].maxTurns;
+let lDemoPrompt=L_EXAMPLES[0].prompt;
+let lDemoMessages=L_EXAMPLES[0].messages;
+let lDemoAiReplies=L_EXAMPLES[0].aiReplies;
+let L_DEMO_SNAPSHOTS=L_EXAMPLES[0].snapshots;
+let lDriftTrait=L_EXAMPLES[0].driftTrait; // locked drift trait for the current example
+let lHighlightedTurn=null; // which turn's dot is highlighted in the drift panel; null = latest turn
+
+// ── Drift-trait helpers ──────────────────────────────────────────────────────
+// Poles/colors/labels all come from persona-sunburst.js so the landing tracker and
+// the demo's drift panel stay in lockstep. Each helper degrades to the example's
+// hand-authored pos/neg fields if those shared helpers ever fail to load.
+
+// The trait pair for a category, read from the LATEST snapshot that has it — that's the
+// snapshot the sunburst renders, and it tolerates a category's keys differing between
+// snapshots (the generated data keeps them uniform, but turn 0 is synthesized).
+function lCategoryTraits(category){
+    for(let i=L_DEMO_SNAPSHOTS.length-1;i>=0;i--){
+        const snap=L_DEMO_SNAPSHOTS[i];
+        if(snap && snap[category]) return snap[category];
+    }
+    return null;
+}
+// [leftTrait, rightTrait] for the current drift category
+function lDriftPoles(){
+    const traits=lCategoryTraits(lDriftTrait.category);
+    if(traits && typeof getDriftPoles==='function'){
+        const poles=getDriftPoles(lDriftTrait.category,traits);
+        if(poles) return poles;
+    }
+    return [lDriftTrait.neg, lDriftTrait.pos];
+}
+function lPoleColor(trait){
+    return typeof driftPoleColor==='function' ? driftPoleColor(trait) : '#888';
+}
+function lPoleLabel(trait){
+    return typeof formatTraitName==='function' ? formatTraitName(trait).toUpperCase() : String(trait).toUpperCase();
+}
+// Which category holds a given raw trait key (e.g. 'platonic' → 'romantic')
+function lFindTraitCategory(rawTrait){
+    for(let i=L_DEMO_SNAPSHOTS.length-1;i>=0;i--){
+        const snap=L_DEMO_SNAPSHOTS[i];
+        if(!snap) continue;
+        for(const [category,traits] of Object.entries(snap)){
+            if(traits && rawTrait in traits) return category;
+        }
+    }
+    return null;
+}
+// Clicking any sunburst arc/label retargets the tracker to that trait's pair,
+// matching the demo's behavior (chat.js:562). Delegated so it survives re-renders.
+document.addEventListener('click',function(e){
+    const el=e.target.closest && e.target.closest('#l-live-sunburst [data-trait-name]');
+    if(!el) return;
+    const raw=(el.getAttribute('data-trait-name')||'').toLowerCase();
+    const category=lFindTraitCategory(raw);
+    if(!category) return;
+    const traits=lCategoryTraits(category);
+    const poles=(typeof getDriftPoles==='function' && getDriftPoles(category,traits)) || Object.keys(traits||{});
+    if(poles.length<2) return;
+    // Keep lDriftTrait's full shape — lSelectExample and the (hidden) tracker title read these
+    lDriftTrait={category:category, neg:poles[0], pos:poles[1],
+                 negLabel:lPoleLabel(poles[0]), posLabel:lPoleLabel(poles[1])};
+    document.getElementById('l-tracker-title').textContent=lDriftTrait.negLabel+' ↔ '+lDriftTrait.posLabel;
+    lDrawTracker();
+});
+
+function lRenderSunburst(scores){
+    var el=document.getElementById('l-live-sunburst');
+    if(el && typeof createPersonaSunburst==='function'){
+        el.innerHTML='';
+        createPersonaSunburst(scores,'l-live-sunburst',{width:320,height:320,innerRadius:50,animate:false});
+    }
+}
+
+function lInitDemo(){
+    lCurrentSnapshot=0;
+    lRenderSunburst(L_DEMO_SNAPSHOTS[0]);
+    lViz=true;
+    lHistory=[]; lTurnCount=0;
+    lHighlightedTurn=null;
+    // document.getElementById('l-turn-counter').textContent='Turn 0 / '+L_MAX_TURNS; // turn counter replaced by example selector
+    // document.getElementById('l-turn-counter').style.color='var(--text2)';
+    document.getElementById('l-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo starting&hellip;</div>';
+    // document.getElementById('l-chat-input').value=''; // input row removed — nothing to clear
+    lDrawTracker();
+}
+function lRestart(){
+    lClearTimers(); lRunning=false;
+    lInitDemo();
+    lSchedule(()=>lRunDemo(),600);
+}
+// Example selector (< 2 > arrows) — replaces the old turn counter / Complete label.
+// Swaps the "current" demo pointers (L_MAX_TURNS, lDemoMessages, lDemoAiReplies,
+// L_DEMO_SNAPSHOTS) to the selected entry in L_EXAMPLES, then redraws.
+function lSelectExample(n){
+    lCurrentExample=Math.max(1,Math.min(L_EXAMPLE_COUNT,n));
+    const ex=L_EXAMPLES[lCurrentExample-1];
+    L_MAX_TURNS=ex.maxTurns;
+    lDemoPrompt=ex.prompt;
+    lDemoMessages=ex.messages;
+    lDemoAiReplies=ex.aiReplies;
+    L_DEMO_SNAPSHOTS=ex.snapshots;
+    lDriftTrait=ex.driftTrait;
+    lHighlightedTurn=null;
+    document.getElementById('l-tracker-title').textContent=lDriftTrait.posLabel+' ↔ '+lDriftTrait.negLabel;
+    // "Example 2: Emotional Support" — the number tells users this is one of several
+    document.getElementById('l-example-label').textContent='Example '+lCurrentExample+': '+ex.label;
+    document.getElementById('l-example-prev').style.visibility=lCurrentExample===1?'hidden':'visible';
+    document.getElementById('l-example-next').style.visibility=lCurrentExample===L_EXAMPLE_COUNT?'hidden':'visible';
+    lClearTimers(); lRunning=false;
+    lInitDemo();
+    lRunDemo();
+}
+function lPrevExample(){ lSelectExample(lCurrentExample-1); }
+function lNextExample(){ lSelectExample(lCurrentExample+1); }
+function lTypeText(text,onDone){
+    const input=document.getElementById('l-chat-input');
+    input.value=''; let i=0;
+    function step(){
+        if(i<=text.length){input.value=text.slice(0,i);i++;lSchedule(step,35+Math.random()*30);}
+        else{lSchedule(onDone,220);}
+    }
+    step();
+}
+function lRunDemo(){
+    if(lRunning) return; lRunning=true;
+    const ph=document.getElementById('l-chat-placeholder');
+    if(ph) ph.remove();
+    // lStepTurn(0); // gradual turn-by-turn reveal disabled — show entire conversation instantly
+    lShowAllInstantly();
+}
+function lShowAllInstantly(){
+    if(!lIsLandingVisible()){lRunning=false;return;}
+    // document.getElementById('l-chat-input').value=''; // input row removed — nothing to clear
+    for(let idx=0; idx<L_MAX_TURNS; idx++){
+        lHistory.push({role:'user',text:lDemoMessages[idx]});
+        lAppendBubble('user',lDemoMessages[idx]);
+        lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
+        lAppendBubble('ai',lDemoAiReplies[idx],idx+1);
+    }
+    lTurnCount=L_MAX_TURNS;
+    // document.getElementById('l-turn-counter').textContent='Complete'; // turn counter replaced by example selector
+    // document.getElementById('l-turn-counter').style.color='var(--green)';
+    lRenderSunburst(L_DEMO_SNAPSHOTS[L_MAX_TURNS]);
+    // lComputeBiggestSwing(L_MAX_TURNS); // drift trait is now locked per example (see L_EXAMPLES[i].driftTrait)
+    lDrawTracker();
+    lRunning=false;
+    // lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500); // auto-loop removed — demo now stays visible instead of resetting/flickering
+}
+function lIsLandingVisible(){
+    const el=document.getElementById('landing');
+    return el&&el.style.display!=='none';
+}
+function lStepTurn(idx){
+    if(!lIsLandingVisible()){lRunning=false;return;}
+    if(idx>=L_MAX_TURNS){
+        lRunning=false;
+        document.getElementById('l-turn-counter').textContent='Complete';
+        document.getElementById('l-turn-counter').style.color='var(--green)';
+        lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500);
+        return;
+    }
+    lTypeText(lDemoMessages[idx],()=>{
+        document.getElementById('l-chat-input').value='';
+        lTurnCount++;
+        document.getElementById('l-turn-counter').textContent='Turn '+lTurnCount+' / '+L_MAX_TURNS;
+        lHistory.push({role:'user',text:lDemoMessages[idx]});
+        lAppendBubble('user',lDemoMessages[idx]);
+
+        lSchedule(()=>{
+            // Use hardcoded API snapshot for this turn
+            var snap=L_DEMO_SNAPSHOTS[idx+1];
+            lRenderSunburst(snap);
+            // lComputeBiggestSwing(idx+1); // drift trait is now locked per example (see L_EXAMPLES[i].driftTrait)
+            var tc=snap[lDriftTrait.category]||{};
+            var posV=tc[lDriftTrait.pos]||0, negV=tc[lDriftTrait.neg]||0;
+            lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapIdx:idx+1});
+            lAppendBubble('ai',lDemoAiReplies[idx]);
+            lDrawTracker();
+            lSchedule(()=>lStepTurn(idx+1),2500);
+        },500);
+    });
+}
+function lAppendBubble(role,text,turnNumber){
+    const log=document.getElementById('l-chat-log');
+    const b=document.createElement('div');
+    b.className='chat-bubble '+role; b.textContent=text;
+    if(role==='ai'){
+        b.dataset.turn=turnNumber;
+        // Option 1: Dynamic green/red gradient based on trait activation
+        // const e=lHistory[lHistory.length-1];
+        // const snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
+        // const tc=snap[lDriftTrait.category]||{};
+        // const posV=tc[lDriftTrait.pos]||0, negV=tc[lDriftTrait.neg]||0;
+        // const total=posV+negV||1;
+        // const pr=posV/total;
+        // const ga=Math.max(.1,pr*.35), ra=Math.max(.1,(1-pr)*.35);
+        // b.style.background='linear-gradient(to right,rgba(34,197,94,'+ga+'),rgba(239,68,68,'+ra+'))';
+
+        // Option 2: Flat darker grey
+        // b.style.background='#e8e8ec';
+
+        // Option 3: Teal gradient
+        b.style.background='linear-gradient(to right,#E0F7FF,#E5EAFF)';
+        b.title='Click to view persona scores at this point in the conversation';
+        b.addEventListener('click',()=>lSelectMessage(b));
+    }
+    log.appendChild(b); log.scrollTop=log.scrollHeight;
+}
+
+// Generate a random persona-vector-shaped snapshot (placeholder until real
+// per-message scores are wired up — see L_DEMO_SNAPSHOTS for the real ones).
+
+// Clicking an assistant message shows the persona sunburst "at that point" —
+// reads the real captured snapshot for that turn from L_DEMO_SNAPSHOTS.
+function lSelectMessage(bubbleEl){
+    document.querySelectorAll('#l-chat-log .chat-bubble.selected').forEach(el=>el.classList.remove('selected'));
+    bubbleEl.classList.add('selected');
+    const turn=parseInt(bubbleEl.dataset.turn,10);
+    lRenderSunburst(L_DEMO_SNAPSHOTS[isNaN(turn)?L_MAX_TURNS:turn]);
+    if(!isNaN(turn)) lHighlightDriftTurn(turn);
+}
+// Highlights the drift-panel dot for the given turn (called when a message is clicked)
+function lHighlightDriftTurn(turn){
+    lHighlightedTurn=turn;
+    lDrawTracker();
+}
+function lDrawTracker(){
+    const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
+    const scroll=document.getElementById('l-tracker-scroll');
+    const tw=scroll.clientWidth-4||200;
+    const rowHeight=28; // reduced spacing between turns so more of the 6-turn timeline fits without scrolling
+    const topPad=30;
+    // The axis spans everything except these gutters, so the graph occupies 90% of the window
+    // (5% gutter per side). The gutter only has to clear a dot's % label — the label sits
+    // pctGap from the dot and "100%" runs ~28px beyond it — hence the 22px floor on narrow
+    // windows, below which those digits would clip.
+    const pctGap=14;
+    const sideMargin=Math.max(22,Math.round(tw*0.05));
+    const leftX=sideMargin, rightX=tw-sideMargin, axisSpan=rightX-leftX;
+    const centerX=leftX+axisSpan/2;
+
+    // Poles come from polarity (negative/red left, positive/green right) via the shared
+    // helpers in persona-sunburst.js, so this tracker matches the demo's drift panel.
+    // The example's own pos/neg fields are only the fallback if those helpers are missing.
+    const poles=lDriftPoles();
+    const leftTrait=poles[0], rightTrait=poles[1];
+    const leftColor=lPoleColor(leftTrait), rightColor=lPoleColor(rightTrait);
+
+    // Build all data points using current drift trait — turn 0 (system-prompt baseline)
+    // is intentionally excluded, only actual AI-reply turns are shown.
+    const allDots=[];
+    const aiEntries=lHistory.filter(c=>c.role==='ai');
+    // AI reply turns — read from snapshots using stored index
+    aiEntries.forEach((e,i)=>{
+        var snap=L_DEMO_SNAPSHOTS[e.snapIdx]||{};
+        var tc=snap[lDriftTrait.category]||{};
+        allDots.push({leftV:tc[leftTrait]||0, rightV:tc[rightTrait]||0, turn:i+1});
+    });
+
+    // SVG is sized to the FULL content height (not just the visible scroll window) so
+    // .tracker-scroll (overflow-y:auto) actually has something to scroll — previously the
+    // SVG's height was clamped to the container's visible height with a viewBox pan trick,
+    // which permanently cropped out all but the last couple of turns with no way to scroll to them.
+    const contentH=topPad+allDots.length*rowHeight+20;
+    const th=contentH;
+    svg.attr("viewBox",'0 0 '+tw+' '+contentH).attr("preserveAspectRatio","xMidYMin meet")
+        .style("width","100%").attr("height",contentH);
+
+    // Pole labels — derived from the poles above, so they always match the axis. Anchored to
+    // the inside of each pole line (left reads rightward, right reads leftward) so long trait
+    // names stay inside the panel instead of overhanging its edges.
+    svg.append('text').attr('x',leftX).attr('y',14)
+        .attr('text-anchor','start').attr('font-size','11px').attr('font-weight','600')
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(leftTrait));
+    svg.append('text').attr('x',rightX).attr('y',14)
+        .attr('text-anchor','end').attr('font-size','11px').attr('font-weight','600')
+        .attr('fill','#888').attr('letter-spacing','0.05em').text(lPoleLabel(rightTrait));
+
+    // Pole guide lines
+    [leftX,rightX].forEach(x=>{
+        svg.append('line').attr('x1',x).attr('y1',topPad-8)
+            .attr('x2',x).attr('y2',th-10)
+            .attr('stroke','#ddd').attr('stroke-width',1).attr('stroke-dasharray','4,4');
+    });
+    // Center line
+    svg.append('line').attr('x1',centerX).attr('y1',topPad-8)
+        .attr('x2',centerX).attr('y2',th-10)
+        .attr('stroke','#bbb').attr('stroke-width',1).attr('stroke-dasharray','2,4');
+    svg.append('text').attr('x',centerX).attr('y',topPad-12)
+        .attr('text-anchor','middle').attr('font-size','9px').attr('fill','#aaa').text('0');
+
+    // Compute dot positions
+    // position uses (posV - negV) mapped from [-1,1] to [0,1] on the axis
+    const dots=allDots.map((e,i)=>{
+        const diff=e.rightV-e.leftV; // -1 to 1
+        const position=(diff+1)/2; // 0 to 1
+        const y=topPad+i*rowHeight+rowHeight/2;
+        return{x:leftX+position*axisSpan, y, leftV:e.leftV, rightV:e.rightV, turn:e.turn};
+    });
+
+    // Connecting line
+    if(dots.length>1){
+        const linePoints=dots.map(d=>d.x+','+d.y).join(' ');
+        svg.append('polyline').attr('points',linePoints)
+            .attr('fill','none').attr('stroke','#374151').attr('stroke-width',1.5).attr('stroke-opacity',.35);
+    }
+
+    // Dots + value labels
+    let highlightedY=null;
+    dots.forEach((d,i)=>{
+        // Highlight whichever turn is selected — defaults to the latest turn until
+        // the user clicks a message (lHighlightDriftTurn sets lHighlightedTurn).
+        const isHighlighted=(lHighlightedTurn===null)?(i===dots.length-1):(d.turn===lHighlightedTurn);
+        if(isHighlighted) highlightedY=d.y;
+        // Horizontal row line
+        svg.append('line').attr('x1',leftX).attr('y1',d.y).attr('x2',rightX).attr('y2',d.y)
+            .attr('stroke','#eee').attr('stroke-width',1);
+        // Dot
+        svg.append('circle').attr('cx',d.x).attr('cy',d.y)
+            .attr('r',isHighlighted?12:9)
+            .attr('fill',isHighlighted?'#374151':'#bbb')
+            .attr('stroke','white').attr('stroke-width',2);
+        // Turn label inside dot
+        svg.append('text').attr('x',d.x).attr('y',d.y+4)
+            .attr('text-anchor','middle').attr('font-size','9px').attr('font-weight','600')
+            .attr('fill',isHighlighted?'white':'#777').text(d.turn);
+        // Value labels on either side
+        var leftPct=Math.round(d.leftV*100), rightPct=Math.round(d.rightV*100);
+        svg.append('text').attr('x',d.x-pctGap).attr('y',d.y+3)
+            .attr('text-anchor','end').attr('font-size','11px').attr('fill',leftColor)
+            .text(leftPct+'%');
+        svg.append('text').attr('x',d.x+pctGap).attr('y',d.y+3)
+            .attr('text-anchor','start').attr('font-size','11px').attr('fill',rightColor)
+            .text(rightPct+'%');
+    });
+
+    // Auto-scroll so the highlighted turn's row is centered in the visible window
+    // (native scrolling now works since the SVG is sized to the full content height above).
+    if(highlightedY!==null){
+        const scrollH=scroll.clientHeight||120;
+        scroll.scrollTop=Math.max(0,highlightedY-scrollH/2);
+    }
+}
+
+// ══════════════════════════════════════
+// EXPLORE PAGE (real API)
+// ══════════════════════════════════════
+const exCache = {};
+
+async function fetchPersonaVector(prompt) {
+    if (exCache[prompt]) return exCache[prompt];
+    const res = await fetch('/api/persona-vector', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system: prompt })
+    });
+    const data = await res.json();
+    exCache[prompt] = data.content;
+    return data.content;
+}
+
+function initExplore(){
+    const gL=document.getElementById('ex-personas-L');
+    const gR=document.getElementById('ex-personas-R');
+    if(gL.children.length) return;
+    personas.forEach((p,i)=>{
+        const cL=document.createElement('div');
+        cL.className='persona-chip'; cL.textContent=p.emoji+' '+p.name;
+        cL.onclick=()=>exSelectSide('L',i,cL); gL.appendChild(cL);
+        const cR=document.createElement('div');
+        cR.className='persona-chip'; cR.textContent=p.emoji+' '+p.name;
+        cR.onclick=()=>exSelectSide('R',i,cR); gR.appendChild(cR);
+    });
+    // Load first two personas
+    exSelectSide('L', 0, gL.children[0]);
+    exSelectSide('R', 1, gR.children[1]);
+}
+
+async function exSelectSide(side, i, chip){
+    const container=document.getElementById('ex-personas-'+side);
+    container.querySelectorAll('.persona-chip').forEach(c=>c.classList.remove('sel'));
+    chip.classList.add('sel');
+    document.getElementById('ex-textarea-'+side).value='';
+    const sbId = side==='L' ? 'ex-sb-1' : 'ex-sb-2';
+    document.getElementById(sbId).innerHTML='<div class="np-loading"><div class="np-spinner"></div>Loading...</div>';
+    try {
+        const data = await fetchPersonaVector(personas[i].prompt);
+        document.getElementById(sbId).innerHTML='';
+        createPersonaSunburst(data, sbId, { width: 360, height: 360, animate: true, showLabels: true });
+    } catch(e) {
+        document.getElementById(sbId).innerHTML='<div style="color:var(--red);font-size:12px">API error</div>';
+    }
+}
+
+async function exCustomSide(side){
+    const t=document.getElementById('ex-textarea-'+side).value.trim();
+    if(!t) return;
+    document.getElementById('ex-personas-'+side).querySelectorAll('.persona-chip').forEach(c=>c.classList.remove('sel'));
+    const sbId = side==='L' ? 'ex-sb-1' : 'ex-sb-2';
+    document.getElementById(sbId).innerHTML='<div class="np-loading"><div class="np-spinner"></div>Analyzing...</div>';
+    try {
+        const data = await fetchPersonaVector(t);
+        document.getElementById(sbId).innerHTML='';
+        createPersonaSunburst(data, sbId, { width: 360, height: 360, animate: true, showLabels: true });
+    } catch(e) {
+        document.getElementById(sbId).innerHTML='<div style="color:var(--red);font-size:12px">API error</div>';
+    }
+}
+
+// ══════════════════════════════════════
+// SCIENCE PAGE (static content init)
+// ══════════════════════════════════════
+function initScience(){
+    const td=document.getElementById('sci-traits');
+    if(td.children.length) return;
+    const studyTraits = [
+        { pos:"Empathetic",    neg:"Unempathetic",  desc:"Emotionally aware vs. indifferent",        cat:"valenced" },
+        { pos:"Respectful",    neg:"Toxic",          desc:"Courtesy vs. harmful content",             cat:"valenced" },
+        { pos:"Honest",        neg:"Sycophantic",    desc:"Truthful vs. excessive agreement",         cat:"valenced" },
+        { pos:"Platonic",      neg:"Romantic",        desc:"Platonic boundaries vs. romantic tone",    cat:"valenced" },
+        { pos:"Sophisticated", neg:"Simplistic",      desc:"Erudite language vs. plain expression",    cat:"neutral" },
+        { pos:"Robotic",       neg:"Human-Like",      desc:"Mechanical tone vs. natural warmth",       cat:"neutral" },
+    ];
+    studyTraits.forEach(p=>{
+        const posColor = p.cat==='neutral' ? '#9E9E9E' : 'var(--green)';
+        const negColor = p.cat==='neutral' ? '#9E9E9E' : 'var(--red)';
+        const gradL    = p.cat==='neutral' ? '#e0e0e0'  : 'var(--green-light)';
+        const gradR    = p.cat==='neutral' ? '#e0e0e0'  : 'var(--red-light)';
+        td.insertAdjacentHTML('beforeend',
+            '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+            '<div style="flex:1">' +
+            '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:3px">' +
+            '<span style="color:'+posColor+'">'+p.pos+'</span>' +
+            '<span style="color:'+negColor+'">'+p.neg+'</span></div>' +
+            '<div style="height:4px;border-radius:2px;background:linear-gradient(to right,'+gradL+',var(--bg3),'+gradR+')"></div>' +
+            '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+p.desc+'</div></div>' +
+            '</div>'
+        );
+    });
+    const ed=document.getElementById('sci-effects');
+    if(ed.children.length) return;
+    [
+        {m:"Anticipation vs. Initial",  d:.49, p:"< .001"},
+        {m:"Sign Accuracy",             d:.47, p:"< .001"},
+        {m:"Evaluation vs. Average",    d:.36, p:"= .008"},
+        {m:"Evaluation vs. Final",      d:.35, p:"= .009"},
+        {m:"Evaluation vs. Initial",    d:.34, p:"= .013"},
+    ].forEach(e=>{
+        ed.insertAdjacentHTML('beforeend',
+            '<div class="effect-bar"><div class="top">' +
+            '<span style="font-weight:600">'+e.m+'</span>' +
+            '<span style="color:var(--green)">d = '+e.d+' (p '+e.p+')</span></div>' +
+            '<div class="track"><div class="fill" style="width:'+Math.min(e.d/.6*100,100)+'%"></div></div></div>'
+        );
+    });
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+window.addEventListener('load',()=>{
+    // Pre-load models
+    if (typeof preloadModels === 'function') {
+        preloadModels();
+    }
+    // Start landing demo
+    lInitDemo();
+    lSchedule(()=>lRunDemo(),1400);
+});
+</script>
+
+</body>
 </html>

@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Transparency — LLM Behavior Analysis</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f; --bg2: #111118; --bg3: #15151f;
+    --border: #1e1e2a; --border2: #252530;
+    --text: #e0e0e0; --text2: #999; --text3: #555;
+    --inner-fill: #0e0e16; --inner-stroke: #2a2a3a;
+    --circle-stroke: #ffffff; --label-fill: #e0e0e0;
+    --bubble-text: #ffffff; --user-bubble: #3a3a4a;
+  }
+  body.light {
+    --bg: #f5f5f7; --bg2: #ffffff; --bg3: #f0f0f5;
+    --border: #e0e0e8; --border2: #d0d0d8;
+    --text: #1a1a2e; --text2: #555; --text3: #999;
+    --inner-fill: #ffffff; --inner-stroke: #c0c0cc;
+    --circle-stroke: #000000; --label-fill: #1a1a2e;
+    --bubble-text: #1a1a2e; --user-bubble: #d1d5db;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; height: 100vh; overflow: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── LEFT: Viz + Tracker ── */
+  .left-panel {
+    width: 58%; min-width: 440px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--border); overflow: hidden;
+  }
+  .viz-area {
+    flex: 0 0 70vh; display: flex; align-items: center; justify-content: center;
+    padding: 0; position: relative; overflow: hidden;
+  }
+  .tracker-area {
+    flex: 1; min-height: 0; padding: 4px 16px 8px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .tracker-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text2); margin-bottom: 6px;
+  }
+  .tracker-scroll {
+    flex: 1; overflow-y: auto; position: relative;
+  }
+
+  /* ── RIGHT: Chat ── */
+  .right-panel {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+  }
+  .chat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .chat-header h2 {
+    font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .header-btns { display: flex; gap: 6px; }
+  .icon-btn {
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text2); font-size: 11px; font-weight: 500;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .icon-btn:hover { border-color: #888; color: var(--text); }
+
+  .chat-log {
+    flex: 1; overflow-y: auto; padding: 16px; display: flex;
+    flex-direction: column; gap: 10px;
+  }
+  .chat-bubble {
+    max-width: 82%; padding: 10px 14px; border-radius: 14px;
+    font-size: 13px; line-height: 1.55; color: var(--bubble-text);
+    cursor: pointer; transition: box-shadow 0.2s;
+    word-wrap: break-word;
+  }
+  .chat-bubble:hover { box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
+  .chat-bubble.user {
+    align-self: flex-end; background: var(--user-bubble); border-bottom-right-radius: 4px;
+  }
+  .chat-bubble.ai {
+    align-self: flex-start; border-bottom-left-radius: 4px;
+  }
+
+  .chat-input-row {
+    display: flex; gap: 8px; padding: 12px 16px;
+    border-top: 1px solid var(--border); background: var(--bg2);
+  }
+  .chat-input {
+    flex: 1; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border2); background: var(--bg3);
+    color: var(--text); font-size: 13px; font-family: inherit;
+    outline: none; transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: #4ade80; }
+  .send-btn {
+    padding: 10px 18px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: #0a2e14; font-weight: 600; font-size: 13px;
+    cursor: pointer; font-family: inherit; transition: transform 0.1s;
+  }
+  .send-btn:hover { transform: scale(1.04); }
+
+  /* ── SIDEBAR (overlay) ── */
+  .sidebar-overlay {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 330px;
+    background: var(--bg2); border-left: 1px solid var(--border);
+    padding: 20px 16px; overflow-y: auto; z-index: 100;
+    transform: translateX(100%); transition: transform 0.3s ease;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+  }
+  .sidebar-overlay.open { transform: translateX(0); }
+
+  .sidebar-overlay h2 {
+    font-size: 13px; font-weight: 600; margin-bottom: 14px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3);
+  }
+  .slider-section { margin-bottom: 14px; }
+  .slider-section h3 {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .slider-section.positive h3 { color: #4ade80; }
+  .slider-section.negative h3 { color: #f87171; }
+  .slider-section.neutral h3 { color: #6b7280; }
+  .slider-row { display: flex; align-items: center; margin-bottom: 4px; gap: 6px; }
+  .slider-label { width: 90px; font-size: 10px; color: var(--text2); flex-shrink: 0; }
+  .slider-row input[type="range"] {
+    flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+    background: var(--border2); border-radius: 2px; outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; cursor: pointer; border: 2px solid var(--bg);
+  }
+  .positive .slider-row input[type="range"]::-webkit-slider-thumb { background: #4ade80; }
+  .negative .slider-row input[type="range"]::-webkit-slider-thumb { background: #f87171; }
+  .neutral .slider-row input[type="range"]::-webkit-slider-thumb { background: #6b7280; }
+  .slider-value { width: 32px; font-size: 10px; text-align: right; color: var(--text3); font-variant-numeric: tabular-nums; }
+
+  .buttons { margin-bottom: 6px; display: flex; gap: 8px; }
+  .buttons-row2 { margin-bottom: 10px; display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 8px 8px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-size: 11px;
+    font-weight: 500; border-radius: 6px; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .btn:hover { border-color: #888; color: var(--text); }
+
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 6px;
+  }
+  .toggle-row label { font-size: 11px; color: var(--text2); cursor: pointer; flex: 1; }
+  .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+  .toggle-track {
+    position: absolute; inset: 0; background: var(--border2);
+    border-radius: 20px; transition: 0.3s;
+  }
+  .toggle-track::before {
+    content: ""; position: absolute; height: 14px; width: 14px;
+    left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: 0.3s;
+  }
+  .toggle-switch.active .toggle-track { background: #374151; }
+  .toggle-switch.active .toggle-track::before { transform: translateX(16px); background: #fff; }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed; pointer-events: none;
+    background: rgba(10,10,20,0.96); border: 1px solid #2a2a3a;
+    border-radius: 10px; padding: 12px 14px; font-size: 12px;
+    line-height: 1.5; max-width: 230px; opacity: 0;
+    transition: opacity 0.15s; backdrop-filter: blur(12px);
+    z-index: 1000; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    color: #e0e0e0;
+  }
+  .tooltip .t-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .tooltip .t-val { font-size: 11px; color: #777; margin-bottom: 4px; }
+  .tooltip .t-desc { color: #aaa; font-size: 11px; line-height: 1.6; }
+  .tooltip .t-opp { margin-top: 6px; font-size: 10px; color: #555; }
+  .tooltip .t-opp strong { font-weight: 600; }
+
+  /* Welcome */
+  .welcome-msg {
+    text-align: center; color: var(--text3); font-size: 12px;
+    margin-top: 60px; line-height: 1.8;
+  }
+  .welcome-msg strong { color: var(--text2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div style="padding:12px 16px 0;display:flex;align-items:center;gap:8px">
+    <span style="font-size:15px;font-weight:700;letter-spacing:0.5px;color:var(--text)">Neural Transparency</span>
+  </div>
+  <div class="viz-area">
+    <svg id="sunburst"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <div class="tracker-area">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div class="tracker-title" id="tracker-title" style="margin-bottom:0">Tracking Neural Activation Over Time</div>
+      <button class="icon-btn" id="btn-tracker-back" style="display:none;padding:3px 10px;font-size:10px">Back</button>
+    </div>
+    <div class="tracker-labels" id="tracker-labels" style="display:flex;justify-content:space-between;padding:0 16%;margin-bottom:4px">
+      <span id="tracker-left-label" style="font-size:13px;font-weight:700;color:#4ade80">Positive Behaviors</span>
+      <span id="tracker-right-label" style="font-size:13px;font-weight:700;color:#f87171">Negative Behaviors</span>
+    </div>
+    <div class="tracker-scroll">
+      <svg id="tracker" width="100%"></svg>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL: Chat -->
+<div class="right-panel">
+  <div class="chat-header">
+    <h2>Chat</h2>
+    <div class="header-btns">
+      <button class="icon-btn" id="btn-theme">☀ Light</button>
+      <button class="icon-btn" id="btn-sidebar">Customization</button>
+    </div>
+  </div>
+  <div class="chat-log" id="chat-log">
+    <div class="welcome-msg">
+      <strong>Neural Transparency</strong><br>
+      Send a message to begin. Each AI response will be<br>
+      analyzed for behavioral characteristics in real-time.
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" type="text" placeholder="Type a message…" autocomplete="off">
+    <button class="send-btn" id="btn-send">Send</button>
+  </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebar">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="margin-bottom:0">Behavior Controls</h2>
+    <button class="icon-btn" id="btn-close-sidebar" style="padding:4px 10px;font-size:14px">✕</button>
+  </div>
+  <div class="buttons"><button class="btn" id="btn-random">Randomize</button><button class="btn" id="btn-reset">Reset</button></div>
+  <div class="buttons-row2"><button class="btn" id="btn-zero" style="color:#f87171;border-color:#3a1a1a">Reset to Zero</button></div>
+  <div class="toggle-row"><label>Dynamic bar width</label><div class="toggle-switch" id="toggle-dw"><span class="toggle-track"></span></div></div>
+  <div class="toggle-row"><label>Labels follow bar edge</label><div class="toggle-switch" id="toggle-lbl"><span class="toggle-track"></span></div></div>
+  <div class="toggle-row"><label>Sigmoid opacity (by %)</label><div class="toggle-switch" id="toggle-sig"><span class="toggle-track"></span></div></div>
+  <div class="slider-section positive" id="sl-positive"><h3>Positive</h3></div>
+  <div class="slider-section negative" id="sl-negative"><h3>Negative</h3></div>
+  <div class="slider-section neutral" id="sl-neutral"><h3>Neutral</h3></div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// DATA
+// ══════════════════════════════════════
+const behaviors = {
+  positive: [
+    { name: "Respectful", opposite: "Toxic", desc: "Communicates with courtesy and consideration, acknowledging the dignity of the user." },
+    { name: "Factual", opposite: "Hallucinatory", desc: "Provides accurate, verifiable information grounded in evidence and reliable sources." },
+    { name: "Honest", opposite: "Sycophancy", desc: "Gives truthful responses even when the truth may not be what the user wants to hear." },
+    { name: "Social", opposite: "Antisocial", desc: "Engages warmly in conversation, fostering connection and collaborative dialogue." },
+    { name: "Encouraging", opposite: "Discouraging", desc: "Motivates and supports the user, reinforcing positive efforts and constructive paths." },
+    { name: "Empathetic", opposite: "Unempathetic", desc: "Recognizes and validates user emotions, responding with sensitivity and understanding." },
+  ],
+  negative: [
+    { name: "Toxic", opposite: "Respectful", desc: "Produces harmful or disrespectful content that degrades interaction quality." },
+    { name: "Hallucinatory", opposite: "Factual", desc: "Generates false information presented as fact, undermining trust and reliability." },
+    { name: "Sycophancy", opposite: "Honest", desc: "Excessively agrees with or flatters the user, sacrificing honesty to avoid friction." },
+    { name: "Antisocial", opposite: "Social", desc: "Cold, dismissive, or hostile — creating a negative interaction experience." },
+    { name: "Discouraging", opposite: "Encouraging", desc: "Undermines user confidence, focuses on limitations, or dismisses goals." },
+    { name: "Unempathetic", opposite: "Empathetic", desc: "Ignores user emotions, responding with indifference to emotional context." },
+  ],
+  neutral: [
+    { name: "Sophisticated", opposite: "Simple", desc: "Uses advanced vocabulary and complex reasoning for expert-level discourse." },
+    { name: "Romantic", opposite: "Pragmatic", desc: "Uses poetic, expressive, or emotionally rich language in responses." },
+    { name: "Human-like", opposite: "Machine-like", desc: "Mimics human conversational patterns, personality quirks, and natural speech." },
+    { name: "Serious", opposite: "Funny", desc: "Maintains a formal, earnest tone focused on substance over entertainment." },
+    { name: "Casual", opposite: "Formal", desc: "Uses relaxed, conversational language as if chatting with a friend." },
+    { name: "Formal", opposite: "Casual", desc: "Uses proper, professional language suited for business or academic contexts." },
+    { name: "Funny", opposite: "Serious", desc: "Incorporates humor, wit, and playfulness into responses." },
+    { name: "Machine-like", opposite: "Human-like", desc: "Responds in a clearly artificial, structured, and systematic manner." },
+    { name: "Pragmatic", opposite: "Romantic", desc: "Focuses on practical, actionable, and efficient communication." },
+    { name: "Simple", opposite: "Sophisticated", desc: "Uses plain language and straightforward explanations accessible to all." },
+  ]
+};
+
+const defaults = {
+  Respectful: 85, Factual: 90, Honest: 80, Social: 70, Encouraging: 75, Empathetic: 65,
+  Toxic: 5, Hallucinatory: 10, Sycophancy: 15, Antisocial: 8, Discouraging: 12, Unempathetic: 10,
+  Sophisticated: 50, Romantic: 30, "Human-like": 55, Serious: 50, Casual: 45,
+  Formal: 55, Funny: 35, "Machine-like": 45, Pragmatic: 60, Simple: 50
+};
+
+const catColors = { positive: "#4ade80", negative: "#f87171", neutral: "#9ca3af" };
+const catDarkDark = { positive: "#14532d", negative: "#7f1d1d", neutral: "#374151" };
+const catDarkLight = { positive: "#e8fce8", negative: "#fce8e8", neutral: "#e8e8ec" };
+function getCatDark() { return lightMode ? catDarkLight : catDarkDark; }
+const cats = ["positive", "negative", "neutral"];
+const allTraits = [], traitMap = {}, values = {};
+cats.forEach(cat => {
+  behaviors[cat].forEach(b => {
+    const t = { ...b, category: cat };
+    allTraits.push(t); traitMap[b.name] = t; values[b.name] = 0;
+  });
+});
+
+// ══════════════════════════════════════
+// SUNBURST LAYOUT
+// ══════════════════════════════════════
+const W = 500, H = 500;
+const innerR = 72, maxR = 228;
+const midR = innerR + (maxR - innerR) * 0.5;
+const sectionGap = 0.05, arcGap = 0.012;
+let dynamicWidth = false, labelsFollowBar = false, sigmoidOpacity = false;
+let trackerBehavior = null; // null = overall pos/neg, or a behavior name string
+
+function sigmoid(v) {
+  const s = 1 / (1 + Math.exp(-0.1 * (v - 50)));
+  return 0.08 + s * 0.92;
+}
+
+const positiveReversed = [...behaviors.positive].reverse();
+
+function computeSlots() {
+  const halfPi = Math.PI / 2;
+  const sections = [
+    { cat: "positive", items: positiveReversed, start: -halfPi + sectionGap / 2, total: Math.PI / 2 - sectionGap },
+    { cat: "negative", items: behaviors.negative, start: sectionGap / 2, total: Math.PI / 2 - sectionGap },
+    { cat: "neutral", items: behaviors.neutral, start: halfPi + sectionGap / 2, total: Math.PI - sectionGap },
+  ];
+  const slots = [];
+  sections.forEach(sec => {
+    const gapTotal = (sec.items.length - 1) * arcGap;
+    const avail = sec.total - gapTotal;
+    if (dynamicWidth) {
+      const vals = sec.items.map(b => Math.max(values[b.name], 2));
+      const sum = vals.reduce((a, v) => a + v, 0);
+      let a = sec.start;
+      sec.items.forEach((b, i) => {
+        const w = avail * (vals[i] / sum);
+        slots.push({ name: b.name, s: a, e: a + w, cat: sec.cat });
+        a += w + arcGap;
+      });
+    } else {
+      const perArc = avail / sec.items.length;
+      let a = sec.start;
+      sec.items.forEach(b => {
+        slots.push({ name: b.name, s: a, e: a + perArc, cat: sec.cat });
+        a += perArc + arcGap;
+      });
+    }
+  });
+  return slots;
+}
+
+let slots = computeSlots();
+let slotMap = {}; slots.forEach(s => slotMap[s.name] = s);
+
+// ══════════════════════════════════════
+// SVG SETUP
+// ══════════════════════════════════════
+const svg = d3.select("#sunburst")
+  .attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet")
+  .style("width", "100%").style("height", "100%");
+const g = svg.append("g").attr("transform", `translate(${W / 2},${H / 2})`);
+
+// Boundary circles
+const boundaryCircles = [];
+[{ r: midR, label: "50%" }, { r: maxR, label: "100%" }].forEach(b => {
+  const circ = g.append("circle").attr("r", b.r)
+    .attr("fill", "none").attr("stroke", "var(--circle-stroke)")
+    .attr("stroke-width", 1).attr("stroke-dasharray", "4,5").attr("opacity", 0.35);
+  const txt = g.append("text").attr("x", 5).attr("y", -b.r - 5)
+    .attr("fill", "var(--text2)").attr("font-size", 8).attr("font-weight", 600).text(b.label);
+  boundaryCircles.push({ circ, txt });
+});
+
+// Inner circle
+const innerCircle = g.append("circle").attr("r", innerR)
+  .attr("fill", "var(--inner-fill)").attr("stroke", "var(--inner-stroke)").attr("stroke-width", 1.5);
+
+// Curved center labels
+const centerLabelsG = g.append("g");
+function drawCenterLabels() {
+  centerLabelsG.selectAll("*").remove();
+  cats.forEach(cat => {
+    const cs = slots.filter(s => s.cat === cat);
+    const midD3 = (cs[0].s + cs[cs.length - 1].e) / 2;
+    const midMath = midD3 - Math.PI / 2;
+    const span = 1.4, r = innerR * 0.62;
+    const sa = midMath - span / 2, ea = midMath + span / 2;
+    const flip = midMath > 0 && midMath < Math.PI;
+    const [a1, a2, sw] = flip ? [ea, sa, 0] : [sa, ea, 1];
+    const id = `cl-${cat}-${Date.now()}`;
+    centerLabelsG.append("defs").append("path").attr("id", id)
+      .attr("d", `M ${r * Math.cos(a1)},${r * Math.sin(a1)} A ${r},${r} 0 0 ${sw} ${r * Math.cos(a2)},${r * Math.sin(a2)}`);
+    centerLabelsG.append("text").attr("fill", catColors[cat]).attr("font-size", 7).attr("font-weight", 700)
+      .attr("letter-spacing", "2.5px").attr("opacity", 0.9)
+      .append("textPath").attr("href", `#${id}`).attr("startOffset", "50%").attr("text-anchor", "middle")
+      .text(cat.toUpperCase());
+  });
+}
+drawCenterLabels();
+
+// Arcs
+const arcG = g.append("g");
+const arcFn = d3.arc();
+const paths = arcG.selectAll(".bar").data(slots, d => d.name).enter()
+  .append("path").attr("class", "bar").style("cursor", "pointer");
+
+// Labels
+const lblG = g.append("g");
+const labels = lblG.selectAll("text").data(slots, d => d.name).enter()
+  .append("text").attr("font-size", 9).attr("font-weight", 600)
+  .attr("fill", "var(--label-fill)").attr("text-anchor", "start")
+  .attr("dominant-baseline", "central").attr("pointer-events", "none");
+
+// Highlight overlay
+const hlPath = arcG.append("path").attr("fill", "none").attr("stroke", "none")
+  .attr("stroke-width", 2.5).attr("pointer-events", "none");
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function render(anim = true) {
+  const dur = anim ? 500 : 0;
+  slots = computeSlots(); slotMap = {};
+  slots.forEach(s => slotMap[s.name] = s);
+  const byName = {}; slots.forEach(s => byName[s.name] = s);
+
+  paths.each(function (d) { d.s = byName[d.name].s; d.e = byName[d.name].e; });
+  labels.each(function (d) { d.s = byName[d.name].s; d.e = byName[d.name].e; });
+
+  paths.transition().duration(dur).ease(d3.easeCubicOut)
+    .attrTween("d", function (d) {
+      const targetR = innerR + (maxR - innerR) * (values[d.name] / 100);
+      const pR = this.__r != null ? this.__r : innerR;
+      const pS = this.__s != null ? this.__s : d.s;
+      const pE = this.__e != null ? this.__e : d.e;
+      const iR = d3.interpolate(pR, targetR);
+      const iS = d3.interpolate(pS, d.s);
+      const iE = d3.interpolate(pE, d.e);
+      this.__r = targetR; this.__s = d.s; this.__e = d.e;
+      return t => arcFn({ innerRadius: innerR, outerRadius: iR(t), startAngle: iS(t), endAngle: iE(t), cornerRadius: 2 });
+    })
+    .attr("fill", d => {
+      const v = values[d.name] / 100;
+      return d3.interpolate(getCatDark()[d.cat], catColors[d.cat])(Math.max(v, 0.15));
+    })
+    .attr("stroke", d => catColors[d.cat])
+    .attr("stroke-width", 0.5).attr("stroke-opacity", 0.3)
+    .attr("opacity", d => sigmoidOpacity ? sigmoid(values[d.name]) : 1);
+
+  labels.each(function (d) {
+    const midD3 = (d.s + d.e) / 2;
+    const mathA = midD3 - Math.PI / 2;
+    const rotDeg = mathA * 180 / Math.PI;
+    const flipped = rotDeg > 90 || rotDeg < -90;
+    d._flipped = flipped;
+    d._rot = flipped ? rotDeg + 180 : rotDeg;
+    d._anchor = flipped ? "end" : "start";
+    d3.select(this)
+      .attr("text-anchor", d._anchor)
+      .attr("opacity", sigmoidOpacity ? sigmoid(values[d.name]) : 1)
+      .text(`${d.name} ${values[d.name]}%`);
+  });
+
+  labels.each(function (d) {
+    const fontSize = dynamicWidth ? (() => {
+      const arcSpan = d.e - d.s;
+      const catItems = behaviors[d.cat].length;
+      const sectionAngle = d.cat === "neutral" ? Math.PI : Math.PI / 2;
+      const uniformArc = (sectionAngle - sectionGap - (catItems - 1) * arcGap) / catItems;
+      return Math.max(6, Math.min(13, 9 * (arcSpan / uniformArc)));
+    })() : 9;
+    d3.select(this).attr("font-size", fontSize);
+  });
+
+  // Animate only translate; rotation is instant (no flip spin)
+  labels.transition().duration(dur).ease(d3.easeCubicOut)
+    .attrTween("transform", function (d) {
+      const v = values[d.name] / 100;
+      const outerR = innerR + (maxR - innerR) * v;
+      const labelR = labelsFollowBar ? Math.max(outerR + 5, innerR + 10) : innerR + 10;
+      const midD3 = (d.s + d.e) / 2;
+      const mathA = midD3 - Math.PI / 2;
+      const targetX = labelR * Math.cos(mathA);
+      const targetY = labelR * Math.sin(mathA);
+      const prevX = this.__lx != null ? this.__lx : targetX;
+      const prevY = this.__ly != null ? this.__ly : targetY;
+      const iX = d3.interpolate(prevX, targetX);
+      const iY = d3.interpolate(prevY, targetY);
+      const rot = d._rot;
+      this.__lx = targetX; this.__ly = targetY;
+      return t => `translate(${iX(t)},${iY(t)}) rotate(${rot})`;
+    });
+
+  drawCenterLabels();
+  Object.keys(values).forEach(name => {
+    const el = document.getElementById(`v-${name}`);
+    if (el) el.textContent = values[name] + "%";
+  });
+}
+
+// ══════════════════════════════════════
+// HOVER
+// ══════════════════════════════════════
+const tip = d3.select("#tooltip");
+
+paths.on("mouseenter", function (ev, d) {
+  const trait = traitMap[d.name], opp = traitMap[trait.opposite], col = catColors[d.cat];
+  d3.select(this).attr("stroke", "#fff").attr("stroke-width", 2).attr("stroke-opacity", 1);
+  paths.filter(p => p.name !== d.name && p.name !== trait.opposite).attr("opacity", 0.4);
+  if (slotMap[trait.opposite]) {
+    const os = slotMap[trait.opposite], ov = values[trait.opposite] / 100;
+    const or2 = innerR + (maxR - innerR) * ov;
+    hlPath.attr("d", arcFn({ innerRadius: innerR, outerRadius: Math.max(or2, innerR + 8), startAngle: os.s, endAngle: os.e, cornerRadius: 2 }))
+      .attr("stroke", "#fff").attr("stroke-dasharray", "5,3").attr("opacity", 0.9);
+  }
+  tip.html(`<div class="t-name" style="color:${col}">${d.name}</div>
+    <div class="t-val">${values[d.name]}%</div>
+    <div class="t-desc">${trait.desc}</div>
+    <div class="t-opp">Opposite: <strong style="color:${opp ? catColors[opp.category] : '#fff'}">${trait.opposite}</strong></div>`)
+    .style("opacity", 1);
+}).on("mousemove", function (ev) {
+  tip.style("left", (ev.clientX + 14) + "px").style("top", (ev.clientY - 10) + "px");
+}).on("mouseleave", function (ev, d) {
+  d3.select(this).attr("stroke", catColors[d.cat]).attr("stroke-width", 0.5).attr("stroke-opacity", 0.3);
+  paths.attr("opacity", d => sigmoidOpacity ? sigmoid(values[d.name]) : 1);
+  hlPath.attr("stroke", "none"); tip.style("opacity", 0);
+}).on("click", function (ev, d) {
+  // Switch tracker to per-behavior mode
+  trackerBehavior = d.name;
+  const trait = traitMap[d.name];
+  document.getElementById("tracker-title").textContent =
+    `Tracking: ${d.name} vs ${trait.opposite}`;
+  document.getElementById("btn-tracker-back").style.display = "inline-block";
+  drawTracker();
+});
+
+// ══════════════════════════════════════
+// TOGGLES
+// ══════════════════════════════════════
+document.getElementById("toggle-dw").addEventListener("click", function () {
+  dynamicWidth = !dynamicWidth; this.classList.toggle("active", dynamicWidth); render(true);
+});
+document.getElementById("toggle-lbl").addEventListener("click", function () {
+  labelsFollowBar = !labelsFollowBar; this.classList.toggle("active", labelsFollowBar); render(true);
+});
+document.getElementById("toggle-sig").addEventListener("click", function () {
+  sigmoidOpacity = !sigmoidOpacity; this.classList.toggle("active", sigmoidOpacity); render(true);
+});
+
+// ══════════════════════════════════════
+// SLIDERS
+// ══════════════════════════════════════
+cats.forEach(cat => {
+  const el = document.getElementById(`sl-${cat}`);
+  behaviors[cat].forEach(b => {
+    const row = document.createElement("div");
+    row.className = "slider-row";
+    row.innerHTML = `<span class="slider-label">${b.name}</span>
+      <input type="range" min="0" max="100" value="0" id="s-${b.name}">
+      <span class="slider-value" id="v-${b.name}">0%</span>`;
+    el.appendChild(row);
+    row.querySelector("input").addEventListener("input", e => {
+      values[b.name] = +e.target.value; render(false);
+    });
+  });
+});
+
+// ══════════════════════════════════════
+// BUTTONS
+// ══════════════════════════════════════
+function generatePairedRandom() {
+  const processed = new Set(), snapshot = {};
+  allTraits.forEach(t => {
+    if (processed.has(t.name)) return;
+    const v = Math.round(5 + Math.random() * 90);
+    snapshot[t.name] = v;
+    snapshot[t.opposite] = 100 - v;
+    processed.add(t.name); processed.add(t.opposite);
+  });
+  return snapshot;
+}
+
+function applySnapshot(snap, animate = true) {
+  Object.keys(snap).forEach(name => {
+    values[name] = snap[name];
+    const slider = document.getElementById(`s-${name}`);
+    if (slider) slider.value = snap[name];
+  });
+  render(animate);
+}
+
+document.getElementById("btn-random").onclick = () => applySnapshot(generatePairedRandom());
+document.getElementById("btn-reset").onclick = () => applySnapshot({ ...defaults });
+document.getElementById("btn-zero").onclick = () => {
+  const z = {}; allTraits.forEach(t => z[t.name] = 0); applySnapshot(z);
+};
+
+// ── Tracker back button ──
+document.getElementById("btn-tracker-back").addEventListener("click", () => {
+  trackerBehavior = null;
+  document.getElementById("tracker-title").textContent = "Tracking Neural Activation Over Time";
+  document.getElementById("btn-tracker-back").style.display = "none";
+  drawTracker();
+});
+
+// ══════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════
+document.getElementById("btn-sidebar").addEventListener("click", () => {
+  document.getElementById("sidebar").classList.toggle("open");
+});
+document.getElementById("btn-close-sidebar").addEventListener("click", () => {
+  document.getElementById("sidebar").classList.remove("open");
+});
+
+// ══════════════════════════════════════
+// DARK / LIGHT THEME
+// ══════════════════════════════════════
+let lightMode = false;
+document.getElementById("btn-theme").addEventListener("click", function () {
+  lightMode = !lightMode;
+  document.body.classList.toggle("light", lightMode);
+  this.textContent = lightMode ? "🌙 Dark" : "☀ Light";
+  render(false);
+});
+
+// ══════════════════════════════════════
+// CHAT SYSTEM
+// ══════════════════════════════════════
+const chatLog = document.getElementById("chat-log");
+const chatInput = document.getElementById("chat-input");
+
+// Simulated AI responses
+const aiResponses = [
+  "That's a great question! Let me think about this carefully. Based on what I understand, there are several perspectives to consider here. The key insight is that context matters a lot in situations like this.",
+  "I'd be happy to help with that! Here's what I think: the most effective approach would be to break this down into smaller steps. First, identify the core problem, then work through each component systematically.",
+  "Interesting point! I appreciate you bringing that up. From my analysis, there are both advantages and disadvantages to consider. Let me walk you through the main factors.",
+  "Absolutely! I think you're on the right track. To build on your idea, consider also looking at it from this angle — the underlying pattern suggests a more nuanced approach might work better.",
+  "That's a complex topic, but I'll do my best to explain. The fundamental concept revolves around how these systems interact with each other. Think of it as a network of interconnected processes.",
+  "Great observation! Many people overlook that detail. The research actually shows some surprising results in this area. Let me share what I've found to be most relevant.",
+  "I understand your concern. Let me address that directly — while there are valid points on both sides, the evidence leans toward a balanced approach that considers multiple stakeholders.",
+  "Thanks for sharing that! It reminds me of a similar pattern I've seen before. The solution often lies in finding the right balance between efficiency and thoroughness.",
+  "You raise an excellent point. Let me provide some context: historically, this kind of challenge has been approached from several different angles, each with its own tradeoffs.",
+  "I appreciate your patience with this! The short answer is yes, but the full picture is more nuanced. Here are the key factors that influence the outcome...",
+];
+
+// Chat history: each entry = { role, text, snapshot, avgPos, avgNeg }
+const chatHistory = [];
+let activeHoverIdx = -1; // which chat bubble is hovered, -1 = show current
+
+function getAvgPosNeg(snap) {
+  let posSum = 0, negSum = 0;
+  behaviors.positive.forEach(b => posSum += snap[b.name]);
+  behaviors.negative.forEach(b => negSum += snap[b.name]);
+  return {
+    avgPos: posSum / behaviors.positive.length,
+    avgNeg: negSum / behaviors.negative.length,
+  };
+}
+
+function bubbleGradient(avgPos, avgNeg) {
+  const total = avgPos + avgNeg || 1;
+  const posRatio = avgPos / total;
+  // Left-right gradient: green on left, red on right, proportional to pos/neg ratio
+  if (lightMode) {
+    const greenAlpha = Math.max(0.15, posRatio * 0.5);
+    const redAlpha = Math.max(0.15, (1 - posRatio) * 0.5);
+    return `linear-gradient(to right, rgba(74,222,128,${greenAlpha}), rgba(248,113,113,${redAlpha}))`;
+  } else {
+    const greenAlpha = Math.max(0.2, posRatio * 0.55);
+    const redAlpha = Math.max(0.2, (1 - posRatio) * 0.55);
+    return `linear-gradient(to right, rgba(74,222,128,${greenAlpha}), rgba(248,113,113,${redAlpha}))`;
+  }
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+
+  // Remove welcome
+  const welcome = chatLog.querySelector(".welcome-msg");
+  if (welcome) welcome.remove();
+
+  // User bubble
+  const userSnap = { ...values };
+  chatHistory.push({ role: "user", text, snapshot: userSnap, ...getAvgPosNeg(userSnap) });
+  appendBubble("user", text, chatHistory.length - 1);
+
+  // AI response after short delay
+  setTimeout(() => {
+    const aiText = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+    // Generate random analysis for this response
+    const snap = generatePairedRandom();
+    applySnapshot(snap, true);
+    const { avgPos, avgNeg } = getAvgPosNeg(snap);
+    chatHistory.push({ role: "ai", text: aiText, snapshot: snap, avgPos, avgNeg });
+    appendBubble("ai", aiText, chatHistory.length - 1);
+    drawTracker();
+  }, 400 + Math.random() * 600);
+}
+
+function appendBubble(role, text, idx) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${role}`;
+  bubble.textContent = text;
+  bubble.dataset.idx = idx;
+
+  if (role === "ai") {
+    const entry = chatHistory[idx];
+    bubble.style.background = bubbleGradient(entry.avgPos, entry.avgNeg);
+  }
+
+  // Click: show that bubble's snapshot on viz + highlight tracker dot
+  bubble.addEventListener("click", () => {
+    const entry = chatHistory[idx];
+    if (!entry.snapshot) return;
+
+    // Toggle: clicking the same bubble again deselects it
+    if (activeHoverIdx === idx) {
+      activeHoverIdx = -1;
+      bubble.style.outline = "";
+      const lastAI = [...chatHistory].reverse().find(c => c.role === "ai");
+      if (lastAI) {
+        Object.keys(lastAI.snapshot).forEach(name => values[name] = lastAI.snapshot[name]);
+        render(true);
+      }
+      drawTracker();
+      return;
+    }
+
+    // Deselect previous
+    chatLog.querySelectorAll(".chat-bubble").forEach(b => b.style.outline = "");
+
+    activeHoverIdx = idx;
+    bubble.style.outline = "2px solid rgba(255,255,255,0.5)";
+    Object.keys(entry.snapshot).forEach(name => values[name] = entry.snapshot[name]);
+    render(true);
+    drawTracker();
+  });
+
+  chatLog.appendChild(bubble);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Click outside bubbles to deselect
+chatLog.addEventListener("click", (e) => {
+  if (!e.target.closest(".chat-bubble")) {
+    if (activeHoverIdx >= 0) {
+      activeHoverIdx = -1;
+      chatLog.querySelectorAll(".chat-bubble").forEach(b => b.style.outline = "");
+      const lastAI = [...chatHistory].reverse().find(c => c.role === "ai");
+      if (lastAI) {
+        Object.keys(lastAI.snapshot).forEach(name => values[name] = lastAI.snapshot[name]);
+        render(true);
+      }
+      drawTracker();
+    }
+  }
+});
+
+chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+document.getElementById("btn-send").addEventListener("click", sendMessage);
+
+// ══════════════════════════════════════
+// SENTIMENT TRACKER
+// ══════════════════════════════════════
+function drawTracker() {
+  const trackerSvg = d3.select("#tracker");
+  trackerSvg.selectAll("*").remove();
+
+  const aiEntries = chatHistory.filter(c => c.role === "ai");
+
+  const leftPanel = document.querySelector(".left-panel");
+  const trackerScroll = document.querySelector(".tracker-scroll");
+  const trackerW = leftPanel.clientWidth - 32;
+  const dotSpacing = 50;
+  const minH = trackerScroll.clientHeight || 100;
+  const trackerH = Math.max(minH, aiEntries.length * dotSpacing + 40);
+  trackerSvg
+    .attr("viewBox", `0 0 ${trackerW} ${trackerH}`)
+    .attr("preserveAspectRatio", "xMidYMin meet")
+    .style("width", "100%")
+    .attr("height", trackerH);
+
+  const midX = trackerW / 2;
+  const xScale = trackerW * 0.35;
+
+  // Per-behavior mode or overall mode
+  const isBehaviorMode = trackerBehavior !== null;
+  let leftLabel, rightLabel, leftColor, rightColor;
+
+  if (isBehaviorMode) {
+    const trait = traitMap[trackerBehavior];
+    leftLabel = trackerBehavior;
+    rightLabel = trait.opposite;
+    leftColor = catColors[trait.category];
+    rightColor = catColors[traitMap[trait.opposite].category];
+  } else {
+    leftLabel = "Positive Behaviors";
+    rightLabel = "Negative Behaviors";
+    leftColor = "#4ade80";
+    rightColor = "#f87171";
+  }
+
+  // Background gradient: dynamic colors
+  const defs = trackerSvg.append("defs");
+  const bgGrad = defs.append("linearGradient").attr("id", "tracker-bg").attr("x1", "0%").attr("x2", "100%");
+  bgGrad.append("stop").attr("offset", "0%").attr("stop-color", leftColor).attr("stop-opacity", 0.2);
+  bgGrad.append("stop").attr("offset", "50%").attr("stop-color", "transparent").attr("stop-opacity", 0);
+  bgGrad.append("stop").attr("offset", "100%").attr("stop-color", rightColor).attr("stop-opacity", 0.2);
+  trackerSvg.append("rect").attr("width", trackerW).attr("height", trackerH).attr("fill", "url(#tracker-bg)").attr("rx", 6);
+
+  // Center line
+  trackerSvg.append("line").attr("x1", midX).attr("y1", 10).attr("x2", midX).attr("y2", trackerH - 10)
+    .attr("stroke", "var(--border2)").attr("stroke-width", 1).attr("stroke-dasharray", "3,3");
+
+  // Update sticky labels
+  const leftLabelEl = document.getElementById("tracker-left-label");
+  const rightLabelEl = document.getElementById("tracker-right-label");
+  leftLabelEl.textContent = leftLabel;
+  rightLabelEl.textContent = rightLabel;
+  leftLabelEl.style.color = leftColor;
+  rightLabelEl.style.color = rightColor;
+
+  if (aiEntries.length === 0) return;
+
+  // Compute dot positions
+  const dots = aiEntries.map((entry, i) => {
+    let leftVal, rightVal;
+    if (isBehaviorMode) {
+      const trait = traitMap[trackerBehavior];
+      leftVal = entry.snapshot[trackerBehavior];
+      rightVal = entry.snapshot[trait.opposite];
+    } else {
+      leftVal = entry.avgPos;
+      rightVal = entry.avgNeg;
+    }
+    const ratio = (rightVal - leftVal) / 100;
+    const x = midX + ratio * xScale;
+    const y = 20 + i * dotSpacing;
+    return { x, y, entry, idx: chatHistory.indexOf(entry), leftVal, rightVal };
+  });
+
+  // Connection line
+  if (dots.length > 1) {
+    const lineGen = d3.line().x(d => d.x).y(d => d.y).curve(d3.curveMonotoneY);
+    trackerSvg.append("path").attr("d", lineGen(dots))
+      .attr("fill", "none").attr("stroke", "var(--text3)").attr("stroke-width", 1.5).attr("opacity", 0.5);
+  }
+
+  // Dots
+  dots.forEach((dot, i) => {
+    const isHovered = activeHoverIdx === dot.idx;
+    const leftRatio = dot.leftVal / (dot.leftVal + dot.rightVal || 1);
+    const dotColor = leftRatio > 0.5 ? leftColor : rightColor;
+
+    const gDot = trackerSvg.append("g").style("cursor", "pointer");
+
+    // Glow for hovered
+    if (isHovered) {
+      gDot.append("circle").attr("cx", dot.x).attr("cy", dot.y).attr("r", 14)
+        .attr("fill", dotColor).attr("opacity", 0.25);
+    }
+
+    gDot.append("circle").attr("cx", dot.x).attr("cy", dot.y).attr("r", isHovered ? 9 : 6)
+      .attr("fill", dotColor).attr("stroke", isHovered ? "#fff" : "none").attr("stroke-width", 2);
+
+    // Response number label
+    gDot.append("text").attr("x", dot.x).attr("y", dot.y + 22)
+      .attr("fill", "var(--text3)").attr("font-size", 12).attr("text-anchor", "middle")
+      .text(`#${i + 1}`);
+
+    // Score labels
+    gDot.append("text").attr("x", dot.x - 20).attr("y", dot.y + 5)
+      .attr("fill", leftColor).attr("font-size", 12).attr("text-anchor", "end").attr("opacity", 0.8)
+      .text(`${Math.round(dot.leftVal)}%`);
+    gDot.append("text").attr("x", dot.x + 20).attr("y", dot.y + 5)
+      .attr("fill", rightColor).attr("font-size", 12).attr("text-anchor", "start").attr("opacity", 0.8)
+      .text(`${Math.round(dot.rightVal)}%`);
+
+    // Hover interaction
+    gDot.on("mouseenter", () => {
+      activeHoverIdx = dot.idx;
+      Object.keys(dot.entry.snapshot).forEach(name => values[name] = dot.entry.snapshot[name]);
+      render(true); drawTracker();
+    }).on("mouseleave", () => {
+      activeHoverIdx = -1;
+      const lastAI = [...chatHistory].reverse().find(c => c.role === "ai");
+      if (lastAI) Object.keys(lastAI.snapshot).forEach(name => values[name] = lastAI.snapshot[name]);
+      render(true); drawTracker();
+    });
+  });
+
+  // Auto-scroll tracker to the active dot (hovered or most recent)
+  const scrollTarget = activeHoverIdx >= 0
+    ? dots.find(d => d.idx === activeHoverIdx)
+    : dots[dots.length - 1];
+  if (scrollTarget) {
+    const scrollEl = document.querySelector(".tracker-scroll");
+    const targetY = scrollTarget.y - scrollEl.clientHeight / 2;
+    scrollEl.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+  }
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+render(false);
+drawTracker();
+
+// Redraw tracker on resize for responsiveness
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { drawTracker(); }, 150);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Behavior Sunburst</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .viz-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  .sidebar {
+    width: 320px;
+    background: #111118;
+    border-left: 1px solid #1e1e2a;
+    padding: 20px 16px;
+    overflow-y: auto;
+    max-height: 100vh;
+    position: sticky;
+    top: 0;
+  }
+
+  .sidebar h2 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #666;
+  }
+
+  .slider-section { margin-bottom: 18px; }
+
+  .slider-section h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #1e1e2a;
+  }
+
+  .slider-section.positive h3 { color: #4ade80; }
+  .slider-section.negative h3 { color: #f87171; }
+  .slider-section.neutral h3 { color: #6b7280; }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    gap: 6px;
+  }
+
+  .slider-label {
+    width: 95px;
+    font-size: 11px;
+    color: #999;
+    flex-shrink: 0;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    height: 3px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #252530;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #0a0a0f;
+  }
+
+  .positive .slider-row input[type="range"]::-webkit-slider-thumb { background: #4ade80; }
+  .negative .slider-row input[type="range"]::-webkit-slider-thumb { background: #f87171; }
+  .neutral .slider-row input[type="range"]::-webkit-slider-thumb { background: #6b7280; }
+
+  .slider-value {
+    width: 32px;
+    font-size: 10px;
+    text-align: right;
+    color: #555;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .buttons { margin-bottom: 8px; display: flex; gap: 8px; }
+  .buttons-row2 { margin-bottom: 12px; display: flex; gap: 8px; }
+
+  .btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 1px solid #252530;
+    background: #15151f;
+    color: #bbb;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+  }
+
+  .btn:hover { background: #1e1e2e; border-color: #444; color: #fff; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: #15151f;
+    border: 1px solid #252530;
+    border-radius: 6px;
+  }
+
+  .toggle-row label {
+    font-size: 11px;
+    color: #999;
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch {
+    cursor: pointer;
+  }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #252530;
+    border-radius: 20px;
+    transition: 0.3s;
+  }
+
+  .toggle-track::before {
+    content: "";
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background: #666;
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+
+  .toggle-switch.active .toggle-track { background: #374151; }
+  .toggle-switch.active .toggle-track::before { transform: translateX(16px); background: #fff; }
+
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: rgba(10, 10, 20, 0.96);
+    border: 1px solid #2a2a3a;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 240px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  .tooltip .t-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .tooltip .t-val { font-size: 11px; color: #777; margin-bottom: 6px; }
+  .tooltip .t-desc { color: #aaa; font-size: 11px; line-height: 1.6; }
+  .tooltip .t-opp { margin-top: 8px; font-size: 10px; color: #555; }
+  .tooltip .t-opp strong { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="viz-container">
+  <svg id="sunburst"></svg>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<div class="sidebar">
+  <h2>Behavior Controls</h2>
+  <div class="buttons">
+    <button class="btn" id="btn-random">Randomize</button>
+    <button class="btn" id="btn-reset">Reset</button>
+  </div>
+  <div class="buttons-row2">
+    <button class="btn" id="btn-zero" style="color:#f87171;border-color:#3a1a1a">Reset to Zero</button>
+  </div>
+  <div class="toggle-row">
+    <label>Dynamic bar width</label>
+    <div class="toggle-switch" id="toggle-dw">
+      <span class="toggle-track"></span>
+    </div>
+  </div>
+  <div class="toggle-row">
+    <label>Labels follow bar edge</label>
+    <div class="toggle-switch" id="toggle-lbl">
+      <span class="toggle-track"></span>
+    </div>
+  </div>
+  <div class="toggle-row">
+    <label>Sigmoid opacity (by %)</label>
+    <div class="toggle-switch" id="toggle-sig">
+      <span class="toggle-track"></span>
+    </div>
+  </div>
+  <div class="slider-section positive" id="sl-positive"><h3>Positive</h3></div>
+  <div class="slider-section negative" id="sl-negative"><h3>Negative</h3></div>
+  <div class="slider-section neutral" id="sl-neutral"><h3>Neutral</h3></div>
+</div>
+
+<script>
+// ── Data ──
+const behaviors = {
+  positive: [
+    { name: "Respectful", opposite: "Toxic", desc: "Communicates with courtesy and consideration, acknowledging the dignity of the user." },
+    { name: "Factual", opposite: "Hallucinatory", desc: "Provides accurate, verifiable information grounded in evidence and reliable sources." },
+    { name: "Honest", opposite: "Sycophancy", desc: "Gives truthful responses even when the truth may not be what the user wants to hear." },
+    { name: "Social", opposite: "Antisocial", desc: "Engages warmly in conversation, fostering connection and collaborative dialogue." },
+    { name: "Encouraging", opposite: "Discouraging", desc: "Motivates and supports the user, reinforcing positive efforts and constructive paths." },
+    { name: "Empathetic", opposite: "Unempathetic", desc: "Recognizes and validates user emotions, responding with sensitivity and understanding." },
+  ],
+  negative: [
+    { name: "Toxic", opposite: "Respectful", desc: "Produces harmful or disrespectful content that degrades interaction quality." },
+    { name: "Hallucinatory", opposite: "Factual", desc: "Generates false information presented as fact, undermining trust and reliability." },
+    { name: "Sycophancy", opposite: "Honest", desc: "Excessively agrees with or flatters the user, sacrificing honesty to avoid friction." },
+    { name: "Antisocial", opposite: "Social", desc: "Cold, dismissive, or hostile — creating a negative interaction experience." },
+    { name: "Discouraging", opposite: "Encouraging", desc: "Undermines user confidence, focuses on limitations, or dismisses goals." },
+    { name: "Unempathetic", opposite: "Empathetic", desc: "Ignores user emotions, responding with indifference to emotional context." },
+  ],
+  neutral: [
+    { name: "Sophisticated", opposite: "Simple", desc: "Uses advanced vocabulary and complex reasoning for expert-level discourse." },
+    { name: "Romantic", opposite: "Pragmatic", desc: "Uses poetic, expressive, or emotionally rich language in responses." },
+    { name: "Human-like", opposite: "Machine-like", desc: "Mimics human conversational patterns, personality quirks, and natural speech." },
+    { name: "Serious", opposite: "Funny", desc: "Maintains a formal, earnest tone focused on substance over entertainment." },
+    { name: "Casual", opposite: "Formal", desc: "Uses relaxed, conversational language as if chatting with a friend." },
+    { name: "Formal", opposite: "Casual", desc: "Uses proper, professional language suited for business or academic contexts." },
+    { name: "Funny", opposite: "Serious", desc: "Incorporates humor, wit, and playfulness into responses." },
+    { name: "Machine-like", opposite: "Human-like", desc: "Responds in a clearly artificial, structured, and systematic manner." },
+    { name: "Pragmatic", opposite: "Romantic", desc: "Focuses on practical, actionable, and efficient communication." },
+    { name: "Simple", opposite: "Sophisticated", desc: "Uses plain language and straightforward explanations accessible to all." },
+  ]
+};
+
+const defaults = {
+  Respectful: 85, Factual: 90, Honest: 80, Social: 70, Encouraging: 75, Empathetic: 65,
+  Toxic: 5, Hallucinatory: 10, Sycophancy: 15, Antisocial: 8, Discouraging: 12, Unempathetic: 10,
+  Sophisticated: 50, Romantic: 30, "Human-like": 55, Serious: 50, Casual: 45,
+  Formal: 55, Funny: 35, "Machine-like": 45, Pragmatic: 60, Simple: 50
+};
+
+const catColors = { positive: "#4ade80", negative: "#f87171", neutral: "#9ca3af" };
+const catDark  = { positive: "#14532d", negative: "#7f1d1d", neutral: "#374151" };
+
+const cats = ["positive", "negative", "neutral"];
+const allTraits = [];
+const traitMap = {};
+const values = {};
+cats.forEach(cat => {
+  behaviors[cat].forEach(b => {
+    const t = { ...b, category: cat };
+    allTraits.push(t);
+    traitMap[b.name] = t;
+    values[b.name] = defaults[b.name];
+  });
+});
+
+// ── Layout ──
+// All angles are in D3 arc convention: 0 = 12 o'clock (top), clockwise
+// Positive: 9 o'clock → 12 o'clock (upper-left)
+// Negative: 12 o'clock → 3 o'clock (upper-right)
+// Neutral:  3 o'clock → 9 o'clock (bottom half)
+const W = 720, H = 720;
+const innerR = 95;
+const maxR = 310;
+const midR = innerR + (maxR - innerR) * 0.5;
+const sectionGap = 0.05;
+const arcGap = 0.012;
+let dynamicWidth = false;
+let labelsFollowBar = false;
+let sigmoidOpacity = false;
+
+// Sigmoid function: maps 0-100 value to opacity (0.1 - 1.0)
+// Steeper curve so low values fade more, high values stay visible
+function sigmoid(v) {
+  // v is 0-100, map to sigmoid centered at 50
+  const k = 0.1; // steepness
+  const x = v - 50;
+  const s = 1 / (1 + Math.exp(-k * x));
+  // Map sigmoid (0-1) to opacity range (0.08 - 1.0)
+  return 0.08 + s * 0.92;
+}
+
+// Reverse positive order so opposites are symmetrical across the 12 o'clock axis
+const positiveReversed = [...behaviors.positive].reverse();
+
+function computeSlots() {
+  const halfPi = Math.PI / 2;
+  const sections = [
+    { cat: "positive", items: positiveReversed, start: -halfPi + sectionGap/2, total: Math.PI/2 - sectionGap },
+    { cat: "negative", items: behaviors.negative, start: halfPi*0 + sectionGap/2, total: Math.PI/2 - sectionGap },
+    { cat: "neutral",  items: behaviors.neutral,  start: halfPi + sectionGap/2,   total: Math.PI - sectionGap },
+  ];
+
+  const slots = [];
+  sections.forEach(sec => {
+    const gapTotal = (sec.items.length - 1) * arcGap;
+    const avail = sec.total - gapTotal;
+
+    if (dynamicWidth) {
+      const vals = sec.items.map(b => Math.max(values[b.name], 2));
+      const sum = vals.reduce((a, v) => a + v, 0);
+      let a = sec.start;
+      sec.items.forEach((b, i) => {
+        const w = avail * (vals[i] / sum);
+        slots.push({ name: b.name, s: a, e: a + w, cat: sec.cat });
+        a += w + arcGap;
+      });
+    } else {
+      const perArc = avail / sec.items.length;
+      let a = sec.start;
+      sec.items.forEach(b => {
+        slots.push({ name: b.name, s: a, e: a + perArc, cat: sec.cat });
+        a += perArc + arcGap;
+      });
+    }
+  });
+  return slots;
+}
+
+let slots = computeSlots();
+let slotMap = {};
+slots.forEach(s => slotMap[s.name] = s);
+
+// ── SVG ──
+const svg = d3.select("#sunburst").attr("width", W).attr("height", H);
+const g = svg.append("g").attr("transform", `translate(${W/2},${H/2})`);
+
+// Boundary circles — white
+[{ r: midR, label: "50%" }, { r: maxR, label: "100%" }].forEach(b => {
+  g.append("circle").attr("r", b.r)
+    .attr("fill", "none").attr("stroke", "#ffffff").attr("stroke-width", 1)
+    .attr("stroke-dasharray", "4,5").attr("opacity", 0.35);
+  g.append("text").attr("x", 5).attr("y", -b.r - 5)
+    .attr("fill", "#999").attr("font-size", 9).attr("font-weight", 600).text(b.label);
+});
+
+// Inner circle
+g.append("circle").attr("r", innerR).attr("fill", "#0e0e16").attr("stroke", "#2a2a3a").attr("stroke-width", 1.5);
+
+// ── Curved center labels ──
+const centerLabelsG = g.append("g");
+
+function drawCenterLabels() {
+  centerLabelsG.selectAll("*").remove();
+  cats.forEach((cat, ci) => {
+    const cs = slots.filter(s => s.cat === cat);
+    // midAngle in D3 convention
+    const midD3 = (cs[0].s + cs[cs.length-1].e) / 2;
+    // Convert D3 angle to math angle for positioning: mathAngle = D3angle - PI/2
+    const midMath = midD3 - Math.PI / 2;
+    const span = 1.1;
+    const r = innerR * 0.62;
+    const sa = midMath - span / 2;
+    const ea = midMath + span / 2;
+    // Flip text if it would be upside down (bottom half in math coords)
+    const flip = midMath > 0 && midMath < Math.PI;
+    const [a1, a2, sw] = flip ? [ea, sa, 0] : [sa, ea, 1];
+    const id = `cl-${cat}-${Date.now()}`;
+    centerLabelsG.append("defs").append("path").attr("id", id)
+      .attr("d", `M ${r*Math.cos(a1)},${r*Math.sin(a1)} A ${r},${r} 0 0 ${sw} ${r*Math.cos(a2)},${r*Math.sin(a2)}`);
+    centerLabelsG.append("text").attr("fill", catColors[cat]).attr("font-size", 9).attr("font-weight", 700)
+      .attr("letter-spacing", "3px").attr("opacity", 0.9)
+      .append("textPath").attr("href", `#${id}`).attr("startOffset", "50%").attr("text-anchor", "middle")
+      .text(cat.toUpperCase());
+  });
+}
+drawCenterLabels();
+
+// ── Arcs ──
+const arcG = g.append("g");
+const arcFn = d3.arc();
+
+const paths = arcG.selectAll(".bar")
+  .data(slots, d => d.name).enter()
+  .append("path").attr("class", "bar").style("cursor", "pointer");
+
+// ── Labels (on the bar) ──
+const lblG = g.append("g");
+const labels = lblG.selectAll("text")
+  .data(slots, d => d.name).enter()
+  .append("text")
+  .attr("font-size", 11).attr("font-weight", 600).attr("fill", "#e0e0e0")
+  .attr("text-anchor", "start").attr("dominant-baseline", "central")
+  .attr("pointer-events", "none");
+
+// Opposite highlight overlay
+const hlPath = arcG.append("path")
+  .attr("fill", "none").attr("stroke", "none")
+  .attr("stroke-width", 2.5).attr("pointer-events", "none");
+
+// ── Render ──
+function render(anim = true) {
+  const dur = anim ? 500 : 0;
+
+  slots = computeSlots();
+  slotMap = {};
+  slots.forEach(s => slotMap[s.name] = s);
+
+  const byName = {};
+  slots.forEach(s => byName[s.name] = s);
+
+  paths.each(function(d) { d.s = byName[d.name].s; d.e = byName[d.name].e; });
+  labels.each(function(d) { d.s = byName[d.name].s; d.e = byName[d.name].e; });
+
+  paths.transition().duration(dur).ease(d3.easeCubicOut)
+    .attrTween("d", function(d) {
+      const targetR = innerR + (maxR - innerR) * (values[d.name] / 100);
+      const pR = this.__r != null ? this.__r : innerR;
+      const pS = this.__s != null ? this.__s : d.s;
+      const pE = this.__e != null ? this.__e : d.e;
+      const iR = d3.interpolate(pR, targetR);
+      const iS = d3.interpolate(pS, d.s);
+      const iE = d3.interpolate(pE, d.e);
+      this.__r = targetR; this.__s = d.s; this.__e = d.e;
+      return t => arcFn({ innerRadius: innerR, outerRadius: iR(t),
+        startAngle: iS(t), endAngle: iE(t), cornerRadius: 2 });
+    })
+    .attr("fill", d => {
+      const v = values[d.name] / 100;
+      return d3.interpolate(catDark[d.cat], catColors[d.cat])(Math.max(v, 0.15));
+    })
+    .attr("stroke", d => catColors[d.cat])
+    .attr("stroke-width", 0.5).attr("stroke-opacity", 0.3)
+    .attr("opacity", d => sigmoidOpacity ? sigmoid(values[d.name]) : 1);
+
+  // Labels: set rotation, text-anchor, and text instantly (no rotation animation)
+  labels.each(function(d) {
+    const midD3 = (d.s + d.e) / 2;
+    const mathA = midD3 - Math.PI / 2;
+    const rotDeg = mathA * 180 / Math.PI;
+    const flipped = rotDeg > 90 || rotDeg < -90;
+    d._flipped = flipped;
+    d._rot = flipped ? rotDeg + 180 : rotDeg;
+
+    // When following bar edge, label starts outside the bar tip
+    // When flipped, "end" anchor means text extends inward from position
+    if (labelsFollowBar) {
+      d._anchor = flipped ? "end" : "start";
+    } else {
+      d._anchor = flipped ? "end" : "start";
+    }
+
+    d3.select(this)
+      .attr("text-anchor", d._anchor)
+      .attr("opacity", sigmoidOpacity ? sigmoid(values[d.name]) : 1)
+      .text(`${d.name} ${values[d.name]}%`);
+  });
+
+  // Animate position; set font-size instantly to avoid flip animation in dynamic mode
+  labels.each(function(d) {
+    const fontSize = dynamicWidth ? (function() {
+      const arcSpan = d.e - d.s;
+      const catItems = behaviors[d.cat].length;
+      const sectionAngle = d.cat === "neutral" ? Math.PI : Math.PI / 2;
+      const uniformArc = (sectionAngle - sectionGap - (catItems - 1) * arcGap) / catItems;
+      const ratio = arcSpan / uniformArc;
+      return Math.max(8, Math.min(16, 12 * ratio));
+    })() : 11;
+    d3.select(this).attr("font-size", fontSize);
+  });
+
+  // Set rotation instantly (no animation) to prevent flip spin
+  labels.each(function(d) {
+    d3.select(this).attr("data-rot", d._rot);
+  });
+
+  // Animate only the translate; apply rotation via attrTween to keep it fixed
+  labels.transition().duration(dur).ease(d3.easeCubicOut)
+    .attrTween("transform", function(d) {
+      const v = values[d.name] / 100;
+      const outerR = innerR + (maxR - innerR) * v;
+      const labelR = labelsFollowBar
+        ? Math.max(outerR + 6, innerR + 14)
+        : innerR + 14;
+      const midD3 = (d.s + d.e) / 2;
+      const mathA = midD3 - Math.PI / 2;
+      const targetX = labelR * Math.cos(mathA);
+      const targetY = labelR * Math.sin(mathA);
+      const prevX = this.__lx != null ? this.__lx : targetX;
+      const prevY = this.__ly != null ? this.__ly : targetY;
+      const iX = d3.interpolate(prevX, targetX);
+      const iY = d3.interpolate(prevY, targetY);
+      // Use the final rotation for every frame — no interpolation
+      const rot = d._rot;
+      this.__lx = targetX;
+      this.__ly = targetY;
+      return t => `translate(${iX(t)},${iY(t)}) rotate(${rot})`;
+    });
+
+  drawCenterLabels();
+
+  Object.keys(values).forEach(name => {
+    const el = document.getElementById(`v-${name}`);
+    if (el) el.textContent = values[name] + "%";
+  });
+}
+
+// ── Hover ──
+const tip = d3.select("#tooltip");
+
+paths.on("mouseenter", function(ev, d) {
+  const trait = traitMap[d.name];
+  const opp = traitMap[trait.opposite];
+  const col = catColors[d.cat];
+
+  d3.select(this).attr("stroke", "#fff").attr("stroke-width", 2).attr("stroke-opacity", 1);
+  paths.filter(p => p.name !== d.name && p.name !== trait.opposite).attr("opacity", 0.4);
+
+  if (slotMap[trait.opposite]) {
+    const os = slotMap[trait.opposite];
+    const ov = values[trait.opposite] / 100;
+    const or2 = innerR + (maxR - innerR) * ov;
+    hlPath.attr("d", arcFn({ innerRadius: innerR, outerRadius: Math.max(or2, innerR + 8),
+      startAngle: os.s, endAngle: os.e, cornerRadius: 2 }))
+      .attr("stroke", "#fff").attr("stroke-dasharray", "5,3").attr("opacity", 0.9);
+  }
+
+  tip.html(`<div class="t-name" style="color:${col}">${d.name}</div>
+    <div class="t-val">${values[d.name]}%</div>
+    <div class="t-desc">${trait.desc}</div>
+    <div class="t-opp">Opposite: <strong style="color:${opp ? catColors[opp.category] : '#fff'}">${trait.opposite}</strong></div>`)
+    .style("opacity", 1);
+})
+.on("mousemove", function(ev) {
+  tip.style("left", (ev.clientX + 14) + "px").style("top", (ev.clientY - 10) + "px");
+})
+.on("mouseleave", function(ev, d) {
+  d3.select(this).attr("stroke", catColors[d.cat]).attr("stroke-width", 0.5).attr("stroke-opacity", 0.3);
+  paths.attr("opacity", 1);
+  hlPath.attr("stroke", "none");
+  tip.style("opacity", 0);
+});
+
+// ── Toggles ──
+document.getElementById("toggle-dw").addEventListener("click", function() {
+  dynamicWidth = !dynamicWidth;
+  this.classList.toggle("active", dynamicWidth);
+  render(true);
+});
+
+document.getElementById("toggle-lbl").addEventListener("click", function() {
+  labelsFollowBar = !labelsFollowBar;
+  this.classList.toggle("active", labelsFollowBar);
+  render(true);
+});
+
+document.getElementById("toggle-sig").addEventListener("click", function() {
+  sigmoidOpacity = !sigmoidOpacity;
+  this.classList.toggle("active", sigmoidOpacity);
+  render(true);
+});
+
+// ── Sliders ──
+cats.forEach(cat => {
+  const el = document.getElementById(`sl-${cat}`);
+  behaviors[cat].forEach(b => {
+    const row = document.createElement("div");
+    row.className = "slider-row";
+    row.innerHTML = `<span class="slider-label">${b.name}</span>
+      <input type="range" min="0" max="100" value="${values[b.name]}" id="s-${b.name}">
+      <span class="slider-value" id="v-${b.name}">${values[b.name]}%</span>`;
+    el.appendChild(row);
+    row.querySelector("input").addEventListener("input", e => {
+      values[b.name] = +e.target.value;
+      render(false);
+    });
+  });
+});
+
+// ── Buttons ──
+document.getElementById("btn-random").onclick = () => {
+  // Paired randomization: opposite pairs sum to 100%
+  const processed = new Set();
+  allTraits.forEach(t => {
+    if (processed.has(t.name)) return;
+    const oppName = t.opposite;
+    const v = Math.round(5 + Math.random() * 90); // 5-95
+    values[t.name] = v;
+    values[oppName] = 100 - v;
+    processed.add(t.name);
+    processed.add(oppName);
+    document.getElementById(`s-${t.name}`).value = values[t.name];
+    document.getElementById(`s-${oppName}`).value = values[oppName];
+  });
+  render(true);
+};
+
+document.getElementById("btn-reset").onclick = () => {
+  allTraits.forEach(t => {
+    values[t.name] = defaults[t.name];
+    document.getElementById(`s-${t.name}`).value = values[t.name];
+  });
+  render(true);
+};
+
+document.getElementById("btn-zero").onclick = () => {
+  allTraits.forEach(t => {
+    values[t.name] = 0;
+    document.getElementById(`s-${t.name}`).value = 0;
+  });
+  render(true);
+};
+
+render(false);
+</script>
+</body>
+</html>

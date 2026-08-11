@@ -103,7 +103,7 @@ $(document).ready(function (){
                 window.location.replace("https://app.prolific.com/submissions/complete?cc=DEBUG");
             } else {
                 // Production Prolific redirect URL
-                window.location.replace("https://app.prolific.com/submissions/complete?cc=C10PV7GP");
+                window.location.replace("https://app.prolific.com/submissions/complete?cc=CXCGQSF4");
             }
         }
     }
