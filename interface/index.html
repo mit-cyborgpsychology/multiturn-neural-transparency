@@ -176,19 +176,19 @@
                 <div class="np-card" onclick="showPage('predict')">
                     <div class="np-card-num">01</div>
                     <h3>Predict Model Behavior</h3>
-                    <p>Chat with an AI model while watching its neural activations in real time, then predict its final behavior.</p>
+                    <p>Chat with an AI model while observing its neural activations in real time, then predict its final behavior.</p>
                     <div style="margin-top:14px"><span class="np-badge np-badge-green">Interactive Study</span></div>
                 </div>
                 <div class="np-card" onclick="showPage('explore')">
                     <div class="np-card-num">02</div>
-                    <h3>Explore Activation Patterns</h3>
-                    <p>Choose from preset personas or write your own prompt and watch the behavioral activation visualization respond instantly.</p>
+                    <h3>Explore Different Personas</h3>
+                    <p>Choose from preset personas or define your own AI personality and see the AI behavior visualization evaluate the persona instantly.</p>
                     <div style="margin-top:14px"><span class="np-badge np-badge-blue">Sandbox</span></div>
                 </div>
                 <div class="np-card" onclick="showPage('science')">
                     <div class="np-card-num">03</div>
                     <h3>The Science: Mech Interp &times; HCI</h3>
-                    <p>Mechanistic Interpretability meets Human-AI Interaction. Understand behavioral vectors, calibration, and the N=246 controlled study.</p>
+                    <p>Mechanistic Interpretability meets Human-AI Interaction. Understand behavioral vectors, calibration, and the our controlled user study.</p>
                     <div style="margin-top:14px"><span class="np-badge np-badge-grey">Research</span></div>
                 </div>
             </div>
@@ -216,8 +216,8 @@
         <button class="back-link" onclick="showLanding()">&larr; Home</button>
         <div class="page-head">
             <span class="np-badge np-badge-blue">Sandbox</span>
-            <h2 style="margin-top:8px">Explore Activation Patterns</h2>
-            <p class="muted small">Compare two different personas or prompts side by side. Each side calls the real persona-vector API.</p>
+            <h2 style="margin-top:8px">Explore Different Personas using Neural Transparency</h2>
+            <p class="muted small">Compare two different AI personas, as defined by system prompts side by side. The visualization updates to score each persona or system prompted you put in.</p>
         </div>
 
         <div style="display:flex;gap:20px;flex-wrap:wrap">
@@ -226,7 +226,7 @@
                 <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization A</div>
                 <div class="persona-row" id="ex-personas-L"></div>
                 <div style="margin:10px 0">
-                    <textarea id="ex-textarea-L" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+                    <textarea id="ex-textarea-L" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or create your own persona using a custom prompt..."></textarea>
                     <div style="margin-top:4px"><button class="np-btn np-btn-sm" onclick="exCustomSide('L')">Analyze</button></div>
                 </div>
                 <div class="viz-box"><div id="ex-sb-1" style="width:100%;height:360px"></div></div>
@@ -236,7 +236,7 @@
                 <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization B</div>
                 <div class="persona-row" id="ex-personas-R"></div>
                 <div style="margin:10px 0">
-                    <textarea id="ex-textarea-R" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+                    <textarea id="ex-textarea-R" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or create your own persona using a custom prompt..."></textarea>
                     <div style="margin-top:4px"><button class="np-btn np-btn-sm" onclick="exCustomSide('R')">Analyze</button></div>
                 </div>
                 <div class="viz-box"><div id="ex-sb-2" style="width:100%;height:360px"></div></div>

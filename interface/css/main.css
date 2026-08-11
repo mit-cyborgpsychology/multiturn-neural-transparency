@@ -116,9 +116,6 @@
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
-.predict-transition-toast-timer {
-    font-size: 0.8rem !important;
-}
 .predict-transition-toast-content button {
     margin-top: 0.25rem;
     width: 100%;
@@ -630,45 +627,15 @@ body.chat-active .dynamic-chat-container {
 }
 
 /* Blanked during the Predict Model Behavior step: the panel keeps its width so the chat
-   doesn't reflow to full page, but its contents are hidden so the answer isn't on screen.
-   visibility (not display) keeps the drift panel's measured width valid for later redraws.
-   The transcript overlay below is exempted so users can still reference the conversation. */
+   doesn't reflow to full page, but its contents (sunburst + drift panel) are hidden so the
+   answer isn't on screen. visibility (not display) keeps the drift panel's measured width
+   valid for later redraws. The conversation itself stays visible/scrollable on the other
+   side — it isn't part of this panel. */
 .chat-right-panel.viz-blanked {
     background: #fff;
 }
 .chat-right-panel.viz-blanked > * {
     visibility: hidden;
-}
-
-/* Read-only conversation transcript shown in place of the blanked visualization during
-   the Predict Model Behavior step. Higher selector specificity than the `> *` rule above
-   keeps it visible even while the rest of the panel is hidden. */
-.predict-transcript-overlay {
-    display: none;
-}
-.chat-right-panel.viz-blanked > .predict-transcript-overlay {
-    display: flex;
-    visibility: visible;
-    flex-direction: column;
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    background: #fff;
-    overflow-y: auto;
-    padding: 1rem 1.25rem;
-    gap: 0.5rem;
-}
-.predict-transcript-header {
-    flex-shrink: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-}
-.predict-transcript-messages {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
 }
 
 #chatPersonaChart {
@@ -2550,6 +2517,21 @@ body.chat-active .dynamic-chat-container {
 @keyframes swing-pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.35; }
+}
+
+/* Final message during the predict-behavior quiz: a pulsing glow (not an opacity fade, so the
+   text stays fully readable) marking this as the turn being predicted, while the rest of the
+   conversation stays visible and scrollable above it. */
+.message.predict-final-message-pulse .message-content {
+    animation: predict-final-pulse 1.6s ease-in-out infinite;
+}
+@keyframes predict-final-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.55), 0 0 10px 2px rgba(37, 99, 235, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.9), 0 0 18px 6px rgba(37, 99, 235, 0.55);
+    }
 }
 
 /* Highlight 2 — drift chart dot (SVG element) */

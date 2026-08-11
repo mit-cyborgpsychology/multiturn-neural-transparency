@@ -1912,48 +1912,34 @@ function endChatAndPredict() {
     // Hide chat input area
     $('.input-container').hide();
 
-    // Give the user a heads-up before the interface gets blanked, then inject the prediction UI
+    // Give the user a heads-up, then inject the prediction UI
     showPredictTransitionPopup(function() {
         injectPredictBehavior();
     });
 }
 
 // Brief "get ready" popup shown right before switching to the predict-behavior view.
-// Auto-continues after 10 seconds (with a visible countdown), or immediately if the user
-// clicks through early.
+// Stays up until the user dismisses it — no auto-continue timer.
 function showPredictTransitionPopup(callback) {
-    let secondsLeft = 10;
     let dismissed = false;
 
     // Unlike the other instruction modals, this one doesn't block the page — no dark/blurred
     // backdrop, and it sits as a banner at the top of the screen so the interface underneath
-    // stays visible and usable while it counts down.
+    // stays visible and usable.
     const popupHtml = `
         <div id="predictTransitionModal" class="predict-transition-toast">
             <div class="predict-transition-toast-content">
                 <h4>Now predict the trait scores!</h4>
-                <p>You will not be able to see the interface.</p>
-                <p class="predict-transition-toast-timer">
-                    Continuing in <strong id="predictTransitionCountdown">${secondsLeft}</strong>s
-                </p>
-                <button type="button" class="btn btn-primary" id="predictTransitionContinueBtn">Continue now →</button>
+                <p>You can still scroll up to review the conversation while you predict.</p>
+                <button type="button" class="btn btn-primary" id="predictTransitionContinueBtn">Continue →</button>
             </div>
         </div>`;
 
     $('body').append(popupHtml);
 
-    const intervalId = setInterval(function() {
-        secondsLeft -= 1;
-        $('#predictTransitionCountdown').text(secondsLeft);
-        if (secondsLeft <= 0) {
-            dismiss();
-        }
-    }, 1000);
-
     function dismiss() {
         if (dismissed) return;
         dismissed = true;
-        clearInterval(intervalId);
         $('#predictTransitionModal').remove();
         callback();
     }
@@ -1997,31 +1983,16 @@ function injectPredictBehavior() {
 
     const messagesContainer = $('#messagesContainer');
 
-    // The final message is now shown in the transcript overlay on the left (below), so hide
-    // its bubble here on the right to avoid showing it twice.
-    messagesContainer.find('.message').last().hide();
-
+    // Keep the conversation visible and scrollable during the quiz (rather than hiding/
+    // duplicating it) — just draw attention to the final message, since that's the turn
+    // being predicted.
+    messagesContainer.find('.message').last().addClass('predict-final-message-pulse');
     messagesContainer.append(panelHtml);
 
-    // Blank the live sunburst + drift panel while predicting — otherwise the answer is on
-    // screen next to the sliders. The panel keeps its width (chat stays where it is) and its
-    // contents are replaced with a read-only transcript (so users can still reference what was
-    // said, including their final message) instead of just going white;
-    // showPredictResults() brings the visualization back with the score.
-    const transcriptHtml = window.conversationHistory.map(function(msg) {
-        const roleClass = msg.role === 'user' ? 'user-message' : 'assistant-message';
-        return `
-            <div class="message ${roleClass}">
-                <div class="message-content">
-                    <div class="message-text">${msg.content}</div>
-                </div>
-            </div>`;
-    }).join('');
-    $('#chatPersonaPanel').append(`
-        <div class="predict-transcript-overlay" id="predictTranscriptOverlay">
-            <div class="predict-transcript-header">Your Conversation</div>
-            <div class="predict-transcript-messages">${transcriptHtml}</div>
-        </div>`);
+    // Blank the live sunburst + drift panel while predicting — otherwise the answer (the
+    // model's actual current trait scores) is on screen next to the sliders. The panel keeps
+    // its width (chat stays where it is) and just goes white; showPredictResults() brings the
+    // visualization back with the score.
     $('#chatPersonaPanel').addClass('viz-blanked');
 
     // Submit handler
@@ -2162,12 +2133,11 @@ function showPredictResults() {
 
     // Predictions are locked in — restore the visualization alongside the results
     $('#chatPersonaPanel').removeClass('viz-blanked');
-    $('#predictTranscriptOverlay').remove();
 
-    // The conversation was only meant to be visible during the slider quiz (via the transcript
-    // overlay above); hide every remaining chat bubble so no part of it lingers on the results
-    // page, on either side.
-    $('#messagesContainer .message').hide();
+    // The conversation was only meant to be visible during the slider quiz; hide every
+    // remaining chat bubble (and the pulse highlighting the final one) so no part of it
+    // lingers on the results page, on either side.
+    $('#messagesContainer .message').hide().removeClass('predict-final-message-pulse');
 
     $('#predictResults').html(resultsHtml).show();
     $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
