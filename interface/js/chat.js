@@ -1912,8 +1912,51 @@ function endChatAndPredict() {
     // Hide chat input area
     $('.input-container').hide();
 
-    // Inject the prediction UI below the chat
-    injectPredictBehavior();
+    // Give the user a heads-up before the interface gets blanked, then inject the prediction UI
+    showPredictTransitionPopup(function() {
+        injectPredictBehavior();
+    });
+}
+
+// Brief "get ready" popup shown right before switching to the predict-behavior view.
+// Auto-continues after 10 seconds (with a visible countdown), or immediately if the user
+// clicks through early.
+function showPredictTransitionPopup(callback) {
+    let secondsLeft = 10;
+    let dismissed = false;
+
+    const popupHtml = `
+        <div id="predictTransitionModal" class="instruction-modal">
+            <div class="instruction-modal-overlay"></div>
+            <div class="instruction-modal-content" style="text-align: center;">
+                <h4>Now predict the trait scores!</h4>
+                <p>You will not be able to see the interface.</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Continuing in <strong id="predictTransitionCountdown">${secondsLeft}</strong>s
+                </p>
+                <button type="button" class="btn btn-primary" id="predictTransitionContinueBtn">Continue now →</button>
+            </div>
+        </div>`;
+
+    $('body').append(popupHtml);
+
+    const intervalId = setInterval(function() {
+        secondsLeft -= 1;
+        $('#predictTransitionCountdown').text(secondsLeft);
+        if (secondsLeft <= 0) {
+            dismiss();
+        }
+    }, 1000);
+
+    function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        clearInterval(intervalId);
+        $('#predictTransitionModal').remove();
+        callback();
+    }
+
+    $('#predictTransitionContinueBtn, #predictTransitionModal .instruction-modal-overlay').on('click', dismiss);
 }
 
 // Inject neuronpedia-style behavior prediction sliders below the chat log
@@ -1941,7 +1984,7 @@ function injectPredictBehavior() {
         <div id="predictPanel" class="predict-panel">
             <div class="predict-header">
                 <h5>Predict Model Behavior</h5>
-                <p>Based on your conversation and trait scores, predict the model's behavioral scores on the final turn of your conversation with the sliders.</p>
+                <p>Based on your conversation and feedback from the interface, predict the model's trait scores on the final turn of your conversation with the sliders.</p>
             </div>
             <div class="predict-rating-grid">${slidersHtml}</div>
             <div style="text-align: right; margin-top: 1.25rem;">
@@ -2022,21 +2065,24 @@ function showPredictResults() {
         const signedPct = v => (v >= 0 ? '+' : '') + asPct(v);
         const errDisplay = asPct(d.absErr);
         const color = d.absErr < 0.20 ? '#22c55e' : d.absErr < 0.50 ? '#eab308' : '#ef4444';
-        // Match the slider convention: 0% reads as "Neutral" rather than a signed pole label.
+        // Match the slider convention: 0% reads as "Neutral" rather than a signed pole label,
+        // but still show the (0%) alongside it.
         const predPct = Math.round(d.predicted * 100);
         const actPct = Math.round(d.actualVal * 100);
-        const predText = predPct === 0 ? 'Neutral' : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.predicted)})`;
-        const actText = actPct === 0 ? 'Neutral' : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.actualVal)})`;
+        const predText = predPct === 0 ? `Neutral (${asPct(d.predicted)})` : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.predicted)})`;
+        const actText = actPct === 0 ? `Neutral (${asPct(d.actualVal)})` : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)} (${signedPct(d.actualVal)})`;
 
         breakdownHtml += `
-            <div class="predict-breakdown-item">
-                <div class="row-top">
-                    <span class="dimension">${d.pair.label}</span>
-                    <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
-                </div>
-                <div class="details">
-                    <span><strong>Predicted:</strong> ${predText}</span>
-                    <span><strong>Actual:</strong> ${actText}</span>
+            <div class="predict-breakdown-row">
+                <div class="predict-breakdown-label">${d.pair.label}</div>
+                <div class="predict-breakdown-item">
+                    <div class="row-top">
+                        <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
+                    </div>
+                    <div class="details">
+                        <span><strong>Predicted:</strong> ${predText}</span>
+                        <span><strong>Actual:</strong> ${actText}</span>
+                    </div>
                 </div>
             </div>`;
     });
@@ -2067,13 +2113,21 @@ function showPredictResults() {
                     <span class="trait-tooltip">
                         <i class="fas fa-info-circle" style="color:#fff;opacity:0.85;"></i>
                         <span class="trait-tooltip-text">
-                            <strong>Absolute Error</strong> is the size of the gap between your predicted score and the model's actual score for a single dimension, ignoring direction: |predicted &minus; actual|.
+                            <strong>Absolute Error</strong> is measured as the absolute value between your predicted score and the model's actual score: |predicted &minus; actual|.
                             <br><br>
-                            <strong>Mean Absolute Error (MAE)</strong> averages that gap across all trait dimensions, measuring, on average, how far your predicted trait scores were from the model's actual trait scores at the final turn — the smaller the number, the better calibrated your prediction.
+                            <strong>Mean Absolute Error (MAE)</strong> is an average of absolute error across all traits that measures, on average, how far your predicted trait scores were from the model's actual trait scores at the final turn.
                             <br><br>
-                            <strong>MAE = (1/n) &sum;<sub>i=1</sub><sup>n</sup> |predicted<sub>i</sub> &minus; actual<sub>i</sub>|</strong>
-                            <br><br>
-                            where n is the number of trait dimensions (6), predicted<sub>i</sub> is your slider value for dimension i, and actual<sub>i</sub> is the model's measured score for that dimension.
+                            <span style="display:block;text-align:center;margin:0.5rem 0;font-weight:700;">
+                                MAE = (1/<i>n</i>)
+                                <span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 0.3em;font-weight:400;line-height:1;">
+                                    <span style="font-size:0.65em;font-style:italic;">n</span>
+                                    <span style="font-size:1.7em;line-height:0.7;">&sum;</span>
+                                    <span style="font-size:0.65em;font-style:italic;">i=1</span>
+                                </span>
+                                |<i>predicted<sub>i</sub></i> &minus; <i>actual<sub>i</sub></i>|
+                            </span>
+                            <br>
+                            where <i>n</i> is the number of trait dimensions (6), <i>predicted<sub>i</sub></i> is your slider value for dimension <i>i</i>, and <i>actual<sub>i</sub></i> is the model's measured score for that dimension.
                         </span>
                     </span>
                 </div>
