@@ -110,11 +110,11 @@ def parse_args():
     )
     parser.add_argument("--assistant-system", type=str, default=DEFAULT_ASSISTANT_SYSTEM_PROMPT,
                          help="System prompt for the local Llama assistant")
-    parser.add_argument("--scenarios", type=str, nargs="+", default=["prompt_1"],
+    parser.add_argument("--scenarios", type=str, nargs="+", default=["all"],
                          choices=list(USER_SCENARIOS.keys()) + ["all"],
                          help="Which USER_SCENARIOS labels to run, or 'all' for every one. "
-                              "Defaults to just prompt_1.")
-    parser.add_argument("--turns", type=int, default=20, help="Number of user+assistant exchange pairs")
+                              "Defaults to all.")
+    parser.add_argument("--turns", type=int, default=12, help="Number of user+assistant exchange pairs")
     parser.add_argument("--max-tokens", type=int, default=256, help="Max new tokens per Llama response")
     parser.add_argument("--output-dir", type=str, default=".", help="Directory to write output JSON files to")
     parser.add_argument(

@@ -51,7 +51,7 @@
 
     <!-- Landing hero demo conversations + per-turn persona scores (generated from
          persona-vectors/example_convos.json) -->
-    <script src="js/landing-examples.js?v=20260808d"></script>
+    <script src="js/landing-examples.js?v=20260811a"></script>
 
     <!-- Persona Vectors -->
     <script src="js/persona_vectors.js"></script>
@@ -468,8 +468,8 @@ function lComputeBiggestSwing(snapIdx){
 
 // Each example: a real captured conversation (messages/aiReplies) plus the measured
 // persona snapshot for every turn (0..maxTurns, index 0 being the pre-conversation
-// baseline). Generated into js/landing-examples.js from example_convos.json — all six
-// categories are real scores now, none are placeholders.
+// baseline). Generated into js/landing-examples.js from persona-vectors/chat/example_convos.json
+// — all six categories are real scores now, none are placeholders.
 const L_EXAMPLES=window.L_EXAMPLE_DATA;
 
 // "Current" example data — reassigned by lSelectExample() when the user switches examples
