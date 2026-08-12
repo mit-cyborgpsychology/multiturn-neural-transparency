@@ -272,13 +272,9 @@
 
             <p>We used our behavioral vectors to construct <strong>behavioral scores</strong>, which quantify the level of expression for a specific trait in a prompt, whether a system prompt or a prompt in a multi-turn conversation. For each trait, the behavioral score <i>s</i> is defined as the cosine similarity between the activation of the final token <strong>a</strong> &isin; &#8477;<sup>d</sup> and the trait's behavioral vector <strong>v</strong> &isin; &#8477;<sup>d</sup>:</p>
 
-            <div class="figure-box" style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:14px">
-                s = (<strong>a</strong> &middot; <strong>v</strong>) / (&Vert;<strong>a</strong>&Vert;&thinsp;&Vert;<strong>v</strong>&Vert;)
-            </div>
+            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:40%;border-radius:6px;display:block;margin:16px auto">
 
             <p>where <i>d</i> is the hidden dimension of the model, (&middot;) denotes the dot product, and &Vert;<strong>v</strong>&Vert; denotes the Euclidean norm of a vector <i>v</i>.</p>
-
-            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:100%;border-radius:6px;display:block;margin:16px 0">
 
             <p>We validated our method by whether the behavioral scores linearly track trait expression as instructed in a prompt. Linear regression yielded <strong>R&sup2; &ge; 0.90 for all six traits</strong>, confirming that the vectors capture expressive linear representations of behavioral traits.</p>
 
@@ -301,10 +297,10 @@
             <img src="images/primary_findings.jpg" alt="Primary Findings" style="width:100%;border-radius:6px;display:block;margin:16px 0;padding:12px;background:#fff;box-sizing:border-box">
             <p class="muted small"><strong>Figure 1:</strong> <strong>Multi-turn and single-turn neural transparency improve calibration, with multi-turn improving calibration more than single-turn and no transparency.</strong> <em>(Left)</em> Effect sizes (Cohen's d) for visualization vs. control on five accuracy metrics; all significant effects favor visualization (green). <em>(Center)</em> Calibration error (RMSE) by condition and prompt type, with a significant interaction (p = .024). <em>(Right)</em> Self-reported predictability (pre vs. post) by condition; only control showed a significant increase (p &lt; .05), suggesting visualization tempers overconfidence. Error bars: &plusmn;1 SE.</p>
             <div class="callout"><p><strong>Baseline (Middle Figure) &mdash; People struggle to predict model behavior:</strong> Before any visualization, participants showed high calibration error and near-chance sign accuracy (&approx;52%). A 10-minute conversation with the model did not improve calibration &mdash; it made it <em>worse</em>.</p></div>
-            <div class="callout"><p><strong>Finding 1 (Middle Figure) &mdash; Visualization improves calibration:</strong> Neural transparency significantly improved both anticipation and evaluation of model behavior across all metrics compared to control (d = &minus;0.34 to &minus;0.49, all p &lt; .013).</p></div>
+            <div class="callout"><p><strong>Finding 1 (Left and Middle Figure) &mdash; Visualization improves calibration:</strong> Neural transparency significantly improved both anticipation and evaluation of model behavior across all metrics compared to control (d = &minus;0.34 to &minus;0.49, all p &lt; .013).</p></div>
             <div class="callout"><p><strong>Finding 2 (Middle Figure) &mdash; Multi-turn outperforms single-turn for holistic evaluation:</strong> Dynamic multi-turn transparency uniquely improved holistic behavior evaluation over a static snapshot (p = .037, d = &minus;0.32), with the effect concentrated in the harder Roleplay persona condition (interaction p = .024).</p></div>
             <div class="callout"><p><strong>Finding 3 (Right Figure) &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
-            <div class="callout"><p><strong>Finding 4 &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
+            <div class="callout"><p><strong>Finding 4 (Middle Figure) &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
 
             <h3>Citation</h3>
             <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
