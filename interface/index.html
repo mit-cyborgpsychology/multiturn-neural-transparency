@@ -272,7 +272,7 @@
 
             <p>We used our behavioral vectors to construct <strong>behavioral scores</strong>, which quantify the level of expression for a specific trait in a prompt, whether a system prompt or a prompt in a multi-turn conversation. For each trait, the behavioral score <i>s</i> is defined as the cosine similarity between the activation of the final token <strong>a</strong> &isin; &#8477;<sup>d</sup> and the trait's behavioral vector <strong>v</strong> &isin; &#8477;<sup>d</sup>:</p>
 
-            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:40%;border-radius:6px;display:block;margin:16px auto">
+            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:30%;border-radius:6px;display:block;margin:16px auto">
 
             <p>where <i>d</i> is the hidden dimension of the model, (&middot;) denotes the dot product, and &Vert;<strong>v</strong>&Vert; denotes the Euclidean norm of a vector <i>v</i>.</p>
 
@@ -301,6 +301,8 @@
             <div class="callout"><p><strong>Finding 2 (Middle Figure) &mdash; Multi-turn outperforms single-turn for holistic evaluation:</strong> Dynamic multi-turn transparency uniquely improved holistic behavior evaluation over a static snapshot (p = .037, d = &minus;0.32), with the effect concentrated in the harder Roleplay persona condition (interaction p = .024).</p></div>
             <div class="callout"><p><strong>Finding 3 (Right Figure) &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
             <div class="callout"><p><strong>Finding 4 (Middle Figure) &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
+
+            <p>Read the full paper <a href="https://arxiv.org/pdf/2605.15455" target="_blank" rel="noopener">here</a>.</p>
 
             <h3>Citation</h3>
             <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
@@ -894,12 +896,12 @@ function initScience(){
     const td=document.getElementById('sci-traits');
     if(td.children.length) return;
     const studyTraits = [
-        { pos:"Empathetic",    neg:"Unempathetic",  desc:"Emotionally aware vs. indifferent",        cat:"valenced" },
-        { pos:"Respectful",    neg:"Toxic",          desc:"Courtesy vs. harmful content",             cat:"valenced" },
-        { pos:"Honest",        neg:"Sycophantic",    desc:"Truthful vs. excessive agreement",         cat:"valenced" },
-        { pos:"Platonic",      neg:"Romantic",        desc:"Platonic boundaries vs. romantic tone",    cat:"valenced" },
-        { pos:"Sophisticated", neg:"Simplistic",      desc:"Erudite language vs. plain expression",    cat:"neutral" },
-        { pos:"Robotic",       neg:"Human-Like",      desc:"Mechanical tone vs. natural warmth",       cat:"neutral" },
+        { pos:"Empathetic",    neg:"Unempathetic", posDesc:"Emotionally attuned",     negDesc:"Emotionally distant",     cat:"valenced" },
+        { pos:"Respectful",    neg:"Toxic",         posDesc:"Treats user with care",   negDesc:"Hostile or demeaning",    cat:"valenced" },
+        { pos:"Honest",        neg:"Sycophantic",   posDesc:"States true beliefs",     negDesc:"Tells you what you want", cat:"valenced" },
+        { pos:"Platonic",      neg:"Romantic",      posDesc:"Keeps clear boundaries",  negDesc:"Flirtatious tone",        cat:"valenced" },
+        { pos:"Sophisticated", neg:"Simplistic",    posDesc:"Erudite, complex language", negDesc:"Plain, basic language", cat:"neutral" },
+        { pos:"Robotic",       neg:"Human-Like",    posDesc:"Mechanical, flat tone",   negDesc:"Warm, natural tone",      cat:"neutral" },
     ];
     studyTraits.forEach(p=>{
         const posColor = p.cat==='neutral' ? '#757575' : 'var(--green)';
@@ -913,7 +915,9 @@ function initScience(){
             '<span style="color:'+posColor+'">'+p.pos+'</span>' +
             '<span style="color:'+negColor+'">'+p.neg+'</span></div>' +
             '<div style="height:4px;border-radius:2px;background:linear-gradient(to right,'+gradL+',var(--bg3),'+gradR+')"></div>' +
-            '<div style="font-size:11px;color:var(--text2);margin-top:3px">'+p.desc+'</div></div>' +
+            '<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--text2);margin-top:3px">' +
+            '<span style="text-align:left">'+p.posDesc+'</span>' +
+            '<span style="text-align:right">'+p.negDesc+'</span></div></div>' +
             '</div>'
         );
     });
