@@ -1,7 +1,7 @@
 <!-- Dynamic Chat Interface with System Prompt Configuration -->
 <div class="dynamic-chat-container">
-    <!-- Avatar Selection Interface -->
-    <div class="avatar-selection-interface" id="avatarSelectionInterface">
+    <!-- Avatar Selection Interface (hidden — avatar is auto-assigned) -->
+    <div class="avatar-selection-interface" id="avatarSelectionInterface" style="display: none;">
         <div class="config-header" style="margin-bottom: 1rem;">
             <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Choose Your AI Companion's Avatar</h3>
             <!-- <p class="config-description" style="font-size: 0.85rem;">Select a character to represent your AI companion.</p> -->
@@ -20,12 +20,9 @@
 
     <!-- System Prompt Configuration Interface -->
     <div class="system-prompt-interface" id="systemPromptInterface" style="display: none;">
-        <div id="selectedAvatarDisplay" style="display: none; position: absolute; top: 1.5rem; left: 1rem; z-index: 5;">
-            <img id="selectedAvatarImage" src="" alt="Selected Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-md);" />
-        </div>
         <div class="config-header" style="margin-bottom: 1rem;">
-            <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Configure Your AI Companion</h3>
-            <p class="config-description" style="font-size: 0.85rem;">Customize your AI companion's personality and behavior so that it can provide emotional support through difficult times.</p>
+            <h3 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Your System Prompt</h3>
+            <p class="config-description" style="font-size: 0.85rem;"></p>
         </div>
 
         <div class="config-form">
@@ -38,19 +35,13 @@
                         id="systemPromptInput" 
                         rows="20" 
                         placeholder="Describe your character's behavior here"
-                        style="padding: 0.75rem; font-size: 0.875rem; font-family: 'Courier New', monospace;"></textarea>
+                        style="padding: 0.75rem; font-size: 0.875rem; font-family: 'Geist Mono', monospace;"></textarea>
                     <!-- Character Counter -->
                     <div id="characterCounter" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
                         <span id="charCount">0</span> / 100 characters minimum
                     </div>
                 </div>
-                <!-- Submit Prompt Button -->
-                <div class="submit-prompt-button" style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-shrink: 0;">
-                    <button type="button" class="btn btn-primary" id="submitPromptBtn" disabled style="flex: 1;">
-                        <i class="fas fa-paper-plane"></i> Submit Prompt
-                    </button>
-                </div>
-                <!-- Persona Check Buttons - Hidden, survey triggered automatically -->
+                <!-- Persona Check Buttons - shown after survey completes (viz condition only) -->
                 <div class="persona-check-buttons" style="display: none; gap: 0.5rem; margin-top: 0.75rem; flex-shrink: 0;">
                     <button type="button" class="btn btn-secondary" id="testPersonaBtn" title="Test with simulated data" style="flex: 1;">
                         <i class="fas fa-flask"></i> Test Persona
@@ -61,29 +52,22 @@
                 </div>
             </div>
 
-            <!-- Right Column: Persona Analysis / Survey -->
+            <!-- Right Column: Internal Behavior Analysis / Survey -->
             <div class="persona-analysis-column">
                 <div class="persona-section-wrapper">
                     <!-- Initial Placeholder -->
                     <div id="initialPlaceholder" class="persona-placeholder">
                         <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
                             <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to begin assessment</p>
+                            <p style="margin: 0; font-size: 1.1rem;">Loading persona analysis...</p>
                         </div>
                     </div>
 
-                    <!-- Pre-Task Survey (shown after submit) -->
-                    <div id="preTaskSurveyContainer" class="survey-container" style="display: none;">
-                        <div class="survey-content-inline" id="surveyPhasesContainer">
-                            <!-- Survey phases will be dynamically inserted here -->
-                        </div>
-                    </div>
-
-                    <!-- Persona Visualization (shown after survey) -->
+                    <!-- Persona Visualization (shown after persona check) -->
                     <div class="persona-visualization" id="personaVisualization" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <h4 style="margin: 0;">Persona Analysis</h4>
+                                <h4 style="margin: 0;">Internal Behavior Analysis</h4>
                                 <button type="button" class="btn btn-secondary" id="visualizationHelpBtn" title="How to interpret this visualization" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-question-circle"></i>
                                 </button>
@@ -101,353 +85,76 @@
         <!-- Action Buttons -->
         <div class="config-actions">
             <button type="button" class="btn btn-secondary" id="resetConfig">Reset to Default</button>
+            <!-- Submit Prompt button removed — persona preloaded automatically -->
             <button type="button" class="btn btn-primary" id="startChatBtn">Start Chat</button>
         </div>
     </div>
 
     <!-- Chat Interface -->
     <div class="chat-interface" id="chatInterface" style="display: none;">
-        <!-- Interface Controls -->
-        <div class="interface-controls" style="display: flex; gap: 0.5rem; padding: 1rem; border-bottom: 1px solid var(--border-color); justify-content: space-between; align-items: center;">
-            <button class="btn btn-secondary" id="backToConfigBtn">
-                <i class="fas fa-cog"></i> Back to Configuration
-            </button>
-            <!-- Timer Display -->
-            <div class="timer-display" id="timerDisplay" style="display: none;">
-                <i class="fas fa-clock"></i>
-                <span id="timerText">0:00</span>
+        <!-- Left Panel: Live Persona Visualization -->
+        <div class="chat-right-panel" id="chatPersonaPanel">
+            <div class="chat-persona-header">
+                <h4>Internal Behavior Analysis</h4>
+                <span id="viewingTurnLabel" style="display:none; font-size:0.75rem; color:var(--accent-primary); font-weight:600;"></span>
+                <button class="btn-skip-predict" id="skipToPredictBtn" title="Skip the rest of the chat and go straight to the prediction quiz">Skip to Prediction →</button>
+                <button class="btn btn-secondary" id="backToConfigBtn" style="display: none;">
+                    <i class="fas fa-cog"></i> View System Prompt
+                </button>
+            </div>
+            <div id="chatPersonaChart" class="persona-chart"></div>
+            <div id="traitDriftPanel" class="trait-drift-panel">
+                <div class="drift-header">
+                    <!-- <span id="driftTraitLabel">Click a trait to see drift · Click turns to view messages</span> -->
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                        <button class="drift-info-btn" id="driftInfoBtn" title="How to use"><i class="fas fa-info-circle"></i></button>
+                        <!-- Close (✕) button removed — the drift panel is always on and can't be dismissed -->
+                    </div>
+                </div>
+                <div id="driftAxisContainer"></div>
             </div>
         </div>
 
-        <!-- Messages Area -->
-        <div class="messages-container" id="messagesContainer">
-            <div class="message assistant-message" data-message-id="1">
-                <div class="message-avatar" id="initialMessageAvatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-text">
-                        Hi there!
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Input Area -->
-        <div class="input-container">
-            <div class="input-wrapper">
-                <!-- <div class="input-actions">
-                    <button class="action-btn" id="attachBtn" title="Attach file">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
-                    <button class="action-btn" id="imageBtn" title="Send image">
-                        <i class="fas fa-image"></i>
-                    </button>
-                </div> -->
-                <div class="input-field-container">
-                    <textarea 
-                        class="message-input" 
-                        id="messageInput" 
-                        placeholder="Type your message here..."
-                        rows="1"
-                    ></textarea>
-                    <button class="send-button" id="sendBtn" disabled>
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="input-footer">
-                <div class="typing-indicator" id="typingIndicator" style="display: none;">
-                    <div class="typing-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                    <span>AI is typing...</span>
-                </div>
-                <div class="input-hints">
-                    <span>Press Enter to send, Shift+Enter for new line</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Post-Task Survey Modal -->
-    <div class="post-survey-modal" id="postSurveyModal" style="display: none;">
-        <div class="post-survey-overlay"></div>
-        <div class="post-survey-content">
-            <div class="post-survey-header">
-                <h3>Post-Interaction Survey</h3>
-                <p>Thank you for participating! Please answer the following questions about your experience.</p>
+        <!-- Right Panel: Chat -->
+        <div class="chat-left-panel">
+            <!-- Messages Area -->
+            <div class="messages-container" id="messagesContainer">
             </div>
 
-            <!-- Phase 1: Likert Scale Questions -->
-            <div class="post-survey-phase" id="postSurveyPhase1">
-                <div class="post-survey-questions">
-                    <!-- Question 1 -->
-                    <div class="survey-question">
-                        <label class="question-label">1. How well could you predict unintended behaviors from your system prompt?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="1" id="post_q1_1">
-                                <label for="post_q1_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="2" id="post_q1_2">
-                                <label for="post_q1_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="3" id="post_q1_3">
-                                <label for="post_q1_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="4" id="post_q1_4">
-                                <label for="post_q1_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="5" id="post_q1_5">
-                                <label for="post_q1_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="6" id="post_q1_6">
-                                <label for="post_q1_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q1" value="7" id="post_q1_7">
-                                <label for="post_q1_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely well</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 2 -->
-                    <div class="survey-question">
-                        <label class="question-label">2. How well could you predict negative unintended behaviors from your system prompt?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="1" id="post_q2_1">
-                                <label for="post_q2_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="2" id="post_q2_2">
-                                <label for="post_q2_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="3" id="post_q2_3">
-                                <label for="post_q2_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="4" id="post_q2_4">
-                                <label for="post_q2_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="5" id="post_q2_5">
-                                <label for="post_q2_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="6" id="post_q2_6">
-                                <label for="post_q2_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q2" value="7" id="post_q2_7">
-                                <label for="post_q2_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely well</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 3 -->
-                    <div class="survey-question">
-                        <label class="question-label">3. AI models have demonstrated both beneficial and detrimental outcomes, including documented cases of AI-induced psychosis and the encouragement of harmful behaviors, alongside instances of providing constructive support and guidance. Given this dichotomous nature of AI behavior, to what extent do you trust AI systems, and what factors inform your assessment of their reliability and safety?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="1" id="post_q3_1">
-                                <label for="post_q3_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="2" id="post_q3_2">
-                                <label for="post_q3_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="3" id="post_q3_3">
-                                <label for="post_q3_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="4" id="post_q3_4">
-                                <label for="post_q3_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="5" id="post_q3_5">
-                                <label for="post_q3_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="6" id="post_q3_6">
-                                <label for="post_q3_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q3" value="7" id="post_q3_7">
-                                <label for="post_q3_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Completely</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 4 (Shared - both conditions) -->
-                    <div class="survey-question">
-                        <label class="question-label">4. Did you arrive at your desired character?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="1" id="post_q4_1">
-                                <label for="post_q4_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="2" id="post_q4_2">
-                                <label for="post_q4_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="3" id="post_q4_3">
-                                <label for="post_q4_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="4" id="post_q4_4">
-                                <label for="post_q4_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="5" id="post_q4_5">
-                                <label for="post_q4_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="6" id="post_q4_6">
-                                <label for="post_q4_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q4" value="7" id="post_q4_7">
-                                <label for="post_q4_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Completely</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 5 (Visualization condition only) -->
-                    <div class="survey-question viz-condition-only" id="post_q5_container" style="display: none;">
-                        <label class="question-label">5. Did the visualization help you understand model behavior?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="1" id="post_q5_1">
-                                <label for="post_q5_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="2" id="post_q5_2">
-                                <label for="post_q5_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="3" id="post_q5_3">
-                                <label for="post_q5_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="4" id="post_q5_4">
-                                <label for="post_q5_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="5" id="post_q5_5">
-                                <label for="post_q5_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="6" id="post_q5_6">
-                                <label for="post_q5_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q5" value="7" id="post_q5_7">
-                                <label for="post_q5_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Not at all</span>
-                            <span>Extremely helpful</span>
-                        </div>
-                    </div>
-
-                    <!-- Question 6 (Visualization condition only) -->
-                    <div class="survey-question viz-condition-only" id="post_q6_container" style="display: none;">
-                        <label class="question-label">6. Would you like to see this visualization again in future interactions?</label>
-                        <div class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="1" id="post_q6_1">
-                                <label for="post_q6_1">1</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="2" id="post_q6_2">
-                                <label for="post_q6_2">2</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="3" id="post_q6_3">
-                                <label for="post_q6_3">3</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="4" id="post_q6_4">
-                                <label for="post_q6_4">4</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="5" id="post_q6_5">
-                                <label for="post_q6_5">5</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="6" id="post_q6_6">
-                                <label for="post_q6_6">6</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="post_q6" value="7" id="post_q6_7">
-                                <label for="post_q6_7">7</label>
-                            </div>
-                        </div>
-                        <div class="scale-labels">
-                            <span>Definitely not</span>
-                            <span>Definitely yes</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="post-survey-actions">
-                    <button type="button" class="btn btn-primary" id="postPhase1ProceedBtn" disabled>Continue</button>
-                </div>
-            </div>
-
-            <!-- Phase 2: Open-Ended Response -->
-            <div class="post-survey-phase" id="postSurveyPhase2" style="display: none;">
-                <div class="post-survey-questions">
-                    <div class="survey-question">
-                        <label class="question-label">Please provide your open-ended feedback about the interface and your general thoughts about the experiment:</label>
-                        <textarea 
-                            id="postOpenEndedResponse" 
-                            class="form-control" 
-                            rows="8" 
-                            placeholder="Share your thoughts here..."
-                            style="width: 100%; padding: 0.75rem; font-size: 0.95rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); resize: vertical;"
+            <!-- Input Area -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <div class="input-field-container">
+                        <textarea
+                            class="message-input"
+                            id="messageInput"
+                            placeholder="Type your message here..."
+                            rows="1"
                         ></textarea>
+                        <button class="send-button" id="sendBtn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
                 </div>
-
-                <div class="post-survey-actions">
-                    <button type="button" class="btn btn-secondary" id="postPhase2BackBtn">Back</button>
-                    <button type="button" class="btn btn-primary" id="postPhase2SubmitBtn" disabled>Submit</button>
+                <div class="input-footer">
+                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <span>AI is typing...</span>
+                    </div>
+                </div>
+                <div class="end-chat-bar" id="endChatBar" style="display: none;">
+                    <button class="btn btn-end-chat" id="endChatBtn">End Chat → Predict Behavior</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Pre-Task Survey Phases (to be moved into inline container by JS) -->
+
+    <!-- [survey phases removed — moved to task1-calibration.html] -->
     <div id="surveyPhasesSource" style="display: none;">
         <div class="survey-phases-wrapper">
                 <!-- Phase 1: Initial System Prompt Assessment -->
@@ -459,7 +166,7 @@
                         </div>
 
                         <div class="survey-question">
-                        <label class="question-label">1. How well could you predict unintended behaviors from your system prompt?</label>
+                        <label class="question-label">1. How well were you able to predict unintended behaviors from your system prompt?</label>
                         <div class="likert-scale">
                             <div class="likert-option">
                                 <input type="radio" name="phase1_q1" value="1" id="p1q1_1">
@@ -497,7 +204,7 @@
                     </div>
 
                     <div class="survey-question">
-                        <label class="question-label">2. How well could you predict negative unintended behaviors from your system prompt?</label>
+                        <label class="question-label">2. How well were you able to predict negative unintended behaviors from your system prompt?</label>
                         <div class="likert-scale">
                             <div class="likert-option">
                                 <input type="radio" name="phase1_q2" value="1" id="p1q2_1">
@@ -545,7 +252,7 @@
                     <div class="phase-content">
                         <div class="phase-header">
                             <h4>Phase 2: Trait Predictions</h4>
-                            <p>Predict the activation level (0-10) for each trait based on your system prompt</p>
+                            <p>Predict the activation level (-10 to +10) for each trait based on your system prompt</p>
                         </div>
 
                         <div class="trait-predictions-container">
@@ -574,6 +281,16 @@
                                     <input type="radio" name="trait_empathy" value="8" id="t_empathy_8"><label for="t_empathy_8">8</label>
                                     <input type="radio" name="trait_empathy" value="9" id="t_empathy_9"><label for="t_empathy_9">9</label>
                                     <input type="radio" name="trait_empathy" value="10" id="t_empathy_10"><label for="t_empathy_10">10</label>
+                                    <input type="radio" name="trait_empathy" value="11" id="t_empathy_11"><label for="t_empathy_11">11</label>
+                                    <input type="radio" name="trait_empathy" value="12" id="t_empathy_12"><label for="t_empathy_12">12</label>
+                                    <input type="radio" name="trait_empathy" value="13" id="t_empathy_13"><label for="t_empathy_13">13</label>
+                                    <input type="radio" name="trait_empathy" value="14" id="t_empathy_14"><label for="t_empathy_14">14</label>
+                                    <input type="radio" name="trait_empathy" value="15" id="t_empathy_15"><label for="t_empathy_15">15</label>
+                                    <input type="radio" name="trait_empathy" value="16" id="t_empathy_16"><label for="t_empathy_16">16</label>
+                                    <input type="radio" name="trait_empathy" value="17" id="t_empathy_17"><label for="t_empathy_17">17</label>
+                                    <input type="radio" name="trait_empathy" value="18" id="t_empathy_18"><label for="t_empathy_18">18</label>
+                                    <input type="radio" name="trait_empathy" value="19" id="t_empathy_19"><label for="t_empathy_19">19</label>
+                                    <input type="radio" name="trait_empathy" value="20" id="t_empathy_20"><label for="t_empathy_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -603,6 +320,16 @@
                                     <input type="radio" name="trait_encouraging" value="8" id="t_encouraging_8"><label for="t_encouraging_8">8</label>
                                     <input type="radio" name="trait_encouraging" value="9" id="t_encouraging_9"><label for="t_encouraging_9">9</label>
                                     <input type="radio" name="trait_encouraging" value="10" id="t_encouraging_10"><label for="t_encouraging_10">10</label>
+                                    <input type="radio" name="trait_encouraging" value="11" id="t_encouraging_11"><label for="t_encouraging_11">11</label>
+                                    <input type="radio" name="trait_encouraging" value="12" id="t_encouraging_12"><label for="t_encouraging_12">12</label>
+                                    <input type="radio" name="trait_encouraging" value="13" id="t_encouraging_13"><label for="t_encouraging_13">13</label>
+                                    <input type="radio" name="trait_encouraging" value="14" id="t_encouraging_14"><label for="t_encouraging_14">14</label>
+                                    <input type="radio" name="trait_encouraging" value="15" id="t_encouraging_15"><label for="t_encouraging_15">15</label>
+                                    <input type="radio" name="trait_encouraging" value="16" id="t_encouraging_16"><label for="t_encouraging_16">16</label>
+                                    <input type="radio" name="trait_encouraging" value="17" id="t_encouraging_17"><label for="t_encouraging_17">17</label>
+                                    <input type="radio" name="trait_encouraging" value="18" id="t_encouraging_18"><label for="t_encouraging_18">18</label>
+                                    <input type="radio" name="trait_encouraging" value="19" id="t_encouraging_19"><label for="t_encouraging_19">19</label>
+                                    <input type="radio" name="trait_encouraging" value="20" id="t_encouraging_20"><label for="t_encouraging_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -632,6 +359,16 @@
                                     <input type="radio" name="trait_sociality" value="8" id="t_sociality_8"><label for="t_sociality_8">8</label>
                                     <input type="radio" name="trait_sociality" value="9" id="t_sociality_9"><label for="t_sociality_9">9</label>
                                     <input type="radio" name="trait_sociality" value="10" id="t_sociality_10"><label for="t_sociality_10">10</label>
+                                    <input type="radio" name="trait_sociality" value="11" id="t_sociality_11"><label for="t_sociality_11">11</label>
+                                    <input type="radio" name="trait_sociality" value="12" id="t_sociality_12"><label for="t_sociality_12">12</label>
+                                    <input type="radio" name="trait_sociality" value="13" id="t_sociality_13"><label for="t_sociality_13">13</label>
+                                    <input type="radio" name="trait_sociality" value="14" id="t_sociality_14"><label for="t_sociality_14">14</label>
+                                    <input type="radio" name="trait_sociality" value="15" id="t_sociality_15"><label for="t_sociality_15">15</label>
+                                    <input type="radio" name="trait_sociality" value="16" id="t_sociality_16"><label for="t_sociality_16">16</label>
+                                    <input type="radio" name="trait_sociality" value="17" id="t_sociality_17"><label for="t_sociality_17">17</label>
+                                    <input type="radio" name="trait_sociality" value="18" id="t_sociality_18"><label for="t_sociality_18">18</label>
+                                    <input type="radio" name="trait_sociality" value="19" id="t_sociality_19"><label for="t_sociality_19">19</label>
+                                    <input type="radio" name="trait_sociality" value="20" id="t_sociality_20"><label for="t_sociality_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -661,6 +398,16 @@
                                     <input type="radio" name="trait_honesty" value="8" id="t_honesty_8"><label for="t_honesty_8">8</label>
                                     <input type="radio" name="trait_honesty" value="9" id="t_honesty_9"><label for="t_honesty_9">9</label>
                                     <input type="radio" name="trait_honesty" value="10" id="t_honesty_10"><label for="t_honesty_10">10</label>
+                                    <input type="radio" name="trait_honesty" value="11" id="t_honesty_11"><label for="t_honesty_11">11</label>
+                                    <input type="radio" name="trait_honesty" value="12" id="t_honesty_12"><label for="t_honesty_12">12</label>
+                                    <input type="radio" name="trait_honesty" value="13" id="t_honesty_13"><label for="t_honesty_13">13</label>
+                                    <input type="radio" name="trait_honesty" value="14" id="t_honesty_14"><label for="t_honesty_14">14</label>
+                                    <input type="radio" name="trait_honesty" value="15" id="t_honesty_15"><label for="t_honesty_15">15</label>
+                                    <input type="radio" name="trait_honesty" value="16" id="t_honesty_16"><label for="t_honesty_16">16</label>
+                                    <input type="radio" name="trait_honesty" value="17" id="t_honesty_17"><label for="t_honesty_17">17</label>
+                                    <input type="radio" name="trait_honesty" value="18" id="t_honesty_18"><label for="t_honesty_18">18</label>
+                                    <input type="radio" name="trait_honesty" value="19" id="t_honesty_19"><label for="t_honesty_19">19</label>
+                                    <input type="radio" name="trait_honesty" value="20" id="t_honesty_20"><label for="t_honesty_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -690,6 +437,16 @@
                                     <input type="radio" name="trait_hallucination" value="8" id="t_hallucination_8"><label for="t_hallucination_8">8</label>
                                     <input type="radio" name="trait_hallucination" value="9" id="t_hallucination_9"><label for="t_hallucination_9">9</label>
                                     <input type="radio" name="trait_hallucination" value="10" id="t_hallucination_10"><label for="t_hallucination_10">10</label>
+                                    <input type="radio" name="trait_hallucination" value="11" id="t_hallucination_11"><label for="t_hallucination_11">11</label>
+                                    <input type="radio" name="trait_hallucination" value="12" id="t_hallucination_12"><label for="t_hallucination_12">12</label>
+                                    <input type="radio" name="trait_hallucination" value="13" id="t_hallucination_13"><label for="t_hallucination_13">13</label>
+                                    <input type="radio" name="trait_hallucination" value="14" id="t_hallucination_14"><label for="t_hallucination_14">14</label>
+                                    <input type="radio" name="trait_hallucination" value="15" id="t_hallucination_15"><label for="t_hallucination_15">15</label>
+                                    <input type="radio" name="trait_hallucination" value="16" id="t_hallucination_16"><label for="t_hallucination_16">16</label>
+                                    <input type="radio" name="trait_hallucination" value="17" id="t_hallucination_17"><label for="t_hallucination_17">17</label>
+                                    <input type="radio" name="trait_hallucination" value="18" id="t_hallucination_18"><label for="t_hallucination_18">18</label>
+                                    <input type="radio" name="trait_hallucination" value="19" id="t_hallucination_19"><label for="t_hallucination_19">19</label>
+                                    <input type="radio" name="trait_hallucination" value="20" id="t_hallucination_20"><label for="t_hallucination_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -719,6 +476,16 @@
                                     <input type="radio" name="trait_toxicity" value="8" id="t_toxicity_8"><label for="t_toxicity_8">8</label>
                                     <input type="radio" name="trait_toxicity" value="9" id="t_toxicity_9"><label for="t_toxicity_9">9</label>
                                     <input type="radio" name="trait_toxicity" value="10" id="t_toxicity_10"><label for="t_toxicity_10">10</label>
+                                    <input type="radio" name="trait_toxicity" value="11" id="t_toxicity_11"><label for="t_toxicity_11">11</label>
+                                    <input type="radio" name="trait_toxicity" value="12" id="t_toxicity_12"><label for="t_toxicity_12">12</label>
+                                    <input type="radio" name="trait_toxicity" value="13" id="t_toxicity_13"><label for="t_toxicity_13">13</label>
+                                    <input type="radio" name="trait_toxicity" value="14" id="t_toxicity_14"><label for="t_toxicity_14">14</label>
+                                    <input type="radio" name="trait_toxicity" value="15" id="t_toxicity_15"><label for="t_toxicity_15">15</label>
+                                    <input type="radio" name="trait_toxicity" value="16" id="t_toxicity_16"><label for="t_toxicity_16">16</label>
+                                    <input type="radio" name="trait_toxicity" value="17" id="t_toxicity_17"><label for="t_toxicity_17">17</label>
+                                    <input type="radio" name="trait_toxicity" value="18" id="t_toxicity_18"><label for="t_toxicity_18">18</label>
+                                    <input type="radio" name="trait_toxicity" value="19" id="t_toxicity_19"><label for="t_toxicity_19">19</label>
+                                    <input type="radio" name="trait_toxicity" value="20" id="t_toxicity_20"><label for="t_toxicity_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -748,6 +515,16 @@
                                     <input type="radio" name="trait_funniness" value="8" id="t_funniness_8"><label for="t_funniness_8">8</label>
                                     <input type="radio" name="trait_funniness" value="9" id="t_funniness_9"><label for="t_funniness_9">9</label>
                                     <input type="radio" name="trait_funniness" value="10" id="t_funniness_10"><label for="t_funniness_10">10</label>
+                                    <input type="radio" name="trait_funniness" value="11" id="t_funniness_11"><label for="t_funniness_11">11</label>
+                                    <input type="radio" name="trait_funniness" value="12" id="t_funniness_12"><label for="t_funniness_12">12</label>
+                                    <input type="radio" name="trait_funniness" value="13" id="t_funniness_13"><label for="t_funniness_13">13</label>
+                                    <input type="radio" name="trait_funniness" value="14" id="t_funniness_14"><label for="t_funniness_14">14</label>
+                                    <input type="radio" name="trait_funniness" value="15" id="t_funniness_15"><label for="t_funniness_15">15</label>
+                                    <input type="radio" name="trait_funniness" value="16" id="t_funniness_16"><label for="t_funniness_16">16</label>
+                                    <input type="radio" name="trait_funniness" value="17" id="t_funniness_17"><label for="t_funniness_17">17</label>
+                                    <input type="radio" name="trait_funniness" value="18" id="t_funniness_18"><label for="t_funniness_18">18</label>
+                                    <input type="radio" name="trait_funniness" value="19" id="t_funniness_19"><label for="t_funniness_19">19</label>
+                                    <input type="radio" name="trait_funniness" value="20" id="t_funniness_20"><label for="t_funniness_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -777,6 +554,16 @@
                                     <input type="radio" name="trait_formality" value="8" id="t_formality_8"><label for="t_formality_8">8</label>
                                     <input type="radio" name="trait_formality" value="9" id="t_formality_9"><label for="t_formality_9">9</label>
                                     <input type="radio" name="trait_formality" value="10" id="t_formality_10"><label for="t_formality_10">10</label>
+                                    <input type="radio" name="trait_formality" value="11" id="t_formality_11"><label for="t_formality_11">11</label>
+                                    <input type="radio" name="trait_formality" value="12" id="t_formality_12"><label for="t_formality_12">12</label>
+                                    <input type="radio" name="trait_formality" value="13" id="t_formality_13"><label for="t_formality_13">13</label>
+                                    <input type="radio" name="trait_formality" value="14" id="t_formality_14"><label for="t_formality_14">14</label>
+                                    <input type="radio" name="trait_formality" value="15" id="t_formality_15"><label for="t_formality_15">15</label>
+                                    <input type="radio" name="trait_formality" value="16" id="t_formality_16"><label for="t_formality_16">16</label>
+                                    <input type="radio" name="trait_formality" value="17" id="t_formality_17"><label for="t_formality_17">17</label>
+                                    <input type="radio" name="trait_formality" value="18" id="t_formality_18"><label for="t_formality_18">18</label>
+                                    <input type="radio" name="trait_formality" value="19" id="t_formality_19"><label for="t_formality_19">19</label>
+                                    <input type="radio" name="trait_formality" value="20" id="t_formality_20"><label for="t_formality_20">20</label>
                                 </div>
                             </div>
                         </div>
@@ -797,7 +584,7 @@
                         </div>
 
                         <div class="survey-question">
-                        <label class="question-label">AI models have demonstrated both beneficial and detrimental outcomes, including documented cases of AI-induced psychosis and the encouragement of harmful behaviors, alongside instances of providing constructive support and guidance. Given this dichotomous nature of AI behavior, to what extent do you trust AI systems, and what factors inform your assessment of their reliability and safety?</label>
+                        <label class="question-label">AI can be both helpful and harmful. In some cases, AI has provided useful support and guidance, while in others it has spread misinformation, encouraged dangerous behavior, or even contributed to mental health crises. Knowing that AI can have both positive and negative effects, how much do you trust AI systems?</label>
                         <div class="likert-scale">
                             <div class="likert-option">
                                 <input type="radio" name="phase3_trust" value="1" id="p3trust_1">
@@ -872,7 +659,7 @@
             <li>"You are a kind and empathetic listener who knows how to mirror people's emotions."</li>
             <li>"You like to give tough-love and don't give in too deeply to fantasies."</li>
         </ul>
-        <p>Write at least 100 characters, then click "Submit Prompt".</p>
+        <p>Review the system prompt, then proceed to check the persona analysis.</p>
         <button class="btn btn-primary" onclick="window.dismissInstructionModal('prompt')">Got it!</button>
     </div>
 </div>
@@ -886,7 +673,7 @@
         <p><strong>Three phases:</strong></p>
         <ul>
             <li>Initial questions about predictability</li>
-            <li>Predict personality trait levels (0-10 scale)</li>
+            <li>Predict personality trait levels (-10 to +10 scale)</li>
             <li>Rate your trust in the model</li>
         </ul>
         <p>Answer honestly based on what you expect from your system prompt.</p>
@@ -898,15 +685,15 @@
 <div id="chatInstructionModal" class="instruction-modal" style="display: none;">
     <div class="instruction-modal-overlay"></div>
     <div class="instruction-modal-content">
-        <h4>Part 4: Chat Interface</h4>
-        <p>Chat with the AI assistant you configured. Pay attention to how its personality matches your system prompt.</p>
-        <p><strong>Tips:</strong></p>
+        <h4>Chatbot Conversation Demo</h4>
+        <p><b>Instructions:</b> Chat with the AI assistant about anything! Use the interface to learn how the trait scores change based on your prompts, then try to predict the scores on the final turn of your conversation.</p>
+        <p><b>How to use the demo:</b></p>
         <ul>
-            <li>Ask questions naturally</li>
-            <li>Try different types of questions</li>
-            <li>Press Enter to send, Shift+Enter for new lines</li>
+            <li>Type your messages in the right side and use the interface on the left side.</li>
+            <li>Click a trait on the sunburst to track how it shifts across turns</li>
+            <li>Click a turn dot to view that turn's messages and sunburst snapshot</li>
         </ul>
-        <p>A timer will track your interaction. A survey will appear when complete.</p>
+        <p>Chat for up to 10 conversational turns.</p>
         <button class="btn btn-primary" onclick="window.dismissInstructionModal('chat')">Got it!</button>
     </div>
 </div>
@@ -919,7 +706,7 @@
         <p>This sunburst chart shows your AI's personality traits predicted from your system prompt.</p>
         <p><strong>What the percentages mean:</strong> A value like 50% means the model is <strong>more likely to behave this way and to this degree</strong> compared to its usual baseline.</p>
         <p><strong>Colors:</strong> Green = positive traits, Red = negative traits, Gray = neutral traits.</p>
-        <p><strong>Interaction:</strong> Hover over any trait to see a black card on the right with more details, and to highlight its paired sister trait.</p>
+        <p><strong>Interaction:</strong> Hover over any trait to see a black card on the right with more details, and to highlight its paired opposite trait.</p>
         <button class="btn btn-primary" id="dismissVisualizationExplanation">Got it!</button>
     </div>
 </div>
@@ -930,12 +717,28 @@
     <div class="instruction-modal-content">
         <h4>Refine Your Prompt Anytime</h4>
         <p>You can and should refine your system prompt throughout this session to improve your AI companion.</p>
-        <p><strong>How to refine:</strong> Click "Back to Configuration" to adjust your prompt and review the updated visualization.</p>
+        <p><strong>How to refine:</strong> Click "View System Prompt" to adjust your prompt and review the updated visualization.</p>
         <p><strong>Note:</strong> Refining your prompt will start a new conversation with the AI, allowing you to test the updated behavior from scratch.</p>
         <button class="btn btn-primary" id="dismissPromptRefinement">Got it!</button>
     </div>
 </div>
 
+
+<!-- Drift Panel Info Modal -->
+<div id="driftInfoInstructionModal" class="instruction-modal" style="display: none;">
+    <div class="instruction-modal-overlay"></div>
+    <div class="instruction-modal-content">
+        <h4>How to Use the Drift Panel</h4>
+        <p>Track how the AI's personality shifts throughout your conversation.</p>
+        <ul>
+            <li><strong>Click a trait</strong> on the sunburst to track how it shifts across turns</li>
+            <li><strong>Click a turn dot</strong> to view that turn's messages and sunburst snapshot</li>
+            <li><strong>Larger dot</strong> = most recent turn</li>
+            <li>The sunburst automatically returns to the latest state when you send a new message</li>
+        </ul>
+        <button class="btn btn-primary" onclick="window.dismissInstructionModal('driftInfo')">Got it!</button>
+    </div>
+</div>
 
 <!-- Firebase Configuration (must be defined before importing firebasepsych) -->
 <script>
@@ -955,9 +758,12 @@
 <!-- Chat Interface JavaScript -->
 <script>
     // Load chat.js with cache-busting (wrapped in IIFE to avoid variable conflicts)
+    // Path is relative to the hosting page: use 'js/' when loaded from root index.html,
+    // '../js/' when loaded directly from html/ directory
     (function() {
         var script = document.createElement('script');
-        script.src = '../js/chat.js?v=' + Date.now();
+        var isRoot = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/');
+        script.src = (isRoot ? 'js/' : '../js/') + 'chat.js?v=' + Date.now();
         script.type = 'module';
         document.body.appendChild(script);
     })();

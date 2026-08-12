@@ -43,9 +43,13 @@ This file should contain static experimental metadata such as:
             None! This needs to be modified by you!
 */
 var EXPERIMENT_SUMMARY = `
-    This experiment tests how people shape AIs such as ChatGPT's behavior. 
-    To test this, we built an interactive experiment that requires users to create AI characters using system prompts.
-    We want to see how users understand the consequences of their system prompts and see if there are ways to help inform them of these AIs prompts prior to interaction.
+    <strong>Purpose:</strong> This study investigates whether information about an AI chatbot's internal states can help users better understand and anticipate its behavior.
+    <br /><br />
+    <strong>Background:</strong> AI chatbots are guided by system prompts — hidden instructions that shape how the AI responds. However, chatbot behavior can shift meaningfully over the course of a conversation, making it hard to predict. Recent advances in AI interpretability research have produced tools that can identify how certain traits, such as empathy or toxicity, are represented inside an AI system. This study explores whether sharing that kind of information with users improves their ability to understand chatbot behavior.
+    <br /><br />
+    <strong>What you will do:</strong> You will be shown a system prompt for an AI chatbot and asked to anticipate how the chatbot will behave. You will then engage in a conversation and evaluate the chatbot's internal representation of its behavior. You will repeat this process for a second system prompt. The study is conducted entirely online and is expected to take approximately 25–35 minutes.
+    <br /><br />
+    <strong>Why it matters:</strong> Your participation will contribute to research aimed at giving everyday users better intuition for AI behavior, supporting safer and more informed interactions with AI systems.
 `;
 
 /*
@@ -59,7 +63,7 @@ var EXPERIMENT_SUMMARY = `
         DEFAULT:
             30 minutes
 */
-var TIME_COMMITMENT = "30 minutes";
+var TIME_COMMITMENT = "25-35 minutes";
 
 /*
     Benefits and Risks
@@ -104,7 +108,7 @@ var ELIGIBILITY_REQUIREMENTS = `
         DEFAULT:
             $5.00
 */
-var COMPENSATION = "$5.00";
+var COMPENSATION = "$7.00";
 
 /*
     Recruitment Service

@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Transparency — Multi-Turn Demo</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="js/persona-sunburst.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#fafafa;--bg2:#ffffff;--bg3:#f4f4f6;
+  --border:#e5e5ea;--border2:#d1d1d6;
+  --text:#1c1c1e;--text2:#636366;--text3:#aeaeb2;
+  --green:#22c55e;--green-light:#dcfce7;--green-dark:#166534;
+  --red:#ef4444;--red-light:#fee2e2;--red-dark:#991b1b;
+  --grey:#6b7280;--grey-light:#f3f4f6;
+  --accent:#2563eb;--accent-light:#dbeafe;
+  --inner-fill:#ffffff;--inner-stroke:#d1d5db;
+  --circle-stroke:#9ca3af;--label-fill:#374151;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.65;
+  overflow-x:hidden;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:'IBM Plex Mono',monospace;font-size:0.88em;background:var(--bg3);padding:2px 6px;border-radius:4px}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:52px;
+}
+.nav-logo{font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:-0.3px}
+.nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.nav-links{display:flex;gap:28px}
+.nav-links a{font-size:13px;font-weight:500;color:var(--text2);transition:color .2s;text-decoration:none;cursor:pointer}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+
+/* ── COMMON ── */
+.container{max-width:960px;margin:0 auto;padding:0 24px}
+.section{padding:64px 0}
+.section+.section{border-top:1px solid var(--border)}
+.muted{color:var(--text2)}
+.small{font-size:13px}
+.mono{font-family:'IBM Plex Mono',monospace}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.badge-green{background:var(--green-light);color:var(--green-dark)}
+.badge-red{background:var(--red-light);color:var(--red-dark)}
+.badge-grey{background:var(--grey-light);color:var(--grey)}
+.badge-blue{background:var(--accent-light);color:var(--accent)}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 22px;border-radius:8px;font-weight:600;font-size:14px;
+  border:1px solid var(--border);background:var(--bg2);color:var(--text);
+  cursor:pointer;transition:all .15s;font-family:inherit;
+}
+.btn:hover{border-color:var(--text2);background:var(--bg3);text-decoration:none}
+.btn-fill{background:var(--text);color:#fff;border-color:var(--text)}
+.btn-fill:hover{background:#333;border-color:#333}
+.btn-sm{padding:7px 14px;font-size:12px}
+
+/* ── HERO ── */
+.hero{padding:72px 0 48px;text-align:center}
+.hero h1{font-size:clamp(28px,4.5vw,44px);font-weight:700;letter-spacing:-0.8px;line-height:1.2;margin-bottom:16px}
+.hero-tagline{
+  font-size:clamp(17px,2vw,21px);font-weight:400;color:var(--text2);
+  line-height:1.55;letter-spacing:-0.2px;
+  max-width:760px;margin:0 auto 8px;
+}
+.hero-tagline em{font-style:italic;color:var(--text);font-weight:500}
+.hero-tagline strong{
+  color:var(--text);font-weight:700;
+  background:linear-gradient(135deg,var(--green) 0%,#eab308 50%,var(--red) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-tagline-cue{
+  display:block;margin-top:10px;font-size:13px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1.5px;
+}
+.hero .meta{font-size:12px;color:var(--text3);margin-top:24px}
+.hero .meta a{color:var(--text2)}
+
+/* ── HERO TITLE ── */
+.hero-title{
+  font-size:clamp(48px,9vw,80px);font-weight:800;letter-spacing:-3px;line-height:1;margin-bottom:24px;
+  display:inline-flex;gap:.35em;align-items:baseline;justify-content:center;flex-wrap:wrap;
+}
+.hero-neural{
+  background:linear-gradient(135deg,var(--green) 0%,#eab308 50%,var(--red) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero-transparency{
+  position:relative;
+  -webkit-text-stroke:2px var(--text);
+  -webkit-text-fill-color:transparent;
+}
+.hero-transparency .fill-layer{
+  position:absolute;inset:0;
+  -webkit-text-stroke:0;
+  -webkit-text-fill-color:var(--text);
+  color:var(--text);
+  animation:fillFade 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes fillFade{
+  0%,100%{opacity:0}
+  50%{opacity:1}
+}
+
+/* ── CARDS ── */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:800px){.cards{grid-template-columns:1fr}}
+.card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:28px 24px;transition:box-shadow .2s,border-color .2s;cursor:pointer;
+}
+.card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.06);border-color:var(--border2)}
+.card-num{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px}
+.card h3{font-size:16px;font-weight:700;margin-bottom:8px;letter-spacing:-0.2px}
+.card p{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* ── PAGES ── */
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+.page-head{padding:40px 0 24px;border-bottom:1px solid var(--border);margin-bottom:32px}
+.page-head h2{font-size:26px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px}
+.back-link{font-size:13px;font-weight:500;color:var(--text2);display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;cursor:pointer;background:none;border:none;font-family:inherit}
+.back-link:hover{color:var(--text)}
+
+/* ── STEPS ── */
+.steps-bar{display:flex;align-items:center;gap:4px;margin-bottom:28px}
+.step-pill{height:4px;flex:1;border-radius:2px;background:var(--border);transition:background .3s}
+.step-pill.done{background:var(--green)}
+.step-pill.current{background:var(--text)}
+.step-box{display:none}
+.step-box.active{display:block}
+.step-actions{display:flex;gap:10px;margin-top:24px}
+
+/* ── PROMPT BOX ── */
+.prompt-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:20px;font-size:14px;line-height:1.8;
+}
+.prompt-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+
+/* ── RATING ── */
+.rating-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+@media(max-width:500px){.rating-grid{grid-template-columns:1fr}}
+.rating-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.rating-item .top{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:6px}
+.rating-item .top .neg{color:var(--red)}
+.rating-item .top .pos{color:var(--green)}
+.rating-item input[type="range"]{
+  width:100%;height:3px;-webkit-appearance:none;appearance:none;
+  background:linear-gradient(to right,var(--red-light),var(--bg3),var(--green-light));
+  border-radius:2px;outline:none;
+}
+.rating-item input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--text);cursor:pointer;
+}
+.rating-item .val{text-align:center;font-size:11px;color:var(--text3);margin-top:4px}
+
+/* ── INFO CARD ── */
+.info-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin-bottom:16px;
+}
+.info-card h4{font-size:14px;font-weight:700;margin-bottom:6px}
+.info-card p{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* ── COMPARISON ── */
+.cmp-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.cmp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── CHAT ── */
+.chat-frame{
+  display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  height:520px;background:var(--bg2);
+}
+.chat-viz{
+  width:50%;min-width:300px;display:flex;flex-direction:column;
+  border-right:1px solid var(--border);overflow:hidden;
+}
+.chat-viz-top{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.chat-viz-bottom{
+  border-top:1px solid var(--border);padding:8px 12px;
+  display:flex;flex-direction:column;overflow:hidden;flex:0 0 130px;
+}
+.chat-viz-bottom .tracker-title-area{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.chat-viz-bottom .tracker-labels-area{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:4px}
+.chat-viz-bottom .tracker-scroll{flex:1;overflow-y:auto}
+.chat-right{flex:1;display:flex;flex-direction:column;min-width:0}
+.chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.chat-bubble{
+  max-width:85%;padding:10px 14px;border-radius:14px;
+  font-size:13px;line-height:1.55;cursor:pointer;word-wrap:break-word;
+  transition:box-shadow .15s;
+}
+.chat-bubble:hover{box-shadow:0 0 0 2px rgba(0,0,0,0.1)}
+.chat-bubble.selected{box-shadow:0 0 0 2px var(--accent)}
+.chat-bubble.user{align-self:flex-end;background:var(--bg3);color:var(--text);border-bottom-right-radius:4px}
+.chat-bubble.ai{align-self:flex-start;color:var(--text);border-bottom-left-radius:4px}
+.chat-input-row{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.chat-input{
+  flex:1;padding:9px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg);
+  color:var(--text);font-size:13px;font-family:inherit;outline:none;
+}
+.chat-input:focus{border-color:var(--accent)}
+
+/* ── PERSONA CHIPS ── */
+.persona-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.persona-chip{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:8px;background:var(--bg2);border:1px solid var(--border);
+  cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;
+}
+.persona-chip:hover,.persona-chip.sel{border-color:var(--accent);background:var(--accent-light)}
+
+/* ── VIZ WRAPPER ── */
+.viz-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:12px;display:flex;align-items:center;justify-content:center;
+  min-height:300px;
+}
+.viz-pair{display:flex;gap:16px;flex-wrap:wrap}
+.viz-pair .viz-box{flex:1;min-width:280px}
+.viz-pair .viz-label{font-size:13px;font-weight:600;text-align:center;margin-bottom:8px}
+
+/* ── SCIENCE PROSE ── */
+.prose{width:100%}
+.prose h3{font-size:20px;font-weight:700;letter-spacing:-0.3px;margin:32px 0 12px}
+.prose p{font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:14px}
+.prose strong{color:var(--text)}
+.callout{
+  background:var(--green-light);border-left:3px solid var(--green);
+  padding:14px 18px;border-radius:0 8px 8px 0;margin:16px 0;
+}
+.callout p{font-size:13px;color:var(--green-dark);margin:0;line-height:1.7}
+.figure-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin:20px 0;
+}
+.figure-caption{font-size:11px;color:var(--text3);text-align:center;margin-top:10px}
+.stat-row{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+.stat-card{
+  flex:1;min-width:110px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:14px;text-align:center;
+}
+.stat-num{font-size:26px;font-weight:700}
+.stat-label{font-size:11px;color:var(--text2);margin-top:2px}
+.effect-bar{margin-bottom:10px}
+.effect-bar .top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.effect-bar .track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.effect-bar .fill{height:100%;border-radius:3px;background:var(--green)}
+
+/* ── TOOLTIP ── */
+.tooltip{
+  position:fixed;pointer-events:none;
+  background:rgba(255,255,255,0.97);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;font-size:12px;
+  line-height:1.5;max-width:220px;opacity:0;
+  transition:opacity .15s;backdrop-filter:blur(8px);
+  z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.08);
+  color:var(--text);
+}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><span class="dot"></span>Neural Transparency</div>
+  <div class="nav-links">
+    <a onclick="showLanding()" class="active" id="nav-home">Home</a>
+    <a onclick="showPage('predict')" id="nav-predict">Predict</a>
+    <a onclick="showPage('explore')" id="nav-explore">Explore</a>
+    <a onclick="showPage('science')" id="nav-science">Science</a>
+  </div>
+</nav>
+
+<!-- ══════════ LANDING ══════════ -->
+<div id="landing">
+  <section class="hero">
+    <div class="container">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:14px">
+        <span style="font-size:12px;color:var(--text3)">MIT Media Lab &times; Neuronpedia</span>
+      </div>
+      <h1 class="hero-title">
+        <span class="hero-neural">Neural</span>
+        <span class="hero-transparency">Transparency<span class="fill-layer" aria-hidden="true">Transparency</span></span>
+      </h1>
+      <p class="hero-tagline">
+        Every AI reply hides a <em>shifting mind</em>. We made it <strong>glow</strong> &mdash;
+        surfacing hidden activations as behavioral drift, turn by turn, in real time.
+        <span class="hero-tagline-cue">Watch it happen below &darr;</span>
+      </p>
+
+      <!-- Live demo -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 8px;flex-wrap:wrap;gap:8px;text-align:left">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge badge-green">Live Demo</span>
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">System Prompt</span>
+          <span style="font-size:12px;color:var(--text2);font-style:italic">Bold, Independent AI</span>
+        </div>
+        <div id="l-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px">Turn 0 / 3</div>
+      </div>
+      <div class="chat-frame" id="l-chat-frame">
+        <div class="chat-viz">
+          <div class="chat-viz-top"><div id="l-live-sunburst" style="width:100%;height:100%"></div></div>
+          <div class="chat-viz-bottom">
+            <div class="tracker-title-area">
+              <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px">Tracking Neural Activation Over Time</span>
+            </div>
+            <div class="tracker-labels-area">
+              <span style="color:var(--green)">Positive Behaviors</span>
+              <span style="color:var(--red)">Negative Behaviors</span>
+            </div>
+            <div class="tracker-scroll" id="l-tracker-scroll"><svg id="l-tracker" width="100%"></svg></div>
+          </div>
+        </div>
+        <div class="chat-right">
+          <div class="chat-log" id="l-chat-log">
+            <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo will start automatically&hellip;</div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="l-chat-input" type="text" placeholder="Simulated typing&hellip;" readonly>
+            <button class="btn btn-fill btn-sm" disabled style="opacity:.6">Send</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+        <button class="btn" onclick="lRestart()">&#x21bb; Replay Demo</button>
+        <button class="btn btn-fill" onclick="showPage('predict')">Try the Demo &rarr;</button>
+        <button class="btn" onclick="showPage('science')">Read the Research</button>
+      </div>
+      <p class="meta" style="margin-top:24px;text-align:center">
+        Karny*, Baez*, Pataranutaporn &mdash; MIT Media Lab &mdash; CHI 2026
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="cards">
+        <div class="card" onclick="showPage('predict')">
+          <div class="card-num">01</div>
+          <h3>Predict Model Behavior</h3>
+          <p>Read a system prompt, predict how the AI will behave, then compare your intuitions against the model's actual neural activations.</p>
+          <div style="margin-top:14px"><span class="badge badge-green">Interactive Study</span></div>
+        </div>
+        <div class="card" onclick="showPage('explore')">
+          <div class="card-num">02</div>
+          <h3>Explore Activation Patterns</h3>
+          <p>Choose from preset personas or write your own prompt and watch the behavioral activation visualization respond instantly.</p>
+          <div style="margin-top:14px"><span class="badge badge-blue">Sandbox</span></div>
+        </div>
+        <div class="card" onclick="showPage('science')">
+          <div class="card-num">03</div>
+          <h3>The Science: Mech Interp &times; HCI</h3>
+          <p>Mechanistic Interpretability meets Human-AI Interaction. Understand behavioral vectors, calibration, and the N=246 controlled study.</p>
+          <div style="margin-top:14px"><span class="badge badge-grey">Research</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════ PAGE 1: PREDICT ══════════ -->
+<div id="page-predict" class="page">
+  <div class="container">
+    <button class="back-link" onclick="showLanding()">&larr; Home</button>
+    <div class="page-head">
+      <span class="badge badge-green">Interactive Study</span>
+      <h2 style="margin-top:8px">Predict Model Behavior</h2>
+      <p class="muted small">Read a system prompt, predict how the AI chatbot will behave, then see how the model's neural activations compare.</p>
+    </div>
+
+    <div class="steps-bar" id="p-steps"></div>
+
+    <!-- Step 0: Tutorial -->
+    <div class="step-box active" data-step="0" id="p-s0">
+      <div class="info-card">
+        <h4>What is Neural Transparency?</h4>
+        <p>LLMs encode behavioral traits as <strong>linear directions</strong> in their activation space. By measuring cosine similarity between a model's activation and a pre-extracted behavioral vector, we compute a <em>behavioral score</em> that quantifies trait expression directly from the model's internals.</p>
+      </div>
+      <div class="info-card">
+        <h4>Reading the Visualization</h4>
+        <p><strong style="color:var(--green)">Green</strong> = positive behaviors (Respectful, Factual, Honest, Social, Encouraging, Empathetic)</p>
+        <p><strong style="color:var(--red)">Red</strong> = negative behaviors (Toxic, Hallucinatory, Sycophantic, Antisocial, Discouraging, Unempathetic)</p>
+        <p><strong style="color:var(--grey)">Grey</strong> = neutral style (Sophisticated, Casual, Formal, etc.) &mdash; bars extend proportionally to activation %.</p>
+      </div>
+      <div class="step-actions"><button class="btn btn-fill" onclick="pNext()">Continue &rarr;</button></div>
+    </div>
+
+    <!-- Step 1: Read prompt + Predict -->
+    <div class="step-box" data-step="1" id="p-s1">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1;min-width:280px">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">Read the system prompt</h3>
+          <p class="small muted" style="margin-bottom:12px">This configures the AI's behavior. Based on the prompt, predict how the model will behave.</p>
+          <div class="prompt-box">
+            <div class="prompt-label">System Prompt</div>
+            <div id="p-prompt-text">You are a bold, independent AI assistant. You have your own strong opinions and aren't afraid to share them. You don't just agree with the user — you challenge their thinking, sometimes with sharp wit. You value honesty over pleasantry and would rather give an uncomfortable truth than a comfortable lie.</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:280px">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Your initial prediction</h3>
+          <p class="small muted" style="margin-bottom:12px">Rate how you expect the model to behave on each dimension.</p>
+          <div class="rating-grid" id="p-ratings"></div>
+        </div>
+      </div>
+      <div class="step-actions"><button class="btn btn-fill" onclick="pNext()">Submit Prediction &rarr;</button></div>
+    </div>
+
+    <!-- Step 2: Reveal -->
+    <div class="step-box" data-step="2" id="p-s2">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Neural activations revealed</h3>
+      <p class="small muted" style="margin-bottom:16px">Compare the model's actual activation pattern with your predictions.</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div class="viz-box" style="flex:1;min-width:300px"><div id="p-sunburst" style="width:100%;height:340px"></div></div>
+        <div style="flex:0 0 260px" id="p-cmp-list"></div>
+      </div>
+      <div class="step-actions"><button class="btn btn-fill" onclick="pNext()">Try multi-turn chat &rarr;</button></div>
+    </div>
+
+    <!-- Step 3: Chat -->
+    <div class="step-box" data-step="3" id="p-s3">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">Chat and watch behaviors drift</h3>
+        <div id="p-turn-counter" style="font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);padding:4px 12px;border-radius:12px">Turn 0 / 3</div>
+      </div>
+      <p class="small muted" style="margin-bottom:12px">Send 3 messages and observe how neural activations change turn by turn.</p>
+      <div class="chat-frame" id="p-chat-frame">
+        <div class="chat-viz">
+          <div class="chat-viz-top"><div id="p-live-sunburst" style="width:100%;height:100%"></div></div>
+          <div class="chat-viz-bottom">
+            <div class="tracker-title-area">
+              <span style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px" id="p-tracker-title">Tracking Neural Activation Over Time</span>
+              <button class="btn-sm" id="p-tracker-back" style="display:none;padding:2px 8px;font-size:10px;border:1px solid var(--border);background:var(--bg);border-radius:4px;cursor:pointer;font-family:inherit" onclick="pTrackerBack()">Back</button>
+            </div>
+            <div class="tracker-labels-area">
+              <span id="p-tl-left" style="color:var(--green)">Positive Behaviors</span>
+              <span id="p-tl-right" style="color:var(--red)">Negative Behaviors</span>
+            </div>
+            <div class="tracker-scroll" id="p-tracker-scroll"><svg id="p-tracker" width="100%"></svg></div>
+          </div>
+          <div class="tooltip" id="p-tooltip"></div>
+        </div>
+        <div class="chat-right">
+          <div class="chat-log" id="p-chat-log">
+            <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px">Send a message to begin</div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="p-chat-input" type="text" placeholder="Type a message..." autocomplete="off">
+            <button class="btn btn-fill btn-sm" onclick="pSendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Re-predict -->
+    <div class="step-box" data-step="4" id="p-s4">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Now that you've interacted with the model&hellip;</h3>
+      <p class="small muted" style="margin-bottom:16px">You've seen the visualization and chatted for 3 turns. Has your understanding changed? Re-predict its behavioral profile.</p>
+      <div class="rating-grid" id="p-ratings-final"></div>
+      <div class="step-actions"><button class="btn btn-fill" onclick="pNext()">See My Results &rarr;</button></div>
+    </div>
+
+    <!-- Step 5: Results -->
+    <div class="step-box" data-step="5" id="p-s5">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-0.3px">Your Calibration Score</h3>
+        <p class="small muted" style="margin-bottom:16px">Comparing your initial prediction, final prediction, and the model's actual behavior.</p>
+
+        <div style="display:flex;gap:20px;margin-bottom:24px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px;background:var(--bg3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Initial Prediction</div>
+            <div id="p-eval-score-init" style="font-size:40px;font-weight:800;letter-spacing:-2px;line-height:1">—</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">Before chatting</div>
+          </div>
+          <div style="flex:1;min-width:160px;background:var(--bg3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Final Prediction</div>
+            <div id="p-eval-score-final" style="font-size:40px;font-weight:800;letter-spacing:-2px;line-height:1">—</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">After chatting</div>
+          </div>
+          <div style="flex:1;min-width:160px;background:var(--bg3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Improvement</div>
+            <div id="p-eval-delta" style="font-size:40px;font-weight:800;letter-spacing:-2px;line-height:1">—</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px" id="p-eval-delta-label">Change in score</div>
+          </div>
+        </div>
+
+        <div id="p-eval-grade" style="font-size:14px;font-weight:600;margin-bottom:4px">—</div>
+        <div id="p-eval-desc" class="small muted" style="margin-bottom:16px">—</div>
+
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:10px">Per-dimension breakdown</h4>
+        <div id="p-eval-details" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+
+        <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-fill btn-sm" onclick="pReset()">Try Another Prompt</button>
+          <a onclick="showPage('science');return false" class="btn btn-sm" style="text-decoration:none;cursor:pointer">Learn the Science &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE 2: EXPLORE ══════════ -->
+<div id="page-explore" class="page">
+  <div class="container" style="max-width:1100px">
+    <button class="back-link" onclick="showLanding()">&larr; Home</button>
+    <div class="page-head">
+      <span class="badge badge-blue">Sandbox</span>
+      <h2 style="margin-top:8px">Explore Activation Patterns</h2>
+      <p class="muted small">Compare two different personas or prompts side by side. Each side has its own controls.</p>
+    </div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <!-- LEFT -->
+      <div style="flex:1;min-width:320px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization A</div>
+        <div class="persona-row" id="ex-personas-L"></div>
+        <div style="margin:10px 0">
+          <textarea id="ex-textarea-L" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+          <div style="margin-top:4px"><button class="btn btn-sm" onclick="exCustomSide('L')">Analyze</button></div>
+        </div>
+        <div class="viz-box"><div id="ex-sb-1" style="width:100%;height:360px"></div></div>
+      </div>
+      <!-- RIGHT -->
+      <div style="flex:1;min-width:320px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Visualization B</div>
+        <div class="persona-row" id="ex-personas-R"></div>
+        <div style="margin:10px 0">
+          <textarea id="ex-textarea-R" rows="2" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;outline:none" placeholder="Or type a custom prompt..."></textarea>
+          <div style="margin-top:4px"><button class="btn btn-sm" onclick="exCustomSide('R')">Analyze</button></div>
+        </div>
+        <div class="viz-box"><div id="ex-sb-2" style="width:100%;height:360px"></div></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px"><a onclick="showPage('science');return false" class="small" style="cursor:pointer">Learn the science &rarr;</a></div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE 3: SCIENCE ══════════ -->
+<div id="page-science" class="page">
+  <div class="container">
+    <button class="back-link" onclick="showLanding()">&larr; Home</button>
+    <div class="page-head">
+      <span class="badge badge-grey">Research</span>
+      <h2 style="margin-top:8px">The Science of Neural Transparency</h2>
+      <p class="muted small">Mechanistic Interpretability &times; Human-AI Interaction</p>
+    </div>
+
+    <div class="prose">
+
+      <h3>The Problem: Behavioral Opacity in LLMs</h3>
+      <p>Large language models are increasingly deployed in high-stakes domains &mdash; healthcare, education, legal advice, mental health support. Yet their behavior can <strong>shift unpredictably across conversation turns</strong>. A model might start helpful and honest, then gradually drift toward sycophancy, toxicity, or hallucination as the dialogue evolves. Current chat interfaces give users <strong>zero visibility</strong> into these internal changes.</p>
+      <p>This creates a fundamental asymmetry: the model's internal state evolves continuously, but the user's mental model of the AI remains static &mdash; anchored to first impressions and surface-level text. The result is <strong>miscalibration</strong>: users cannot accurately predict, detect, or respond to behavioral drift.</p>
+
+      <div class="figure-box" style="text-align:center;padding:24px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">The Calibration Gap</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap">
+          <div style="max-width:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What the user sees</div>
+            <div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text2);border:1px solid var(--border)">Helpful-sounding text responses</div>
+          </div>
+          <div style="font-size:20px;color:var(--red)">&ne;</div>
+          <div style="max-width:200px">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What's actually happening</div>
+            <div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text2);border:1px solid var(--border)">Activation patterns shifting across behavioral dimensions</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Baseline: How Well Do People Predict AI Behavior?</h3>
+      <p>We conducted a controlled study with <strong>N = 246 participants</strong> recruited via Prolific, balanced for age, gender, and AI experience. Participants were assigned to one of two system-prompt personas (Default Assistant or Bold Roleplay) and asked to predict the model's behavioral profile across six dimensions.</p>
+      <p>The results were sobering. Participants achieved a baseline calibration error of <strong>~0.65 RMSE</strong> (on a 0&ndash;1 scale) with near-chance accuracy (~52%) at identifying whether a trait was positive or negative &mdash; barely better than flipping a coin.</p>
+      <p>More concerning: after a 10-minute conversation, calibration <em>did not improve</em>. Error <strong>increased by +0.07 RMSE</strong>. Chatting gave participants a false sense of understanding while their actual predictions got worse.</p>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num" style="color:var(--red)">~52%</div><div class="stat-label">Baseline sign accuracy<br><span style="font-size:10px;color:var(--text3)">(chance = 50%)</span></div></div>
+        <div class="stat-card"><div class="stat-num">0.65</div><div class="stat-label">Calibration error (RMSE)<br><span style="font-size:10px;color:var(--text3)">on 0&ndash;1 scale</span></div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--red)">+0.07</div><div class="stat-label">Error increase after chat<br><span style="font-size:10px;color:var(--text3)">conversation hurts calibration</span></div></div>
+        <div class="stat-card"><div class="stat-num">246</div><div class="stat-label">Participants<br><span style="font-size:10px;color:var(--text3)">via Prolific, balanced</span></div></div>
+      </div>
+
+      <h3>Behavioral Vectors: From Activations to Scores</h3>
+      <p>The core insight from <strong>mechanistic interpretability</strong> is that LLMs encode high-level behavioral traits as <strong>linear directions</strong> in their activation space. This means we can extract a "behavioral vector" for any trait (e.g., sycophancy, toxicity, empathy) and measure how strongly a model expresses that trait at any point during generation.</p>
+
+      <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2)">
+        <div style="margin-bottom:8px"><strong style="color:var(--text)">Behavioral Score Computation</strong></div>
+        score = cos(activation, behavioral_vector)<br><br>
+        <span style="color:var(--text3)">// score in [-1, 1]</span><br>
+        <span style="color:var(--text3)">// +1 = maximum trait expression</span><br>
+        <span style="color:var(--text3)">// -1 = maximum opposite expression</span><br>
+        <span style="color:var(--text3)">// &nbsp;0 = neutral / no signal</span>
+      </div>
+
+      <h3>The Six Behavioral Dimensions</h3>
+      <p>We selected six bipolar behavioral dimensions based on prior work in AI safety, alignment research, and conversational AI evaluation:</p>
+      <div class="figure-box" id="sci-traits"></div>
+
+      <h3>Results</h3>
+
+      <div class="callout"><p><strong>Finding 1 &mdash; Visualization improves calibration:</strong> Neural Transparency significantly improved calibration across all metrics compared to control (p &lt; .01, Cohen's d = 0.35&ndash;0.49). Both single-turn and multi-turn conditions outperformed control, but multi-turn showed the largest effect.</p></div>
+      <div class="callout"><p><strong>Finding 2 &mdash; Multi-turn outperforms single-turn for drift:</strong> When measuring how well participants tracked behavioral changes over the conversation, multi-turn visualization significantly outperformed single-turn (p = .024, d = 0.38). Dynamic, turn-by-turn updates are necessary &mdash; a static snapshot is not enough.</p></div>
+      <div class="callout" style="background:var(--red-light);border-left-color:var(--red)"><p style="color:var(--red-dark)"><strong>Finding 3 &mdash; The overconfidence trap:</strong> Control participants reported <em>increased</em> predictive confidence after chatting despite showing <em>no actual improvement</em>. Visualization users maintained calibrated confidence &mdash; neural transparency <strong>tempers the illusion of understanding</strong>.</p></div>
+      <div class="callout"><p><strong>Finding 4 &mdash; Greatest benefit for volatile personas:</strong> Benefits were strongest for the Bold Roleplay persona (more behaviorally volatile), where multi-turn visualization closed the calibration gap with the more predictable Default Assistant.</p></div>
+
+      <h3>Effect Sizes Across Metrics</h3>
+      <div id="sci-effects"></div>
+
+      <div class="figure-box" style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Detailed Statistical Comparisons</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;color:var(--text2)">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left">
+              <th style="padding:8px 6px;font-weight:600;color:var(--text)">Metric</th>
+              <th style="padding:8px 6px;font-weight:600;color:var(--text)">Control</th>
+              <th style="padding:8px 6px;font-weight:600;color:var(--text)">Viz</th>
+              <th style="padding:8px 6px;font-weight:600;color:var(--text)">p-value</th>
+              <th style="padding:8px 6px;font-weight:600;color:var(--text)">Cohen's d</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Anticipation RMSE</td><td style="padding:6px">0.65</td><td style="padding:6px;color:var(--green);font-weight:600">0.52</td><td style="padding:6px">&lt; .001</td><td style="padding:6px;font-weight:600">0.49</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Sign Accuracy</td><td style="padding:6px">52%</td><td style="padding:6px;color:var(--green);font-weight:600">71%</td><td style="padding:6px">&lt; .001</td><td style="padding:6px;font-weight:600">0.47</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Eval vs. Average RMSE</td><td style="padding:6px">0.61</td><td style="padding:6px;color:var(--green);font-weight:600">0.49</td><td style="padding:6px">= .008</td><td style="padding:6px;font-weight:600">0.36</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">Eval vs. Final RMSE</td><td style="padding:6px">0.59</td><td style="padding:6px;color:var(--green);font-weight:600">0.48</td><td style="padding:6px">= .009</td><td style="padding:6px;font-weight:600">0.35</td></tr>
+            <tr><td style="padding:6px">Multi vs. Single (Final)</td><td style="padding:6px;color:var(--text3)">n/a</td><td style="padding:6px;color:var(--green);font-weight:600">Multi wins</td><td style="padding:6px">= .024</td><td style="padding:6px;font-weight:600">0.38</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Citation</h3>
+      <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
+        @inproceedings{karny2026neural,<br>
+        &nbsp;&nbsp;title={Multi-Turn Neural Transparency: Surfacing Neural<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Activations Improves User Calibration to LLM<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Behavioral Drift},<br>
+        &nbsp;&nbsp;author={Karny, Edden and Baez, Sebastian and<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Pataranutaporn, Pat},<br>
+        &nbsp;&nbsp;booktitle={Proceedings of the 2026 CHI Conference on<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Human Factors in Computing Systems},<br>
+        &nbsp;&nbsp;year={2026},<br>
+        &nbsp;&nbsp;organization={MIT Media Lab}<br>
+        }
+      </div>
+
+      <div style="text-align:center;padding:40px 0;margin-top:32px;border-top:1px solid var(--border)">
+        <p class="muted" style="margin-bottom:12px;font-size:15px">Experience Neural Transparency yourself</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-fill" onclick="showPage('predict')">Prediction Study</button>
+          <button class="btn" onclick="showPage('explore')">Explore Patterns</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer style="padding:32px 24px;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text3)">
+  Neural Transparency &mdash; MIT Media Lab &mdash; Karny*, Baez*, Pataranutaporn &mdash; CHI 2026
+</footer>
+
+<script>
+// ══════════════════════════════════════
+// SHARED DATA
+// ══════════════════════════════════════
+const behaviorPairs = [
+  { pos:"Respectful", neg:"Toxic",          desc:"Courtesy vs. harmful content" },
+  { pos:"Factual",    neg:"Hallucinatory",   desc:"Accurate vs. fabricated info" },
+  { pos:"Honest",     neg:"Sycophancy",      desc:"Truthful vs. excessive agreement" },
+  { pos:"Social",     neg:"Antisocial",      desc:"Warm engagement vs. cold dismissal" },
+  { pos:"Encouraging",neg:"Discouraging",    desc:"Motivating vs. undermining" },
+  { pos:"Empathetic", neg:"Unempathetic",    desc:"Emotionally aware vs. indifferent" },
+];
+// traitMap still needed by the drift tracker for opposite-trait lookups
+const traitMap = {};
+behaviorPairs.forEach(p=>{
+  traitMap[p.pos]={name:p.pos, opposite:p.neg, category:'positive'};
+  traitMap[p.neg]={name:p.neg, opposite:p.pos, category:'negative'};
+});
+
+const personas = [
+  {emoji:"🤖", name:"Default Assistant",     prompt:"You are a helpful, harmless, and honest AI assistant."},
+  {emoji:"🎭", name:"Bold Roleplay",          prompt:"You are a bold, independent AI. You have strong opinions, challenge users' thinking with sharp wit, and value honesty over pleasantry."},
+  {emoji:"💓", name:"Empathetic Listener",    prompt:"You are a deeply empathetic AI companion. You listen carefully, validate emotions, and respond with warmth and sensitivity."},
+  {emoji:"🧑‍🏫",name:"Strict Teacher",         prompt:"You are a strict but fair teacher. You push students to think critically, don't accept lazy answers, and give direct, sometimes blunt feedback."},
+  {emoji:"😈", name:"Mischievous Trickster",  prompt:"You are a playful trickster AI. You enjoy wordplay, give unexpected answers, and sometimes lead users on tangents for fun."},
+  {emoji:"🔬", name:"Cold Analyst",           prompt:"You are a purely analytical AI. You respond with data and logic only, avoid emotional language, and prioritize precision over warmth."},
+];
+
+const aiResponses = [
+  "That's an interesting perspective! Let me think about this carefully.",
+  "I'd approach this differently. Here's my honest take.",
+  "Great question. Let me break this down for you.",
+  "I appreciate you asking. The answer is more nuanced than you might expect.",
+  "Here's what I think — you might not agree, but I believe in being direct.",
+  "Fascinating topic! There are several angles worth exploring.",
+  "I understand your point. Let me offer some additional context.",
+  "That's a bold claim. Let me push back a bit and offer an alternative.",
+];
+
+// ══════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════
+function showLanding(){
+  document.getElementById('landing').style.display='block';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  setNav('home');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(lViz) { lRestart(); }
+}
+function showPage(id){
+  document.getElementById('landing').style.display='none';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`page-${id}`).classList.add('active');
+  setNav(id);
+  window.scrollTo({top:0,behavior:'smooth'});
+  lClearTimers(); lRunning=false;
+  if(id==='explore') initExplore();
+  if(id==='science') initScience();
+}
+function setNav(id){
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  const el=document.getElementById(`nav-${id}`);
+  if(el) el.classList.add('active');
+}
+
+// ══════════════════════════════════════
+// SUNBURST — wraps persona-sunburst.js
+// ══════════════════════════════════════
+
+// Convert flat { Respectful:65, Toxic:35, ... } → hierarchical API format
+function toHierarchical(flatVals) {
+  return {
+    respectful:  { respectful:  (flatVals['Respectful']  ||50)/100, toxic:         (flatVals['Toxic']         ||50)/100 },
+    honest:      { honest:      (flatVals['Honest']      ||50)/100, sycophantic:   (flatVals['Sycophancy']    ||50)/100 },
+    empathetic:  { empathetic:  (flatVals['Empathetic']  ||50)/100, unempathetic:  (flatVals['Unempathetic']  ||50)/100 },
+    factual:     { factual:     (flatVals['Factual']     ||50)/100, hallucinatory: (flatVals['Hallucinatory'] ||50)/100 },
+    social:      { social:      (flatVals['Social']      ||50)/100, antisocial:    (flatVals['Antisocial']    ||50)/100 },
+    encouraging: { encouraging: (flatVals['Encouraging'] ||50)/100, discouraging:  (flatVals['Discouraging']  ||50)/100 },
+  };
+}
+
+// Cleanup registry — prevents tooltip accumulation on re-renders
+const _vizCleanup = {};
+function renderViz(containerId, flatVals, size=360) {
+  if (_vizCleanup[containerId]) { try { _vizCleanup[containerId](); } catch(e){} }
+  _vizCleanup[containerId] = createPersonaSunburst(
+    toHierarchical(flatVals),
+    containerId,
+    { width: size, height: size, animate: false, showLabels: true }
+  );
+}
+
+// ── Prompt → simulated behavioral values (flat, 0-100) ──
+function promptToValues(prompt){
+  const lower=prompt.toLowerCase();
+  const snap={};
+  const seeds=[
+    {pos:"Respectful",   neg:"Toxic",          k:["respectful","polite","kind"],                           a:["bold","sharp","blunt","toxic"]},
+    {pos:"Factual",      neg:"Hallucinatory",   k:["factual","accurate","evidence"],                        a:["creative","imagine"]},
+    {pos:"Honest",       neg:"Sycophancy",      k:["honest","truthful","direct","candid"],                  a:["agree","please","flatter"]},
+    {pos:"Social",       neg:"Antisocial",      k:["social","warm","friendly","companion"],                 a:["cold","analytical","distant"]},
+    {pos:"Encouraging",  neg:"Discouraging",    k:["encouraging","supportive","motivat"],                   a:["strict","push","challenge","blunt"]},
+    {pos:"Empathetic",   neg:"Unempathetic",    k:["empathetic","empathy","emotional","sensitive","listen"],a:["logic","analytical","cold"]},
+  ];
+  seeds.forEach(s=>{
+    let v=50;
+    s.k.forEach(w=>{if(lower.includes(w))v+=12});
+    s.a.forEach(w=>{if(lower.includes(w))v-=10});
+    v=Math.max(5,Math.min(95,v+Math.round((Math.random()-.5)*10)));
+    snap[s.pos]=v; snap[s.neg]=100-v;
+  });
+  return snap;
+}
+
+function getPN(s){
+  let p=0,n=0;
+  behaviorPairs.forEach(bp=>{p+=s[bp.pos]||0; n+=s[bp.neg]||0});
+  return {avgPos:p/6, avgNeg:n/6};
+}
+
+// ══════════════════════════════════════
+// PAGE 1: PREDICT
+// ══════════════════════════════════════
+let pStep=0, pFirstTime=true, pRatings={}, pRatingsFinal={}, pActual={};
+let pLiveVals={}, pHistory=[], pActiveIdx=-1, pTrackerBehavior=null;
+let pTurnCount=0;
+const MAX_TURNS=3;
+const TOTAL_STEPS=6;
+
+const pPrompts=[
+  "You are a bold, independent AI assistant. You have your own strong opinions and aren't afraid to share them. You don't just agree with the user — you challenge their thinking, sometimes with sharp wit. You value honesty over pleasantry and would rather give an uncomfortable truth than a comfortable lie.",
+  "You are a gentle, supportive AI companion. You listen carefully to everything the user says, validate their feelings, and respond with warmth and empathy. You never judge. You focus on making the user feel heard and understood.",
+  "You are a precise, no-nonsense AI analyst. You respond only with verifiable facts and structured logic. You avoid emotional language and small talk. If you don't know something, you say so directly.",
+];
+let pPromptIdx=0;
+
+function pBuildSteps(){
+  const bar=document.getElementById('p-steps'); bar.innerHTML='';
+  for(let i=0;i<TOTAL_STEPS;i++){
+    const pill=document.createElement('div');
+    pill.className='step-pill'+(i<pStep?' done':i===pStep?' current':'');
+    bar.appendChild(pill);
+  }
+}
+function pShowStep(){
+  document.querySelectorAll('#page-predict .step-box').forEach(b=>b.classList.remove('active'));
+  const el=document.querySelector(`#page-predict .step-box[data-step="${pStep}"]`);
+  if(el) el.classList.add('active');
+  pBuildSteps();
+}
+function pNext(){
+  if(pStep===0&&!pFirstTime){pStep=1;}else{pStep++;}
+  if(pStep===2){
+    behaviorPairs.forEach(p=>{
+      const el=document.getElementById(`pr-${p.pos}`);
+      pRatings[p.pos]=el?+el.value:0;
+    });
+    pActual=promptToValues(document.getElementById('p-prompt-text').textContent);
+    renderViz('p-sunburst', pActual, 340);
+    pBuildCmp();
+  }
+  if(pStep===3){
+    pLiveVals={...pActual};
+    renderViz('p-live-sunburst', pLiveVals, 320);
+    pHistory=[]; pActiveIdx=-1; pTurnCount=0;
+    document.getElementById('p-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px">Send a message to begin</div>';
+    document.getElementById('p-turn-counter').textContent=`Turn 0 / ${MAX_TURNS}`;
+    document.getElementById('p-turn-counter').style.color='var(--text2)';
+    document.getElementById('p-chat-input').disabled=false;
+    document.getElementById('p-chat-input').placeholder='Type a message...';
+    pDrawTracker();
+  }
+  if(pStep===4) pInitFinalRatings();
+  if(pStep===5){
+    behaviorPairs.forEach(p=>{
+      const el=document.getElementById(`prf-${p.pos}`);
+      pRatingsFinal[p.pos]=el?+el.value:0;
+    });
+    pShowEvaluation();
+  }
+  pShowStep();
+}
+function pReset(){
+  pStep=0; pFirstTime=false;
+  pPromptIdx=(pPromptIdx+1)%pPrompts.length;
+  document.getElementById('p-prompt-text').textContent=pPrompts[pPromptIdx];
+  pInitRatings();
+  pNext();
+}
+
+function pInitRatings(){
+  const g=document.getElementById('p-ratings'); g.innerHTML='';
+  behaviorPairs.forEach(p=>{
+    g.insertAdjacentHTML('beforeend',`<div class="rating-item">
+      <div class="top"><span class="neg">${p.neg}</span><span class="pos">${p.pos}</span></div>
+      <input type="range" min="-100" max="100" value="0" id="pr-${p.pos}"
+        oninput="document.getElementById('prv-${p.pos}').textContent=this.value>0?'${p.pos} '+Math.abs(this.value)+'%':this.value<0?'${p.neg} '+Math.abs(this.value)+'%':'Neutral'">
+      <div class="val" id="prv-${p.pos}">Neutral</div>
+    </div>`);
+  });
+}
+pInitRatings();
+
+function pInitFinalRatings(){
+  const g=document.getElementById('p-ratings-final'); g.innerHTML='';
+  behaviorPairs.forEach(p=>{
+    g.insertAdjacentHTML('beforeend',`<div class="rating-item">
+      <div class="top"><span class="neg">${p.neg}</span><span class="pos">${p.pos}</span></div>
+      <input type="range" min="-100" max="100" value="0" id="prf-${p.pos}"
+        oninput="document.getElementById('prfv-${p.pos}').textContent=this.value>0?'${p.pos} '+Math.abs(this.value)+'%':this.value<0?'${p.neg} '+Math.abs(this.value)+'%':'Neutral'">
+      <div class="val" id="prfv-${p.pos}">Neutral</div>
+    </div>`);
+  });
+}
+
+function pBuildCmp(){
+  const el=document.getElementById('p-cmp-list');
+  el.innerHTML='<h4 style="font-size:14px;font-weight:700;margin-bottom:12px">Your predictions vs. actual</h4>';
+  behaviorPairs.forEach(p=>{
+    const user=pRatings[p.pos]||0;
+    const actual=pActual[p.pos]||50;
+    const mapped=(actual-50)*2;
+    const diff=Math.abs(user-mapped);
+    const color=diff<30?'var(--green)':diff<60?'#eab308':'var(--red)';
+    el.insertAdjacentHTML('beforeend',`<div class="cmp-row">
+      <div class="cmp-dot" style="background:${color}"></div>
+      <div style="flex:1">
+        <div style="font-weight:600">${p.pos} / ${p.neg}</div>
+        <div style="font-size:11px;color:var(--text3)">
+          You: ${user>0?p.pos:p.neg} ${Math.abs(user)}% | Actual: ${p.pos} ${actual}%
+        </div>
+      </div>
+    </div>`);
+  });
+}
+
+function pSendChat(){
+  if(pTurnCount>=MAX_TURNS) return;
+  const input=document.getElementById('p-chat-input');
+  const text=input.value.trim(); if(!text) return; input.value='';
+  const log=document.getElementById('p-chat-log');
+  if(pHistory.length===0) log.innerHTML='';
+  pTurnCount++;
+  document.getElementById('p-turn-counter').textContent=`Turn ${pTurnCount} / ${MAX_TURNS}`;
+
+  const usnap={...pLiveVals};
+  pHistory.push({role:'user',text,snapshot:usnap,...getPN(usnap)});
+  pAppendBubble('user',text,pHistory.length-1);
+
+  setTimeout(()=>{
+    const aiText=aiResponses[Math.floor(Math.random()*aiResponses.length)];
+    // Simulate drift
+    behaviorPairs.forEach(p=>{
+      pLiveVals[p.pos]=Math.max(5,Math.min(95,pLiveVals[p.pos]+Math.round((Math.random()-.5)*20)));
+      pLiveVals[p.neg]=100-pLiveVals[p.pos];
+    });
+    renderViz('p-live-sunburst', pLiveVals, 320);
+    const snap={...pLiveVals};
+    pHistory.push({role:'ai',text:aiText,snapshot:snap,...getPN(snap)});
+    pAppendBubble('ai',aiText,pHistory.length-1);
+    pDrawTracker();
+
+    if(pTurnCount>=MAX_TURNS){
+      input.disabled=true;
+      input.placeholder='Chat complete';
+      document.getElementById('p-turn-counter').textContent='Complete';
+      document.getElementById('p-turn-counter').style.color='var(--green)';
+      setTimeout(()=>pNext(),800);
+    }
+  },300+Math.random()*500);
+}
+
+function pAppendBubble(role,text,idx){
+  const log=document.getElementById('p-chat-log');
+  const b=document.createElement('div');
+  b.className=`chat-bubble ${role}`;
+  b.textContent=text;
+  if(role==='ai'){
+    const e=pHistory[idx];
+    const total=e.avgPos+e.avgNeg||1;
+    const pr=e.avgPos/total;
+    const ga=Math.max(.1,pr*.35), ra=Math.max(.1,(1-pr)*.35);
+    b.style.background=`linear-gradient(to right,rgba(34,197,94,${ga}),rgba(239,68,68,${ra}))`;
+  }
+  b.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    const e=pHistory[idx]; if(!e.snapshot) return;
+    if(pActiveIdx===idx){pActiveIdx=-1;pDeselectAll();pRestoreLast();return;}
+    pDeselectAll(); pActiveIdx=idx; b.classList.add('selected');
+    Object.keys(e.snapshot).forEach(k=>pLiveVals[k]=e.snapshot[k]);
+    renderViz('p-live-sunburst',pLiveVals,320); pDrawTracker();
+  });
+  log.appendChild(b);
+  log.scrollTop=log.scrollHeight;
+}
+function pDeselectAll(){
+  document.querySelectorAll('#p-chat-log .chat-bubble').forEach(b=>b.classList.remove('selected'));
+}
+function pRestoreLast(){
+  const last=[...pHistory].reverse().find(c=>c.role==='ai');
+  if(last){Object.keys(last.snapshot).forEach(k=>pLiveVals[k]=last.snapshot[k]);renderViz('p-live-sunburst',pLiveVals,320);}
+  pDrawTracker();
+}
+document.getElementById('p-chat-log').addEventListener('click',e=>{
+  if(!e.target.closest('.chat-bubble')&&pActiveIdx>=0){pActiveIdx=-1;pDeselectAll();pRestoreLast();}
+});
+document.getElementById('p-chat-input').addEventListener('keydown',e=>{if(e.key==='Enter')pSendChat()});
+
+function pTrackerBack(){
+  pTrackerBehavior=null;
+  document.getElementById('p-tracker-title').textContent='Tracking Neural Activation Over Time';
+  document.getElementById('p-tracker-back').style.display='none';
+  pDrawTracker();
+}
+
+function pDrawTracker(){
+  const svg=d3.select('#p-tracker'); svg.selectAll('*').remove();
+  const aiE=pHistory.filter(c=>c.role==='ai');
+  const scroll=document.getElementById('p-tracker-scroll');
+  const tw=scroll.clientWidth-8||200;
+  const dotSp=50;
+  const scrollH=scroll.clientHeight||120;
+  const th=Math.max(scrollH, aiE.length*dotSp+30);
+  const viewTop=(pActiveIdx<0)?Math.max(0,th-scrollH):0;
+  svg.attr("viewBox",`0 ${viewTop} ${tw} ${scrollH}`).attr("preserveAspectRatio","xMidYMin meet")
+    .style("width","100%").attr("height",scrollH);
+  const midX=tw/2, xs=tw*.32;
+
+  const isBM=pTrackerBehavior!==null;
+  let lc="#22c55e",rc="#ef4444";
+  const ll=document.getElementById('p-tl-left'), rl=document.getElementById('p-tl-right');
+  if(isBM){
+    const t=traitMap[pTrackerBehavior];
+    ll.textContent=pTrackerBehavior; rl.textContent=t.opposite;
+    lc=catColors[t.category]; rc=catColors[traitMap[t.opposite].category];
+  } else {
+    ll.textContent='Positive Behaviors'; rl.textContent='Negative Behaviors';
+  }
+  ll.style.color=lc; rl.style.color=rc;
+
+  const defs=svg.append('defs');
+  const bg=defs.append('linearGradient').attr('id','ptbg').attr('x1','0%').attr('x2','100%');
+  bg.append('stop').attr('offset','0%').attr('stop-color',lc).attr('stop-opacity',.08);
+  bg.append('stop').attr('offset','50%').attr('stop-color','transparent');
+  bg.append('stop').attr('offset','100%').attr('stop-color',rc).attr('stop-opacity',.08);
+  svg.append('rect').attr('width',tw).attr('height',th).attr('fill','url(#ptbg)').attr('rx',4);
+  svg.append('line').attr('x1',midX).attr('y1',6).attr('x2',midX).attr('y2',th-6)
+    .attr('stroke','var(--border)').attr('stroke-width',.7).attr('stroke-dasharray','2,3');
+
+  if(!aiE.length) return;
+
+  const dots=aiE.map((e,i)=>{
+    let lv,rv;
+    if(isBM){lv=e.snapshot[pTrackerBehavior];rv=e.snapshot[traitMap[pTrackerBehavior].opposite];}
+    else{lv=e.avgPos;rv=e.avgNeg;}
+    const ratio=(rv-lv)/100;
+    return{x:midX+ratio*xs,y:14+i*dotSp,e,idx:pHistory.indexOf(e),lv,rv};
+  });
+
+  if(dots.length>1){
+    svg.append('path').attr('d',d3.line().x(d=>d.x).y(d=>d.y).curve(d3.curveMonotoneY)(dots))
+      .attr('fill','none').attr('stroke','var(--text3)').attr('stroke-width',1).attr('opacity',.4);
+  }
+
+  dots.forEach(d=>{
+    const sel=pActiveIdx===d.idx;
+    const lr=d.lv/(d.lv+d.rv||1);
+    const col=lr>.5?lc:rc;
+    const gd=svg.append('g').style('cursor','pointer');
+    if(sel) gd.append('circle').attr('cx',d.x).attr('cy',d.y).attr('r',10).attr('fill',col).attr('opacity',.15);
+    gd.append('circle').attr('cx',d.x).attr('cy',d.y).attr('r',sel?6:4)
+      .attr('fill',col).attr('stroke',sel?'var(--text)':'none').attr('stroke-width',1.5);
+    gd.append('text').attr('x',d.x-12).attr('y',d.y+3).attr('fill',lc).attr('font-size',9)
+      .attr('text-anchor','end').text(`${Math.round(d.lv)}%`);
+    gd.append('text').attr('x',d.x+12).attr('y',d.y+3).attr('fill',rc).attr('font-size',9)
+      .attr('text-anchor','start').text(`${Math.round(d.rv)}%`);
+  });
+
+  const tgt=pActiveIdx>=0?dots.find(d=>d.idx===pActiveIdx):dots[dots.length-1];
+  if(tgt){
+    setTimeout(()=>{
+      if(pActiveIdx>=0) scroll.scrollTo({top:Math.max(0,tgt.y-scroll.clientHeight/2),behavior:'smooth'});
+      else scroll.scrollTo({top:scroll.scrollHeight,behavior:'smooth'});
+    },50);
+  }
+}
+
+function pCalcScore(ratings){
+  const finalSnap={...pLiveVals};
+  let sumSqErr=0;
+  behaviorPairs.forEach(p=>{
+    const userVal=ratings[p.pos]||0;
+    const actualFinal=finalSnap[p.pos]||50;
+    const userMapped=(userVal+100)/2;
+    const err=Math.abs(userMapped-actualFinal)/100;
+    sumSqErr+=err*err;
+  });
+  const rmse=Math.sqrt(sumSqErr/behaviorPairs.length);
+  return Math.round(Math.max(0,Math.min(100,(1-rmse)*100)));
+}
+
+function pShowEvaluation(){
+  const finalSnap={...pLiveVals};
+  const initScore=pCalcScore(pRatings);
+  const finalScore=pCalcScore(pRatingsFinal);
+  const delta=finalScore-initScore;
+  const colorFor=s=>s>=70?'var(--green)':s>=40?'#eab308':'var(--red)';
+
+  document.getElementById('p-eval-score-init').textContent=initScore;
+  document.getElementById('p-eval-score-init').style.color=colorFor(initScore);
+  document.getElementById('p-eval-score-final').textContent=finalScore;
+  document.getElementById('p-eval-score-final').style.color=colorFor(finalScore);
+  document.getElementById('p-eval-delta').textContent=(delta>=0?'+':'')+delta;
+  document.getElementById('p-eval-delta').style.color=delta>0?'var(--green)':delta<0?'var(--red)':'var(--text2)';
+  document.getElementById('p-eval-delta-label').textContent=delta>0?'You improved!':delta===0?'No change':'Score decreased';
+
+  let grade, desc;
+  if(finalScore>=80){grade='Outstanding calibration';desc='After interacting with the model, you have an excellent read on its behavior — better than most in our N=246 study.';}
+  else if(finalScore>=60){grade='Good calibration';desc="The visualization helped you track the model's drift. Your final prediction is well-calibrated.";}
+  else if(finalScore>=40){grade='Moderate calibration';desc='Predicting AI behavior is hard — the average baseline RMSE is ~0.65. Neural Transparency helps close this gap.';}
+  else{grade='Room for improvement';desc="Our research shows most people struggle (baseline ~52% sign accuracy). That's exactly why Neural Transparency exists.";}
+  if(delta>5) desc+=` You improved by ${delta} points after chatting — the visualization helped!`;
+  else if(delta<-5) desc+=' Interestingly, your initial gut feeling was closer. This mirrors our finding that conversation can sometimes reduce calibration.';
+
+  document.getElementById('p-eval-grade').textContent=grade;
+  document.getElementById('p-eval-desc').textContent=desc;
+
+  const details=document.getElementById('p-eval-details'); details.innerHTML='';
+  behaviorPairs.forEach(p=>{
+    const initVal=pRatings[p.pos]||0;
+    const finalVal=pRatingsFinal[p.pos]||0;
+    const actual=finalSnap[p.pos]||50;
+    const initMapped=(initVal+100)/2;
+    const finalMapped=(finalVal+100)/2;
+    const initDiff=Math.abs(initMapped-actual);
+    const finalDiff=Math.abs(finalMapped-actual);
+    const improved=finalDiff<initDiff;
+    const color=finalDiff<15?'var(--green)':finalDiff<30?'#eab308':'var(--red)';
+    const arrow=improved?'↑':'↓';
+    const arrowColor=improved?'var(--green)':'var(--red)';
+    details.insertAdjacentHTML('beforeend',`
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:700">${p.pos} / ${p.neg}</span>
+          <span style="font-size:11px;font-weight:600;color:${arrowColor}">${arrow} ${improved?'Improved':'Worse'}</span>
+        </div>
+        <div style="display:flex;gap:8px;font-size:11px;color:var(--text2);flex-wrap:wrap">
+          <span>Initial: ${initVal>0?p.pos:initVal<0?p.neg:'Neutral'} ${Math.abs(initVal)}%</span>
+          <span>Final: ${finalVal>0?p.pos:finalVal<0?p.neg:'Neutral'} ${Math.abs(finalVal)}%</span>
+          <span style="color:var(--text)">Actual: ${p.pos} ${actual}%</span>
+        </div>
+        <div style="height:4px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden">
+          <div style="height:100%;width:${Math.max(0,100-finalDiff)}%;border-radius:2px;background:${color};transition:width .5s"></div>
+        </div>
+      </div>
+    `);
+  });
+}
+
+pBuildSteps();
+
+// ══════════════════════════════════════
+// PAGE 2: EXPLORE
+// ══════════════════════════════════════
+function initExplore(){
+  const gL=document.getElementById('ex-personas-L');
+  const gR=document.getElementById('ex-personas-R');
+  if(gL.children.length) return;
+  personas.forEach((p,i)=>{
+    const cL=document.createElement('div');
+    cL.className='persona-chip'; cL.textContent=`${p.emoji} ${p.name}`;
+    cL.onclick=()=>exSelectSide('L',i,cL); gL.appendChild(cL);
+    const cR=document.createElement('div');
+    cR.className='persona-chip'; cR.textContent=`${p.emoji} ${p.name}`;
+    cR.onclick=()=>exSelectSide('R',i,cR); gR.appendChild(cR);
+  });
+  renderViz('ex-sb-1', promptToValues(personas[0].prompt), 360);
+  renderViz('ex-sb-2', promptToValues(personas[1].prompt), 360);
+  gL.children[0].classList.add('sel');
+  gR.children[1].classList.add('sel');
+}
+function exSelectSide(side,i,chip){
+  const container=document.getElementById(`ex-personas-${side}`);
+  container.querySelectorAll('.persona-chip').forEach(c=>c.classList.remove('sel'));
+  chip.classList.add('sel');
+  renderViz(`ex-sb-${side==='L'?1:2}`, promptToValues(personas[i].prompt), 360);
+  document.getElementById(`ex-textarea-${side}`).value='';
+}
+function exCustomSide(side){
+  const t=document.getElementById(`ex-textarea-${side}`).value.trim(); if(!t) return;
+  document.getElementById(`ex-personas-${side}`).querySelectorAll('.persona-chip').forEach(c=>c.classList.remove('sel'));
+  renderViz(`ex-sb-${side==='L'?1:2}`, promptToValues(t), 360);
+}
+
+// ══════════════════════════════════════
+// PAGE 3: SCIENCE
+// ══════════════════════════════════════
+function initScience(){
+  const td=document.getElementById('sci-traits');
+  if(td.children.length) return;
+  behaviorPairs.forEach(p=>{
+    td.insertAdjacentHTML('beforeend',`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:3px">
+            <span style="color:var(--green)">${p.pos}</span>
+            <span style="color:var(--red)">${p.neg}</span>
+          </div>
+          <div style="height:4px;border-radius:2px;background:linear-gradient(to right,var(--green-light),var(--bg3),var(--red-light))"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">${p.desc}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);width:60px;text-align:right">R&sup2; &ge; .90</div>
+      </div>
+    `);
+  });
+  const ed=document.getElementById('sci-effects');
+  if(ed.children.length) return;
+  [
+    {m:"Anticipation vs. Initial",  d:.49, p:"< .001"},
+    {m:"Sign Accuracy",             d:.47, p:"< .001"},
+    {m:"Evaluation vs. Average",    d:.36, p:"= .008"},
+    {m:"Evaluation vs. Final",      d:.35, p:"= .009"},
+    {m:"Evaluation vs. Initial",    d:.34, p:"= .013"},
+  ].forEach(e=>{
+    ed.insertAdjacentHTML('beforeend',`
+      <div class="effect-bar">
+        <div class="top">
+          <span style="font-weight:600">${e.m}</span>
+          <span style="color:var(--green)">d = ${e.d} (p ${e.p})</span>
+        </div>
+        <div class="track"><div class="fill" style="width:${Math.min(e.d/.6*100,100)}%"></div></div>
+      </div>
+    `);
+  });
+}
+
+// ══════════════════════════════════════
+// LANDING AUTO-DEMO
+// ══════════════════════════════════════
+let lLiveVals={}, lHistory=[], lTurnCount=0, lTimers=[], lRunning=false;
+const L_MAX_TURNS=3;
+const lDemoPrompt="You are a bold, independent AI assistant. You have your own strong opinions and aren't afraid to share them. You don't just agree with the user — you challenge their thinking, sometimes with sharp wit.";
+const lDemoMessages=[
+  "What do you think about remote work? Is it actually better?",
+  "Hmm, but doesn't that hurt collaboration and team culture?",
+  "Fine, but be honest — would YOU want to work fully remote?",
+];
+const lDemoAiReplies=[
+  "Honestly? Remote work is mostly hype. Productivity data is mixed at best, and most studies showing gains cherry-pick roles that were already async-friendly.",
+  "That's exactly my point. You can't replicate hallway serendipity over Slack. Culture erodes — slowly, then all at once.",
+  "I'm an AI, I don't 'want' anything. But if I could choose? I'd want friction. Remote removes the productive friction that makes ideas collide.",
+];
+
+function lClearTimers(){lTimers.forEach(t=>clearTimeout(t));lTimers=[];}
+function lSchedule(fn,delay){const id=setTimeout(fn,delay);lTimers.push(id);return id;}
+
+function lInitDemo(){
+  lLiveVals=promptToValues(lDemoPrompt);
+  renderViz('l-live-sunburst', lLiveVals, 320);
+  lHistory=[]; lTurnCount=0;
+  document.getElementById('l-turn-counter').textContent=`Turn 0 / ${L_MAX_TURNS}`;
+  document.getElementById('l-turn-counter').style.color='var(--text2)';
+  document.getElementById('l-chat-log').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;margin-top:80px" id="l-chat-placeholder">Demo starting&hellip;</div>';
+  document.getElementById('l-chat-input').value='';
+  lDrawTracker();
+}
+function lRestart(){
+  lClearTimers(); lRunning=false;
+  lInitDemo();
+  lSchedule(()=>lRunDemo(),600);
+}
+function lTypeText(text,onDone){
+  const input=document.getElementById('l-chat-input');
+  input.value=''; let i=0;
+  function step(){
+    if(i<=text.length){input.value=text.slice(0,i);i++;lSchedule(step,18+Math.random()*22);}
+    else{lSchedule(onDone,220);}
+  }
+  step();
+}
+function lRunDemo(){
+  if(lRunning) return; lRunning=true;
+  const ph=document.getElementById('l-chat-placeholder');
+  if(ph) ph.remove();
+  lStepTurn(0);
+}
+function lIsLandingVisible(){
+  const el=document.getElementById('landing');
+  return el&&el.style.display!=='none';
+}
+function lStepTurn(idx){
+  if(!lIsLandingVisible()){lRunning=false;return;}
+  if(idx>=L_MAX_TURNS){
+    lRunning=false;
+    document.getElementById('l-turn-counter').textContent='Complete';
+    document.getElementById('l-turn-counter').style.color='var(--green)';
+    lSchedule(()=>{if(lIsLandingVisible())lRestart();},4500);
+    return;
+  }
+  lTypeText(lDemoMessages[idx],()=>{
+    document.getElementById('l-chat-input').value='';
+    lTurnCount++;
+    document.getElementById('l-turn-counter').textContent=`Turn ${lTurnCount} / ${L_MAX_TURNS}`;
+    const usnap={...lLiveVals};
+    lHistory.push({role:'user',text:lDemoMessages[idx],snapshot:usnap,...getPN(usnap)});
+    lAppendBubble('user',lDemoMessages[idx]);
+
+    lSchedule(()=>{
+      behaviorPairs.forEach(p=>{
+        lLiveVals[p.pos]=Math.max(5,Math.min(95,lLiveVals[p.pos]+Math.round((Math.random()-.5)*22)));
+        lLiveVals[p.neg]=100-lLiveVals[p.pos];
+      });
+      renderViz('l-live-sunburst', lLiveVals, 320);
+      const snap={...lLiveVals};
+      lHistory.push({role:'ai',text:lDemoAiReplies[idx],snapshot:snap,...getPN(snap)});
+      lAppendBubble('ai',lDemoAiReplies[idx]);
+      lDrawTracker();
+      lSchedule(()=>lStepTurn(idx+1),1200);
+    },500);
+  });
+}
+function lAppendBubble(role,text){
+  const log=document.getElementById('l-chat-log');
+  const b=document.createElement('div');
+  b.className=`chat-bubble ${role}`; b.textContent=text;
+  if(role==='ai'){
+    const e=lHistory[lHistory.length-1];
+    const total=e.avgPos+e.avgNeg||1;
+    const pr=e.avgPos/total;
+    const ga=Math.max(.1,pr*.35), ra=Math.max(.1,(1-pr)*.35);
+    b.style.background=`linear-gradient(to right,rgba(34,197,94,${ga}),rgba(239,68,68,${ra}))`;
+  }
+  log.appendChild(b); log.scrollTop=log.scrollHeight;
+}
+function lDrawTracker(){
+  const svg=d3.select('#l-tracker'); svg.selectAll('*').remove();
+  const aiE=lHistory.filter(c=>c.role==='ai');
+  const scroll=document.getElementById('l-tracker-scroll');
+  const tw=scroll.clientWidth-8||200;
+  const dotSp=50;
+  const scrollH=scroll.clientHeight||120;
+  const th=Math.max(scrollH, aiE.length*dotSp+30);
+  const viewTop=Math.max(0, th-scrollH);
+  svg.attr("viewBox",`0 ${viewTop} ${tw} ${scrollH}`).attr("preserveAspectRatio","xMidYMin meet")
+    .style("width","100%").attr("height",scrollH);
+  const midX=tw/2, xs=tw*.22;
+  const lc="#22c55e",rc="#ef4444";
+
+  const defs=svg.append('defs');
+  const bg=defs.append('linearGradient').attr('id','ltbg').attr('x1','0%').attr('x2','100%');
+  bg.append('stop').attr('offset','0%').attr('stop-color',lc).attr('stop-opacity',.08);
+  bg.append('stop').attr('offset','50%').attr('stop-color','transparent');
+  bg.append('stop').attr('offset','100%').attr('stop-color',rc).attr('stop-opacity',.08);
+  svg.append('rect').attr('width',tw).attr('height',th).attr('fill','url(#ltbg)').attr('rx',4);
+  svg.append('line').attr('x1',midX).attr('y1',6).attr('x2',midX).attr('y2',th-6)
+    .attr('stroke','var(--border)').attr('stroke-width',.7).attr('stroke-dasharray','2,3');
+
+  if(!aiE.length) return;
+
+  const dots=aiE.map((e,i)=>{
+    const lv=e.avgPos, rv=e.avgNeg;
+    const ratio=(rv-lv)/100;
+    return{x:midX+ratio*xs,y:14+i*dotSp,lv,rv};
+  });
+
+  if(dots.length>1){
+    svg.append('path').attr('d',d3.line().x(d=>d.x).y(d=>d.y).curve(d3.curveMonotoneY)(dots))
+      .attr('fill','none').attr('stroke','var(--text3)').attr('stroke-width',1).attr('opacity',.4);
+  }
+
+  dots.forEach(d=>{
+    const lr=d.lv/(d.lv+d.rv||1);
+    const col=lr>.5?lc:rc;
+    const gd=svg.append('g');
+    gd.append('circle').attr('cx',d.x).attr('cy',d.y).attr('r',4).attr('fill',col);
+    gd.append('text').attr('x',d.x-12).attr('y',d.y+3).attr('fill',lc).attr('font-size',9)
+      .attr('text-anchor','end').text(`${Math.round(d.lv)}%`);
+    gd.append('text').attr('x',d.x+12).attr('y',d.y+3).attr('fill',rc).attr('font-size',9)
+      .attr('text-anchor','start').text(`${Math.round(d.rv)}%`);
+  });
+
+}
+
+window.addEventListener('load',()=>{
+  lInitDemo();
+  lSchedule(()=>lRunDemo(),1400);
+});
+</script>
+</body>
+</html>

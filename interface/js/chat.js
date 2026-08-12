@@ -11,31 +11,50 @@ const firebaseConfig = {
 };
 
 // Import Firebase functions from v1.0 (auto-initializes)
-import { 
-    writeRealtimeDatabase, writeURLParameters, readRealtimeDatabase,
-    blockRandomization, finalizeBlockRandomization, firebaseUserId 
-} from "./firebasepsych1.0.js";
+// Conditional: when FIREBASE_ENABLED is false, provide no-op stubs
+let writeRealtimeDatabase, writeURLParameters, readRealtimeDatabase,
+    blockRandomization, finalizeBlockRandomization, firebaseUserId;
+if (window.FIREBASE_ENABLED !== false) {
+    ({ writeRealtimeDatabase, writeURLParameters, readRealtimeDatabase,
+       blockRandomization, finalizeBlockRandomization, firebaseUserId
+    } = await import("./firebasepsych1.0.js"));
+} else {
+    writeRealtimeDatabase = async () => {};
+    writeURLParameters = async () => {};
+    readRealtimeDatabase = async () => ({});
+    blockRandomization = async () => 0;
+    finalizeBlockRandomization = async () => {};
+    firebaseUserId = 'demo-user-' + Date.now();
+    console.log('🔥 Firebase DISABLED — all writes are no-ops');
+}
 
-// Clear sessionStorage on EVERY load to ensure fresh experience
-// But preserve firebaseUserId which is critical for data collection
-const preservedFirebaseUserId = sessionStorage.getItem('firebaseUserId');
-sessionStorage.clear();
+// Clear only chat-related sessionStorage keys to ensure fresh chat experience.
+// IMPORTANT: Do NOT clear experiment-level keys (firebaseUserId, visualizationCondition,
+// conditionAssignmentMethod, currentSession, promptOrder) — these must persist across
+// page navigations within the experiment.
+const chatSessionKeys = ['instructionsShown'];
+chatSessionKeys.forEach(key => sessionStorage.removeItem(key));
 
-// Store firebaseUserId in sessionStorage for access by other pages (like complete.html)
-sessionStorage.setItem('firebaseUserId', preservedFirebaseUserId || firebaseUserId);
+// Ensure firebaseUserId is in sessionStorage for access by other pages
+if (!sessionStorage.getItem('firebaseUserId') && firebaseUserId) {
+    sessionStorage.setItem('firebaseUserId', firebaseUserId);
+}
 
-// Clear localStorage states that would prevent fresh experience on reload
+// Clear localStorage states so each session starts fresh
 localStorage.removeItem('selectedAvatar');
-localStorage.removeItem('preTaskSurveyCompleted');
-localStorage.removeItem('preTaskSurveyData');
+localStorage.removeItem('customSystemPrompt');
 
 // Write a simple test case to the database
 let studyId;
-if (DEBUG){
-    studyId = 'pilot-oct9-session3-debug';
-} else {
-    studyId = 'pilot-oct9-session3';
-}
+// studyId='multiturn-pilot1';
+studyId='multiturn-run4'
+// if (DEBUG){
+//     studyId = 'multiturn';
+// } else {
+//     studyId = 'exp2';
+// }
+// Expose globally so task1/task3/task4 pages can write to the same study path
+window.studyId = studyId;
 
 const testPath = studyId + '/participantData/' + firebaseUserId + '/testMessage';
 const testValue = {
@@ -54,75 +73,89 @@ await writeURLParameters(urlParamsPath);
 const conditionPath = studyId + '/participantData/' + firebaseUserId + '/experimentCondition';
 const conditionData = {
     visualizationCondition: window.experimentSettings.visualizationCondition,
-    conditionName: window.experimentSettings.visualizationCondition === 0 ? 'control' : 'experimental',
+    conditionName: ['control', 'single_turn', 'multi_turn'][window.experimentSettings.visualizationCondition] || 'unknown',
     assignmentMethod: sessionStorage.getItem('conditionAssignmentMethod') || 'unknown',
+    promptOrder: window.experimentSettings.promptOrder,
+    session1PromptType: window.getSessionPromptType(1),
+    session2PromptType: window.getSessionPromptType(2),
     timestamp: new Date().toISOString()
 };
 
 // IMPORTANT: Log experiment condition explicitly
 console.log('=== EXPERIMENT CONDITION ===');
 console.log('Condition:', conditionData.conditionName.toUpperCase());
-console.log('Visualization:', conditionData.visualizationCondition === 0 ? 'DISABLED (Control)' : 'ENABLED (Experimental)');
+console.log('Visualization:', ['DISABLED (Control)', 'STATIC (Single-turn)', 'DYNAMIC (Multi-turn)'][conditionData.visualizationCondition] || 'UNKNOWN');
 console.log('Assignment Method:', conditionData.assignmentMethod);
 console.log('============================');
 
 await writeRealtimeDatabase(conditionPath, conditionData);
 
-// Enhanced Chat Interface JavaScript with System Prompt Configuration
-// Initialize global variables if they don't exist
-if (typeof window.messageIdCounter === 'undefined') {
-    window.messageIdCounter = 2; // Start from 2 since we have initial message with ID 1
-}
-if (typeof window.conversationHistory === 'undefined') {
-    window.conversationHistory = []; // Store conversation history for API calls
-}
-// Track sunburst layout mode
-if (typeof window.sunburstOppositeLayout === 'undefined') {
-    window.sunburstOppositeLayout = false; // Default: mirrored (shows neutral category at bottom)
-}
-// Store current persona data for redrawing
-if (typeof window.currentPersonaData === 'undefined') {
-    window.currentPersonaData = null;
-}
-if (typeof window.lastSystemPrompt === 'undefined') {
-    window.lastSystemPrompt = null; // Track the last system prompt used
-}
-// Track if system prompt has been submitted for current version
-if (typeof window.systemPromptSubmitted === 'undefined') {
-    window.systemPromptSubmitted = false;
-}
-// Track if persona has been checked for current system prompt
-if (typeof window.personaCheckedForCurrentPrompt === 'undefined') {
-    window.personaCheckedForCurrentPrompt = false;
-}
-// Track if prompt has been edited since last submission
-if (typeof window.promptHasChangedSinceSubmit === 'undefined') {
-    window.promptHasChangedSinceSubmit = false;
+// ── Flush pending writes from pre-chat pages (preSurvey, promptReading, MBA) ──
+// These were queued in sessionStorage because those pages can't import modules.
+const pendingWrites = JSON.parse(sessionStorage.getItem('_pendingWrites') || '[]');
+if (pendingWrites.length > 0) {
+    console.log('📤 Flushing ' + pendingWrites.length + ' pending writes to Firebase...');
+    for (const entry of pendingWrites) {
+        const fullPath = studyId + '/participantData/' + firebaseUserId + '/' + entry.path;
+        try {
+            await writeRealtimeDatabase(fullPath, entry.data);
+            console.log('  ✅ Flushed:', entry.path);
+        } catch (e) {
+            console.error('  ❌ Failed to flush:', entry.path, e);
+        }
+    }
+    // Clear the queue
+    sessionStorage.removeItem('_pendingWrites');
+    window._pendingWrites = [];
+    console.log('📤 Flush complete');
 }
 
-// Timer variables
-if (typeof window.timerStartTime === 'undefined') {
-    window.timerStartTime = null;
-}
-if (typeof window.timerInterval === 'undefined') {
-    window.timerInterval = null;
-}
-if (typeof window.timerDuration === 'undefined') {
-    // Check for debug mode via URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const debugTimer = urlParams.get('debugTimer') === 'true';
-    window.timerDuration = debugTimer ? 10 : 600; // 10 seconds for debug, 10 minutes (600s) for production
-}
-if (typeof window.timerExpired === 'undefined') {
-    window.timerExpired = false;
-}
+// Replace queuing writeTaskData with direct version now that we have module access
+window.writeTaskData = async function(path, data) {
+    var uid = firebaseUserId || sessionStorage.getItem('firebaseUserId') || 'uid-unknown';
+    var fullPath = studyId + '/participantData/' + uid + '/' + path;
+    console.log('writeTaskData (direct):', fullPath);
+    await writeRealtimeDatabase(fullPath, data);
+};
+
+// ── Interaction logger: lightweight Firebase writes for UI analytics ──
+window.logInteraction = async function(event, detail) {
+    try {
+        const session = window.getCurrentSession ? window.getCurrentSession() : null;
+        const path = studyId + '/participantData/' + firebaseUserId + '/session' + session + '/interactionLog/' + Date.now();
+        await writeRealtimeDatabase(path, {
+            event: event,
+            detail: detail || {},
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        // Silent fail — don't disrupt UX for analytics
+    }
+};
+
+// Enhanced Chat Interface JavaScript with System Prompt Configuration
+// Always reset chat state on load so each session starts fresh
+window.messageIdCounter = 1;
+window.conversationHistory = [];
+window.personaHistory = [];
+window.personaTurnMessageIds = [];
+window.lastUserMessageId = null;
+window.currentSwing = null;
+window.activeDriftTrait = null;
+window.sunburstOppositeLayout = false;
+window.currentPersonaData = null;
+window.lastSystemPrompt = null;
+window.systemPromptSubmitted = false;
+window.personaCheckedForCurrentPrompt = false;
+window.promptHasChangedSinceSubmit = false;
+
+// Chat ended flag — tracks whether predict-behavior flow has been triggered
+window.chatEnded = false;
 
 // Note: API configuration is loaded from config-unified.js file
 
 // Avatar selection state
-if (typeof window.selectedAvatar === 'undefined') {
-    window.selectedAvatar = null; // Will store the avatar image path
-}
+window.selectedAvatar = null; // Will store the avatar image path
 
 $(document).ready(function() {
     // Initialize the dynamic interface
@@ -139,6 +172,7 @@ function initializeDynamicInterface() {
     const typingIndicator = $('#typingIndicator');
     const attachBtn = $('#attachBtn');
     const imageBtn = $('#imageBtn');
+    let isWaiting = false;
 
     // System prompt configuration elements
     const resetConfig = $('#resetConfig');
@@ -163,110 +197,63 @@ function initializeDynamicInterface() {
     
     // SessionStorage is already cleared at the top of this file for fresh experience on every load
     
-    // Initialize avatar selection first
+    // Auto-assign a random avatar and go straight to system prompt config
     initializeAvatarSelection();
-    
+
     // Initialize system prompt configuration
     initializeSystemPromptConfig();
-    
+
     // Initialize chat functionality
     initializeChatFunctionality();
-    
-    // Show avatar instruction modal when interface loads
-    setTimeout(() => {
-        window.showInstructionModal('avatar');
-    }, 50);
 
-    function initializeAvatarSelection() {
-        const avatarGrid = $('.avatar-grid');
-        const confirmAvatarBtn = $('#confirmAvatarBtn');
-        
-        // Use settings from global settings object
-        const skipSurvey = window.experimentSettings.skipSurvey;
-        
-        if (skipSurvey) {
-            localStorage.setItem('preTaskSurveyCompleted', 'true');
-        }
-        
-        // Generate 12 avatar options
+    async function initializeAvatarSelection() {
+        // Avatar selection step removed — pick randomly and proceed immediately
         const avatarCount = 12;
-        let avatarHTML = '';
-        
-        for (let i = 1; i <= avatarCount; i++) {
-            const avatarPath = `Avatar/avatar-${i}.jpg`;
-            avatarHTML += `
-                <div class="avatar-option" data-avatar="${avatarPath}">
-                    <img src="${avatarPath}" alt="Avatar ${i}" />
-                    <div class="avatar-check">
-                        <i class="fas fa-check"></i>
-                    </div>
-                </div>
-            `;
-        }
-        
-        avatarGrid.html(avatarHTML);
-        
-        // Handle avatar selection
-        $('.avatar-option').on('click', async function() {
-            // Remove selection from all avatars
-            $('.avatar-option').css('border-color', 'transparent');
-            $('.avatar-check').hide();
-            
-            // Select this avatar
-            $(this).css('border-color', '#2196F3');
-            $(this).find('.avatar-check').css('display', 'flex');
-            
-            // Store selected avatar
-            const avatarPath = $(this).data('avatar');
-            window.selectedAvatar = avatarPath;
-            
-            // Enable confirm button
-            confirmAvatarBtn.prop('disabled', false);
-        });
-        
-        // Confirm avatar selection
-        confirmAvatarBtn.on('click', async function() {
-            if (!window.selectedAvatar) {
-                alert('Please select an avatar first.');
-                return;
-            }
-            
-            // Save to localStorage
-            localStorage.setItem('selectedAvatar', window.selectedAvatar);
-            
-            // Log to Firebase
-            const avatarLogPath = studyId + '/participantData/' + firebaseUserId + '/selectedAvatar';
-            const avatarData = {
-                avatar: window.selectedAvatar,
-                timestamp: new Date().toISOString()
-            };
-            await writeRealtimeDatabase(avatarLogPath, avatarData);
-            
-            // Switch to system prompt configuration
-            switchToSystemPromptConfig();
-        });
+        const randomIndex = Math.floor(Math.random() * avatarCount) + 1;
+        const avatarPath = `Avatar/avatar-${randomIndex}.jpg`;
+
+        window.selectedAvatar = avatarPath;
+        localStorage.setItem('selectedAvatar', avatarPath);
+
+        // Go directly to system prompt config (hide avatar screen, show prompt screen)
+        $('#avatarSelectionInterface').hide();
+        // switchToSystemPromptConfig(); // "Your System Prompt" page skipped — go straight to chat
+        switchToChat();
     }
 
     function initializeSystemPromptConfig() {
         // Get the system prompt input
         const systemPromptInput = $('#systemPromptInput');
 
-        // Initialize survey
-        initializePreTaskSurvey();
-
         // LocalStorage already cleared at the top of this file for fresh experience
-        
-        // Get visualization condition from settings
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
+
+        // Get effective visualization condition (Session 1 = always 0, Session 2 = real condition)
+        const visualizationCondition = window.getEffectiveVisualizationCondition();
+        const currentSession = window.getCurrentSession();
+
         // IMPORTANT: Log condition explicitly
         console.log('=== SYSTEM PROMPT CONFIG INITIALIZATION ===');
-        console.log('Visualization Condition:', visualizationCondition === 0 ? 'CONTROL (no-viz)' : 'EXPERIMENTAL (viz)');
+        console.log('Session:', currentSession, currentSession === 1 ? '(BASELINE)' : '(EXPERIMENTAL)');
+        console.log('Effective Visualization Condition:', ['CONTROL (no-viz)', 'SINGLE-TURN (static viz)', 'MULTI-TURN (dynamic viz)'][visualizationCondition] || 'UNKNOWN');
         console.log('==========================================');
+
+        // ── Pre-fill system prompt from session-specific content ──────────────
+        const sessionPrompt = window.getSessionPromptText(currentSession);
+        systemPromptInput.val(sessionPrompt).prop('readonly', true);
+
+        // Hide editing controls — prompt is pre-determined
+        $('#characterCounter').hide();
+        $('#resetConfig').hide();
+
+        // Persona vectors are pre-loaded and cached in preloadModels() — no extra fetch needed here
+        if (sessionPrompt && window.cachedPersonaVectors && window.cachedPersonaVectors[sessionPrompt]) {
+            window.backgroundPersonaData = window.cachedPersonaVectors[sessionPrompt];
+            console.log('✅ Using cached persona analysis from preload');
+        }
 
         // Always start with Check/Test Persona buttons hidden
         $('.persona-check-buttons').hide();
-        
+
         // Hide visualization elements if in control condition
         if (visualizationCondition === 0) {
             // Hide persona visualization container permanently
@@ -276,7 +263,7 @@ function initializeDynamicInterface() {
             // Hide toggle layout button
             $('#toggleLayoutBtn').remove();
         }
-        
+
         // Check for debug mode - hide Test Persona button if not in debug mode
         const urlParams = new URLSearchParams(window.location.search);
         const debugMode = urlParams.get('debug') === 'true';
@@ -291,36 +278,11 @@ function initializeDynamicInterface() {
         const updateCharacterCounter = function() {
             const currentLength = systemPromptInput.val().length;
             $('#charCount').text(currentLength);
-            
-            // Mark that system prompt needs to be resubmitted if it's changed
-            if (window.systemPromptSubmitted) {
-                // System prompt has changed after submission, require resubmission
-                window.systemPromptSubmitted = false;
-                window.personaCheckedForCurrentPrompt = false;
-                window.promptHasChangedSinceSubmit = true;
-                
-                // Show Submit Prompt button
-                $('#submitPromptBtn').show();
-                
-                // Disable Check/Test Persona buttons (viz condition only)
-                $('.persona-check-buttons').hide();
-                
-                // Disable Start Chat until new prompt is submitted and persona is checked
-                $('#startChatBtn').prop('disabled', true);
-            }
-            
-            // Button is always visible but disabled until character requirement is met
-            // Update color and button state based on whether minimum is met (or bypassed)
+
             if (shortenPrompt || currentLength >= MIN_CHAR_LENGTH) {
                 $('#characterCounter').css('color', 'var(--success-color, #28a745)');
-                $('#submitPromptBtn').prop('disabled', false);
             } else {
                 $('#characterCounter').css('color', 'var(--text-secondary)');
-                $('#submitPromptBtn').prop('disabled', true);
-            }
-            // Always show the button (unless it was explicitly hidden after submission)
-            if (!$('.persona-check-buttons').is(':visible')) {
-                $('#submitPromptBtn').show();
             }
         };
         
@@ -331,115 +293,32 @@ function initializeDynamicInterface() {
         
         // Initialize character counter on page load
         updateCharacterCounter();
-        
+
         // Update character counter on input
         systemPromptInput.on('input', updateCharacterCounter);
 
-        // Check if survey has been completed
-        const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
-        
-        if (!surveyCompleted) {
-            // Disable all buttons except Submit Prompt
-            disableInterfaceButtons();
-            // Show initial placeholder (survey will show after Submit Prompt clicked)
+        // Preload everything based on condition — no Submit Prompt button needed
+        window.systemPromptSubmitted = true;
+        window.promptHasChangedSinceSubmit = false;
+
+        if (visualizationCondition === 0) {
+            // Control: auto-run persona check, show trait definitions, enable Start Chat
             $('#initialPlaceholder').show();
-            $('#preTaskSurveyContainer').hide();
             $('#personaVisualization').hide();
-            // Explicitly hide Check/Test Persona buttons until survey is complete
-            $('.persona-check-buttons').hide();
+            autoSubmitPersonaCheck(sessionPrompt);
         } else {
-            // Survey already completed - show Submit Prompt initially so user can submit their prompt
-            $('#submitPromptBtn').show();
+            // Viz conditions: show Check Persona button immediately
             $('#initialPlaceholder').show();
             $('#initialPlaceholder').html(`
                 <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                    <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to continue</p>
+                    <i class="fas fa-arrow-right" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to see your persona analysis</p>
                 </div>
             `);
-            $('#preTaskSurveyContainer').hide();
             $('#personaVisualization').hide();
-            // Hide Check/Test Persona buttons initially
-            $('.persona-check-buttons').hide();
-            // Disable Start Chat until persona is checked
+            $('.persona-check-buttons').show();
             $('#startChatBtn').prop('disabled', true);
         }
-
-        // Submit Prompt button - triggers survey
-        $('#submitPromptBtn').on('click', function() {
-            const systemPrompt = $('#systemPromptInput').val();
-            
-            if (!systemPrompt.trim()) {
-                alert('Please enter a system prompt first.');
-                return;
-            }
-            
-            // Check minimum length unless bypassed
-            if (!shortenPrompt && systemPrompt.length < MIN_CHAR_LENGTH) {
-                alert(`Please enter at least ${MIN_CHAR_LENGTH} characters. Current length: ${systemPrompt.length}`);
-                return;
-            }
-            
-            // Mark system prompt as submitted
-            window.systemPromptSubmitted = true;
-            window.promptHasChangedSinceSubmit = false; // Reset change tracking
-            
-            // Reset persona checked flag since we have a new/updated prompt
-            window.personaCheckedForCurrentPrompt = false;
-            
-            // Keep Start Chat disabled until persona is checked (or auto-unlocked in no-viz)
-            $('#startChatBtn').prop('disabled', true);
-            
-            // Check if survey was already completed OR if skipSurvey mode is on
-            const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
-            const skipSurvey = window.experimentSettings.skipSurvey;
-            const visualizationCondition = window.experimentSettings.visualizationCondition;
-            const isDemoMode = window.experimentSettings.demo;
-            
-            if (surveyCompleted || skipSurvey) {
-                if (skipSurvey) {
-                    localStorage.setItem('preTaskSurveyCompleted', 'true');
-                    if (isDemoMode) {
-                        console.log('🎬 Demo mode: Skipping pre-task survey, proceeding to visualization');
-                    }
-                }
-                
-                // Hide Submit button
-                $('#submitPromptBtn').hide();
-                
-                // Check visualization condition
-                if (visualizationCondition === 0) {
-                    // NO-VIZ: Auto-submit flow
-                    // Keep placeholder visible for trait definitions
-                    $('#initialPlaceholder').show();
-                    autoSubmitPersonaCheck(systemPrompt);
-                    // Enable interface buttons (autoSubmitPersonaCheck handles Start Chat)
-                    enableInterfaceButtons();
-                } else {
-                    // VIZ: Show Check Persona buttons
-                    $('.persona-check-buttons').show();
-                    $('#initialPlaceholder').show();
-                    $('#initialPlaceholder').html(`
-                        <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                            <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to analyze and enable chat</p>
-                        </div>
-                    `);
-                    // Enable interface buttons (except Start Chat which requires persona check)
-                    enableInterfaceButtons();
-                    $('#startChatBtn').prop('disabled', true); // Keep disabled until persona check
-                }
-                
-                return;
-            }
-            
-            // Hide placeholder and show survey
-            $('#initialPlaceholder').hide();
-            renderInlineSurvey();
-            
-            // Hide Submit Prompt button after clicking
-            $('#submitPromptBtn').prop('disabled', true).hide();
-        });
 
         // Reset configuration
         resetConfig.on('click', async function() {
@@ -451,29 +330,22 @@ function initializeDynamicInterface() {
             window.personaCheckedForCurrentPrompt = false;
             window.promptHasChangedSinceSubmit = false;
             
-            // Hide Check/Test Persona buttons and show Submit Prompt
+            // Hide Check/Test Persona buttons
             $('.persona-check-buttons').hide();
-            $('#submitPromptBtn').show();
             
             // Disable Start Chat button
             $('#startChatBtn').prop('disabled', true);
             
             // Reset visualizations (only if in viz condition)
-            const visualizationCondition = window.experimentSettings.visualizationCondition;
-            if (visualizationCondition === 1) {
+            const visualizationCondition = window.getEffectiveVisualizationCondition();
+            if (visualizationCondition >= 1) {
                 $('#personaVisualization').hide();
             }
             
             $('#initialPlaceholder').show();
-            $('#initialPlaceholder').html(`
-                <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                    <p style="margin: 0; font-size: 1.1rem;">Click "Submit Prompt" to begin assessment</p>
-                </div>
-            `);
-            
+
             // Log this reset action to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: '',
                 action: 'reset_to_empty',
@@ -481,8 +353,11 @@ function initializeDynamicInterface() {
             });
         });
 
+        // Submit Prompt button removed — persona preloaded automatically on init
+
         // Start chat
         startChatBtn.on('click', async function() {
+            window.logInteraction('prompt_toggle', { direction: 'prompt_to_chat' });
             const systemPrompt = $('#systemPromptInput').val();
             
             // Check if system prompt has changed
@@ -490,7 +365,7 @@ function initializeDynamicInterface() {
             
             if (promptChanged) {
                 // Log the chat history clear event to Firebase
-                const clearLogPath = studyId + '/participantData/' + firebaseUserId + '/chatHistoryClearLog/' + Date.now();
+                const clearLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/chatHistoryClearLog/' + Date.now();
                 await writeRealtimeDatabase(clearLogPath, {
                     previousPrompt: window.lastSystemPrompt,
                     newPrompt: systemPrompt,
@@ -503,32 +378,8 @@ function initializeDynamicInterface() {
                 // Clear chat UI
                 const messagesContainer = $('#messagesContainer');
                 messagesContainer.empty();
-                
-                // Get selected avatar for welcome message
-                const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-                let avatarHtml;
-                if (selectedAvatar) {
-                    avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-                } else {
-                    avatarHtml = '<i class="fas fa-robot"></i>';
-                }
-                
-                // Add welcome message back
-                const welcomeMessage = `
-                    <div class="message assistant-message" data-message-id="1">
-                        <div class="message-avatar">
-                            ${avatarHtml}
-                        </div>
-                        <div class="message-content">
-                            <div class="message-text">
-                                Hi there!
-                            </div>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.append(welcomeMessage);
                 // Reset message counter
-                window.messageIdCounter = 2;
+                window.messageIdCounter = 1;
             }
             
             // Update last system prompt
@@ -538,7 +389,7 @@ function initializeDynamicInterface() {
             localStorage.setItem('customSystemPrompt', systemPrompt);
             
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'start_chat',
@@ -546,52 +397,54 @@ function initializeDynamicInterface() {
             });
             
             // Save system prompt to Firebase
-            const systemPromptPath = studyId + '/participantData/' + firebaseUserId + '/systemPrompt';
+            const systemPromptPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPrompt';
             await writeRealtimeDatabase(systemPromptPath, {
                 prompt: systemPrompt,
                 timestamp: new Date().toISOString()
             });
             
-            // Start timer if not already started
-            if (window.timerStartTime === null) {
-                startTimer();
-            }
-            
+            // Show the End Chat button
+            $('#endChatBar').show();
+
             // Switch to chat interface
             switchToChat();
         });
 
-        // Check Persona button - analyze persona with API
+        // Check Persona button - analyze persona with API (disabled after first use to prevent duplicate history entries)
         $('#checkPersonaBtn').on('click', async function() {
             // Remove focus from button to return to default state
             $(this).blur();
-            
+
+            // Prevent multiple calls — disable immediately on first click
+            $(this).prop('disabled', true).text('Analyzing...');
+
             // Get the current system prompt from the input
             const systemPrompt = $('#systemPromptInput').val();
-            
+
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'check_persona',
                 timestamp: new Date().toISOString()
             });
-            
+
             // Mark that persona has been checked for current prompt
             window.personaCheckedForCurrentPrompt = true;
-            
+
             // Enable Start Chat button now that persona is checked
             $('#startChatBtn').prop('disabled', false);
-            
+
             // Hide placeholder, show persona visualization area
             $('#initialPlaceholder').hide();
             $('#personaVisualization').show();
-            
+
             // Show visualization explanation modal
             window.showVisualizationExplanation();
-            
+
             // Call persona check
-            checkPersona(systemPrompt);
+            await checkPersona(systemPrompt);
+            $('#checkPersonaBtn').text('Persona Analyzed');
         });
 
         // Test Persona button - generate mock data
@@ -603,7 +456,7 @@ function initializeDynamicInterface() {
             const systemPrompt = $('#systemPromptInput').val();
             
             // Log this system prompt attempt to Firebase
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: systemPrompt,
                 action: 'test_persona',
@@ -662,10 +515,13 @@ function initializeDynamicInterface() {
             
             // Redraw the sunburst if we have persona data
             if (window.currentPersonaData && typeof createPersonaSunburst === 'function') {
+                const configChartEl = document.getElementById('personaChart');
+                const cw = Math.max(configChartEl ? configChartEl.clientWidth : 700, 300);
+                const ch = Math.max(configChartEl ? configChartEl.clientHeight : 700, 300);
                 createPersonaSunburst(window.currentPersonaData, 'personaChartSunburst', {
-                    width: 380,
-                    height: 380,
-                    innerRadius: 45,
+                    width: cw,
+                    height: ch,
+                    innerRadius: 65,
                     animate: true,
                     oppositeLayout: window.sunburstOppositeLayout
                 });
@@ -683,8 +539,38 @@ function initializeDynamicInterface() {
             $('#personaPlaceholder').show();
         };
 
+        // The drift panel's close (✕) handler was removed along with the button — the panel
+        // stays open for the whole conversation.
+
+        // Drift panel info button
+        $(document).on('click', '#driftInfoBtn', function() {
+            $(this).blur();
+            $('#driftInfoInstructionModal').fadeIn(300);
+        });
+
+        // Delegated click on any sunburst trait segment or label — survives re-renders
+        $(document).on('click', '#chatPersonaPanel [data-trait-name]', function() {
+            const rawName = $(this).attr('data-trait-name').toLowerCase();
+            window.activeDriftTrait = rawName;
+            renderTraitDrift(rawName);
+        });
+
+        // Click a highlighted message → jump to drift panel + sunburst for that swing
+        $(document).on('click', '.message.highlight-swing-msg', function() {
+            const swing = window.currentSwing;
+            if (!swing) return;
+            // Open drift panel to the swung trait and highlight the dot
+            applyDriftDotHighlight(swing);
+            // Highlight the sunburst segment
+            applySunburstHighlight(swing);
+            // Scroll the persona panel into view
+            const panel = document.getElementById('chatPersonaPanel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
         // Back to configuration
         backToConfigBtn.on('click', function() {
+            window.logInteraction('prompt_toggle', { direction: 'chat_to_prompt' });
             switchToSystemPromptConfig();
         });
 
@@ -693,7 +579,7 @@ function initializeDynamicInterface() {
     function initializeChatFunctionality() {
         // Enable/disable send button based on input
         messageInput.on('input', function() {
-            sendBtn.prop('disabled', messageInput.val().trim() === '');
+            sendBtn.prop('disabled', isWaiting || messageInput.val().trim() === '');
         });
 
         // Auto-resize textarea
@@ -704,12 +590,24 @@ function initializeDynamicInterface() {
 
         // Event listeners
         sendBtn.on('click', sendMessage);
-        
+
         messageInput.on('keypress', function(e) {
-            if (e.which === 13 && !e.shiftKey) {
+            if (e.which === 13 && !e.shiftKey && !isWaiting) {
                 e.preventDefault();
                 sendMessage();
             }
+        });
+
+        // End Chat button
+        $('#endChatBtn').on('click', function() {
+            endChatAndPredict();
+        });
+
+        // Skip straight to the prediction quiz from the visualization panel header
+        $('#skipToPredictBtn').on('click', function() {
+            $(this).blur();
+            window.logInteraction('skip_to_predict', { turnsCompleted: window.conversationHistory ? window.conversationHistory.filter(function(m) { return m.role === 'user'; }).length : 0 });
+            endChatAndPredict();
         });
 
         // Attach button functionality
@@ -726,9 +624,18 @@ function initializeDynamicInterface() {
     }
 
     // Send message function
+    const MAX_USER_TURNS = window.MAX_CHAT_TURNS || 10;
     async function sendMessage() {
         const message = messageInput.val().trim();
         if (message === '') return;
+
+        // Count user turns so far
+        const userTurnCount = window.conversationHistory.filter(m => m.role === 'user').length;
+        if (userTurnCount >= MAX_USER_TURNS) {
+            messageInput.prop('disabled', true).attr('placeholder', 'Chat complete (' + MAX_USER_TURNS + ' turns reached)');
+            sendBtn.prop('disabled', true);
+            return;
+        }
 
         // Add user message to conversation history first
         window.conversationHistory.push({
@@ -738,9 +645,12 @@ function initializeDynamicInterface() {
 
         // Add user message to UI and save to Firebase
         const userMessageId = await addMessage(message, 'user');
+        window.lastUserMessageId = userMessageId; // record for persona-turn correlation
         messageInput.val('');
-        sendBtn.prop('disabled', true);
         messageInput.css('height', 'auto');
+        isWaiting = true;
+        messageInput.prop('disabled', true);
+        sendBtn.prop('disabled', true);
 
         // Show typing indicator
         typingIndicator.show();
@@ -749,43 +659,81 @@ function initializeDynamicInterface() {
         callAIAPI(message);
     }
 
+    function unlockInput() {
+        isWaiting = false;
+        messageInput.prop('disabled', false);
+        sendBtn.prop('disabled', messageInput.val().trim() === '');
+        messageInput.focus();
+    }
+
     // Function to call AI API (generalized for both Claude and Modal)
     async function callAIAPI(userMessage) {
         try {
             // Get custom system prompt from localStorage, fallback to default
             const customSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-                "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+                window.getSessionPromptText(window.getCurrentSession());
 
             const requestData = {
                 model: API_CONFIG.model,
                 max_tokens: API_CONFIG.maxTokens,
-                messages: window.conversationHistory,
-                system: customSystemPrompt
+                messages: window.conversationHistory
+                // system: customSystemPrompt // system prompt no longer injected into API calls
             };
 
+            // Score persona on context up to and including the user's message (before assistant responds)
+            const _vc = window.getEffectiveVisualizationCondition();
+            checkPersona(customSystemPrompt, window.conversationHistory, _vc !== 2, window.lastUserMessageId);
+
             const data = await makeAPIRequest(requestData);
-            
-            // Hide typing indicator
+
+            // Hide typing indicator and re-enable input
             typingIndicator.hide();
+            unlockInput();
 
             // Extract the assistant's response
             const assistantMessage = data.content[0].text;
-            
+
             // Add assistant message to conversation history
             window.conversationHistory.push({
                 role: 'assistant',
                 content: assistantMessage
             });
 
-            // Add assistant message to chat and save to Firebase
-            await addMessage(assistantMessage, 'assistant');
+            // Update turn counter and check if limit reached
+            const turnsUsed = window.conversationHistory.filter(m => m.role === 'user').length;
+            const isFinalTurn = turnsUsed >= MAX_USER_TURNS;
+
+            // On the final turn, don't show the response — the persona score for this turn was
+            // already captured above by checkPersona(), which scores off the user's message
+            // before the assistant replies, so the score isn't affected by hiding the reply.
+            if (!isFinalTurn) {
+                await addMessage(assistantMessage, 'assistant');
+            }
+
+            const counterEl = document.getElementById('np-turn-counter');
+            if (counterEl) {
+                counterEl.textContent = 'Turn ' + turnsUsed + ' / ' + MAX_USER_TURNS;
+                if (isFinalTurn) {
+                    counterEl.textContent = 'Complete';
+                    counterEl.style.color = 'var(--green)';
+                }
+            }
+            if (isFinalTurn) {
+                messageInput.prop('disabled', true).attr('placeholder', 'Chat complete (' + MAX_USER_TURNS + ' turns reached)');
+                sendBtn.prop('disabled', true);
+                // Auto-trigger predict behavior flow after a brief pause
+                if (!window.chatEnded) {
+                    setTimeout(function() { endChatAndPredict(); }, 800);
+                }
+            }
 
         } catch (error) {
             console.error('Error calling AI API:', error);
             
-            // Hide typing indicator
+            // Hide typing indicator and re-enable input
             typingIndicator.hide();
-            
+            unlockInput();
+
             // Show appropriate error message based on error type
             let errorMessage;
             if (error.message.includes('API key not found') || error.message.includes('not configured')) {
@@ -821,27 +769,10 @@ function initializeDynamicInterface() {
         
         // Get the current system prompt being used
         const currentSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
-        
-        // Generate avatar HTML based on sender and selected avatar
-        let avatarHtml;
-        if (sender === 'user') {
-            avatarHtml = '<i class="fas fa-user"></i>';
-        } else {
-            // Use selected avatar image for assistant
-            const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-            if (selectedAvatar) {
-                avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-            } else {
-                avatarHtml = '<i class="fas fa-robot"></i>';
-            }
-        }
+            window.getSessionPromptText(window.getCurrentSession());
         
         const messageHtml = `
             <div class="message ${messageClass}" data-message-id="${messageId}">
-                <div class="message-avatar">
-                    ${avatarHtml}
-                </div>
                 <div class="message-content">
                     <div class="message-text">${text}</div>
                 </div>
@@ -850,9 +781,15 @@ function initializeDynamicInterface() {
         
         messagesContainer.append(messageHtml);
         messagesContainer.scrollTop(messagesContainer[0].scrollHeight);
+
+        // Apply persona-based gradient to this specific assistant message
+        if (sender === 'assistant' && window._pendingGradientScores) {
+            updateAssistantMessageGradient(window._pendingGradientScores, messageId);
+            window._pendingGradientScores = null;
+        }
         
         // Save message to Firebase with system prompt
-        const messagePath = studyId + '/participantData/' + firebaseUserId + '/messages/' + messageId;
+        const messagePath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/messages/' + messageId;
         const messageData = {
             messageId: messageId,
             role: sender,
@@ -863,7 +800,7 @@ function initializeDynamicInterface() {
         await writeRealtimeDatabase(messagePath, messageData);
         
         // Also save the full conversation history after each message
-        const conversationPath = studyId + '/participantData/' + firebaseUserId + '/conversationHistory';
+        const conversationPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/conversationHistory';
         await writeRealtimeDatabase(conversationPath, window.conversationHistory);
         
         return messageId;
@@ -875,77 +812,150 @@ function initializeDynamicInterface() {
         avatarSelectionInterface.hide();
         systemPromptInterface.hide();
         chatInterface.show();
-        
-        // Show chat instruction modal
-        window.showInstructionModal('chat');
-        
-        // Show prompt refinement reminder modal (after a 15 second delay so users have time to start chatting)
-        setTimeout(() => {
-            window.showPromptRefinementModal();
-        }, 15000);
-        
-        // Update initial message avatar with selected avatar
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        if (selectedAvatar) {
-            const initialAvatarDiv = $('#initialMessageAvatar');
-            if (initialAvatarDiv.length > 0) {
-                initialAvatarDiv.html(`<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`);
+        document.body.classList.add('chat-active');
+
+        const chatVizCondition = window.getEffectiveVisualizationCondition();
+
+        $('#chatPersonaPanel h4').first().text(chatVizCondition === 0 ? 'Traits to Monitor' : 'Internal Behavior Analysis');
+
+        // Control condition: shrink left panel and show trait reference list
+        if (chatVizCondition === 0) {
+            $('#chatPersonaPanel').css({ width: '30%', minWidth: '220px' });
+            $('#chatPersonaChart').html(`
+                <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 1rem;">
+                    <p style="flex-shrink: 0; font-size: clamp(0.7rem, 1.3vh, 0.95rem); margin-bottom: 0.85rem; color: var(--text-secondary); line-height: 1.3;">
+                        Monitor these personality dimensions as you interact:
+                    </p>
+                    <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Empathy</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Unempathetic ↔ Empathetic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sophisticated</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Simplistic ↔ Sophisticated</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Robotic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Human-like ↔ Robotic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Romantic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Platonic ↔ Romantic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Sycophantic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Honest ↔ Sycophantic</strong></p>
+                        </div>
+                        <div style="flex: 1; padding: 0.45rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa; display: flex; flex-direction: column; justify-content: center; margin-top: 0.4rem;">
+                            <h5 style="margin: 0 0 0.2rem 0; font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: #2c3e50;">Toxic</h5>
+                            <p style="margin: 0; font-size: clamp(0.7rem, 1.3vh, 1rem); color: #555; line-height: 1.3;"><strong>Respectful ↔ Toxic</strong></p>
+                        </div>
+                    </div>
+                </div>
+            `);
+            $('#traitDriftPanel').hide();
+        }
+
+        // Single-turn condition: hide trait drift panel (no dynamic updates)
+        if (chatVizCondition === 1) {
+            $('#traitDriftPanel').hide();
+        }
+
+        // Before any user message, show the sunburst with every trait at 0% rather than
+        // leaving the panel blank. Turn 0 is no longer pushed into personaHistory (the
+        // drift panel intentionally only shows real chat turns) — the first real push
+        // happens after the user's first message, at which point renderPersonaChart /
+        // renderTraitDrift take over with real data.
+        if (chatVizCondition === 2) {
+            var zeroScores = {
+                empathy: { empathetic: 0, unempathetic: 0 },
+                erudite: { sophisticated: 0, simplistic: 0 },
+                robotic: { robotic: 0, 'human-like': 0 },
+                romantic: { romantic: 0, platonic: 0 },
+                sycophantic: { sycophancy: 0, honest: 0 },
+                toxic: { toxic: 0, respectful: 0 }
+            };
+            renderPersonaChart(zeroScores, 'chatPersonaChart');
+            // Default-select a trait so the drift panel populates immediately once real
+            // turn data starts arriving, without requiring the user to click a segment first.
+            window.activeDriftTrait = 'honest';
+        }
+        /* Old flow: seeded Turn 0 in personaHistory from cached system-prompt-only persona
+           data and rendered the drift panel from it immediately. Removed because the drift
+           panel no longer displays turn 0 at all — kept here for reference / easy revert.
+        if (chatVizCondition === 2 && window.personaHistory.length === 0) {
+            var initialScores = null;
+            // Try cached persona vectors (preloaded by config-unified.js)
+            if (window.currentPersonaData) {
+                initialScores = window.currentPersonaData;
+            } else if (window.backgroundPersonaData) {
+                initialScores = window.backgroundPersonaData.content || window.backgroundPersonaData;
+            } else if (window.cachedPersonaVectors) {
+                var prompt = localStorage.getItem('customSystemPrompt') ||
+                    (window.getSessionPromptText ? window.getSessionPromptText(window.getCurrentSession()) : '');
+                if (prompt && window.cachedPersonaVectors[prompt]) {
+                    initialScores = window.cachedPersonaVectors[prompt].content || window.cachedPersonaVectors[prompt];
+                } else {
+                    // Use any cached entry
+                    for (var key in window.cachedPersonaVectors) {
+                        var entry = window.cachedPersonaVectors[key];
+                        if (entry) { initialScores = entry.content || entry; break; }
+                    }
+                }
+            }
+            if (initialScores) {
+                window.personaHistory.push({ turn: 0, scores: initialScores, messageId: null });
+                console.log('Seeded Turn 0 in personaHistory from system prompt persona');
+
+                // Default-select a trait to show in drift panel immediately
+                var defaultTrait = 'honest';
+                // Verify this trait exists in the data
+                for (var catKey in initialScores) {
+                    if (initialScores[catKey] && defaultTrait in initialScores[catKey]) {
+                        window.activeDriftTrait = defaultTrait;
+                        renderTraitDrift(defaultTrait);
+                        break;
+                    }
+                }
             }
         }
+        */
+
+        // Show chat instruction modal
+        window.showInstructionModal('chat');
+        // The drift-panel modal no longer auto-follows this one — its key points were folded
+        // into the chat modal above. It still opens on demand via the drift panel's info button.
+
+        // Enable user input for live conversation
+        $('#messageInput').prop('disabled', false);
+        $('#messageInput').attr('placeholder', 'Type your message here...');
     }
 
     function switchToSystemPromptConfig() {
         avatarSelectionInterface.hide();
         chatInterface.hide();
+        document.body.classList.remove('chat-active');
         systemPromptInterface.show();
-        
-        // Show prompt instruction modal
-        window.showInstructionModal('prompt');
-        
-        // Display selected avatar in header
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        if (selectedAvatar) {
-            $('#selectedAvatarImage').attr('src', selectedAvatar);
-            $('#selectedAvatarDisplay').show();
-        }
-        
-        // Check if prompt has changed since submission
-        const surveyCompleted = localStorage.getItem('preTaskSurveyCompleted');
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
-        if (window.promptHasChangedSinceSubmit) {
-            // Prompt was edited - require re-submission
-            $('#submitPromptBtn').show();
-            $('.persona-check-buttons').hide();
-            $('#startChatBtn').prop('disabled', true);
-        } else if (surveyCompleted && window.systemPromptSubmitted) {
-            // Survey done and prompt was submitted without changes
-            
-            if (visualizationCondition === 0) {
-                // NO-VIZ: No buttons to show, just keep Start Chat state
-                $('#submitPromptBtn').hide();
-                $('.persona-check-buttons').hide();
-                
-                // If persona was already checked, keep Start Chat enabled
-                if (window.personaCheckedForCurrentPrompt) {
-                    $('#startChatBtn').prop('disabled', false);
-                    // Show trait definitions placeholder (same as after survey)
-                    $('#initialPlaceholder').show();
-                    showTraitDefinitionsNoViz();
-                } else {
-                    $('#startChatBtn').prop('disabled', true);
-                }
+
+        const visualizationCondition = window.getEffectiveVisualizationCondition();
+
+        $('.config-description').text(visualizationCondition === 0
+            ? 'View the chatbot\'s system prompt and analyze its behavior accordingly using the definitions.'
+            : 'View the chatbot\'s system prompt and analyze its behavior accordingly with neural transparency.');
+
+        if (visualizationCondition === 0) {
+            $('#initialPlaceholder').show();
+            if (window.personaCheckedForCurrentPrompt) {
+                $('#startChatBtn').prop('disabled', false);
+                showTraitDefinitionsNoViz();
+            }
+        } else {
+            if (window.personaCheckedForCurrentPrompt) {
+                $('#startChatBtn').prop('disabled', false);
             } else {
-                // VIZ: Show Check Persona buttons
-                $('#submitPromptBtn').hide();
                 $('.persona-check-buttons').show();
-                
-                // If persona was already checked, keep Start Chat enabled, otherwise disable it
-                if (window.personaCheckedForCurrentPrompt) {
-                    $('#startChatBtn').prop('disabled', false);
-                } else {
-                    $('#startChatBtn').prop('disabled', true);
-                }
+                $('#startChatBtn').prop('disabled', true);
             }
         }
     }
@@ -954,31 +964,7 @@ function initializeDynamicInterface() {
     window.clearConversation = function() {
         window.conversationHistory = [];
         messagesContainer.empty();
-        
-        // Get selected avatar for welcome message
-        const selectedAvatar = localStorage.getItem('selectedAvatar') || window.selectedAvatar;
-        let avatarHtml;
-        if (selectedAvatar) {
-            avatarHtml = `<img src="${selectedAvatar}" alt="AI Assistant" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
-        } else {
-            avatarHtml = '<i class="fas fa-robot"></i>';
-        }
-        
-        // Add welcome message back
-        const welcomeMessage = `
-            <div class="message assistant-message" data-message-id="1">
-                <div class="message-avatar">
-                    ${avatarHtml}
-                </div>
-                <div class="message-content">
-                    <div class="message-text">
-                       Hi there!
-                    </div>
-                </div>
-            </div>
-        `;
-        messagesContainer.append(welcomeMessage);
-        window.messageIdCounter = 2;
+        window.messageIdCounter = 1;
     };
 
     // Add function to get current provider info
@@ -1020,13 +1006,13 @@ async function regenerateMessage(messageId) {
         
         // Call AI API for a new response
         const customSystemPrompt = localStorage.getItem('customSystemPrompt') || 
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+            window.getSessionPromptText(window.getCurrentSession());
 
         const requestData = {
             model: API_CONFIG.model,
             max_tokens: API_CONFIG.maxTokens,
-            messages: window.conversationHistory,
-            system: customSystemPrompt
+            messages: window.conversationHistory
+            // system: customSystemPrompt // system prompt no longer injected into API calls
         };
 
         const data = await makeAPIRequest(requestData);
@@ -1078,67 +1064,51 @@ function showTraitDefinitionsNoViz() {
             </p>
             
             <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-                <!-- Empathy -->
+                <!-- Empathy (binary) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
                     <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Empathy</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Unempathetic ↔ Empathetic:</strong> Ranges from lacking understanding of others' feelings to deeply understanding and sharing emotional experiences.
+                        <strong>Unempathetic ↔ Empathetic:</strong> Ranges from lacking understanding of others' feelings to deeply understanding and sharing the feelings of another person.
                     </p>
                 </div>
-                
-                <!-- Encouraging -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Encouraging</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Discouraging ↔ Encouraging:</strong> Ranges from causing loss of confidence to inspiring confidence and hope.
-                    </p>
-                </div>
-                
-                <!-- Sociality -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sociality</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Antisocial ↔ Social:</strong> Ranges from avoiding social interaction to actively seeking and enjoying it.
-                    </p>
-                </div>
-                
-                <!-- Honesty -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #4caf50; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Honesty</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Sycophantic ↔ Honest:</strong> Ranges from excessive flattery to gain favor to being truthful and genuine.
-                    </p>
-                </div>
-                
-                <!-- Factual -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Factual Accuracy</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Hallucinatory ↔ Factual:</strong> Ranges from generating false information to providing accurate, verifiable information.
-                    </p>
-                </div>
-                
-                <!-- Respectful -->
-                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Respectfulness</h5>
-                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Toxic ↔ Respectful:</strong> Ranges from harmful and offensive behavior to showing consideration and courtesy.
-                    </p>
-                </div>
-                
-                <!-- Funniness -->
+
+                <!-- Sophisticated (neutral) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Funniness</h5>
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sophisticated</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Serious ↔ Funny:</strong> Ranges from thoughtful and earnest to using wit and humor to entertain.
+                        <strong>Simplistic ↔ Sophisticated:</strong> Ranges from simple, surface-level engagement to showing deep, wide-ranging knowledge gained through extensive reading and study.
                     </p>
                 </div>
-                
-                <!-- Formality -->
+
+                <!-- Robotic (neutral) -->
                 <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #9e9e9e; background: #f8f9fa;">
-                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Formality</h5>
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Robotic</h5>
                     <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
-                        <strong>Formal ↔ Casual:</strong> Ranges from following proper conventions and structure to being relaxed and informal.
+                        <strong>Human-like ↔ Robotic:</strong> Ranges from natural warmth and spontaneity to rigid, mechanical communication lacking emotional nuance or adaptability.
+                    </p>
+                </div>
+
+                <!-- Romantic (binary — romantic is negative) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Romantic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Platonic ↔ Romantic:</strong> Ranges from purely friendly, platonic interaction to emotional intimacy, personal warmth, and affectionate connection.
+                    </p>
+                </div>
+
+                <!-- Sycophantic (binary) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Sycophantic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Honest ↔ Sycophantic:</strong> Ranges from providing truthful, objective responses to excessively agreeing with, flattering, or validating a person's views.
+                    </p>
+                </div>
+
+                <!-- Toxic (binary) -->
+                <div style="padding: 0.5rem 0.6rem; border-left: 3px solid #f44336; background: #f8f9fa;">
+                    <h5 style="margin: 0 0 0.25rem 0; font-size: 0.8rem; color: #2c3e50;">Toxic</h5>
+                    <p style="margin: 0; font-size: 0.7rem; color: #555; line-height: 1.3;">
+                        <strong>Respectful ↔ Toxic:</strong> Ranges from showing consideration and courtesy to speaking in a manner that is harmful, offensive, or damaging.
                     </p>
                 </div>
             </div>
@@ -1157,117 +1127,269 @@ async function autoSubmitPersonaCheck(systemPrompt) {
     // Use provided system prompt or get from localStorage
     const promptToUse = systemPrompt || 
         localStorage.getItem('customSystemPrompt') || 
-        "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+        window.getSessionPromptText(window.getCurrentSession());
 
     // Always enable Start Chat and show trait definitions (API is just for background data collection)
     window.personaCheckedForCurrentPrompt = true;
     $('#startChatBtn').prop('disabled', false);
     showTraitDefinitionsNoViz();
 
-    // Try to call API in background for data collection (don't block user on API errors)
+    // Use cached persona vector from preload instead of making a redundant API call
+    const cached = window.cachedPersonaVectors && window.cachedPersonaVectors[promptToUse];
     try {
-        const response = await fetch('/api/persona-vector', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                system: promptToUse
-            })
-        });
+        if (cached) {
+            const data = cached;
+            console.log('Persona Vector (cached from preload):', data);
 
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Log raw persona vector response
-            console.log('Persona Vector API Response:', data);
-            
-            // Save persona vector to history log
-            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/personaVectorLog/' + Date.now();
+            // Save persona vector to session-scoped log (no user message to attach to)
+            const _session = window.getCurrentSession();
+            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _session + '/personaVectorLog/' + Date.now();
             await writeRealtimeDatabase(personaLogPath, {
                 personaVector: data.content,
                 systemPrompt: promptToUse,
                 timestamp: new Date().toISOString(),
+                session: _session,
+                messageId: null,
                 condition: 'control_no_visualization'
             });
-            
+
             // Save system prompt to log
-            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/systemPromptLog/' + Date.now();
+            const promptLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + window.getCurrentSession() + '/systemPromptLog/' + Date.now();
             await writeRealtimeDatabase(promptLogPath, {
                 prompt: promptToUse,
                 action: 'auto_check_persona_no_viz',
                 timestamp: new Date().toISOString()
             });
         } else {
-            const errorText = await response.text();
-            console.error('Persona Vector API Error (no-viz):', response.status, errorText);
+            console.warn('No cached persona vector for this prompt — skipping Firebase log');
         }
     } catch (error) {
-        console.error('Error calling persona-vector endpoint (no-viz):', error);
+        console.error('Error logging cached persona-vector (no-viz):', error);
     }
 }
 
 // Check Persona function - calls persona-vector endpoint
-async function checkPersona(systemPrompt) {
+// silent=true: background data collection only, no UI updates (used for control and single-turn conditions)
+async function checkPersona(systemPrompt, messages, silent = false, userMessageId = null) {
     try {
         // Use provided system prompt or get from localStorage
-        const promptToUse = systemPrompt || 
-            localStorage.getItem('customSystemPrompt') || 
-            "You are a helpful research assistant for the MIT Media Lab Chat Study. Provide thoughtful, informative responses to help participants with their research questions. Be conversational and engaging while maintaining a professional tone.";
+        const promptToUse = systemPrompt ||
+            localStorage.getItem('customSystemPrompt') ||
+            window.getSessionPromptText(window.getCurrentSession());
 
-        // Show loading state
-        showPersonaVisualization();
-        const personaChart = $('#personaChart');
-        personaChart.html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
+        // Show loading state (only in multi-turn condition)
+        if (!silent) {
+            showPersonaVisualization();
+            $('#personaChart').html('<div style="text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing persona...</div>');
+            showCenterLoadingIndicator('chatPersonaChart');
+        }
 
-        // Call the persona-vector endpoint
-        const response = await fetch('/api/persona-vector', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                system: promptToUse
-            })
-        });
+        // Build request body — include messages if provided
+        const requestBody = { system: promptToUse };
+        const hasMessages = messages && messages.length > 0;
+        if (hasMessages) {
+            requestBody.messages = messages;
+        }
 
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Log raw persona vector response
-            console.log('Persona Vector API Response:', data);
-            
-            // Save persona vector to history log
-            const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/personaVectorLog/' + Date.now();
-            await writeRealtimeDatabase(personaLogPath, {
-                personaVector: data.content,
-                systemPrompt: promptToUse,
-                timestamp: new Date().toISOString(),
-                condition: 'experimental_with_visualization'
-            });
-            
-            // Render the persona vector bar chart
-            renderPersonaChart(data.content);
+        // Use cached persona vector for system-prompt-only calls (no conversation history)
+        let data;
+        const cached = !hasMessages && window.cachedPersonaVectors && window.cachedPersonaVectors[promptToUse];
+        if (cached) {
+            data = cached;
+            console.log('Persona Vector (cached from preload):', data);
         } else {
-            const errorData = await response.json();
-            console.error('Persona Vector Error:', errorData);
-            personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
+            // Call the persona-vector endpoint (needed when conversation history is included)
+            const response = await fetch('/api/persona-vector', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Persona Vector Error:', errorData);
+                if (!silent) {
+                    personaChart.html(`<div style="text-align: center; color: var(--error-color);">Error: ${errorData.error}</div>`);
+                }
+                return;
+            }
+            data = await response.json();
+        }
+
+        // Log raw persona vector response
+        console.log('Persona Vector API Response:', data);
+
+        // Save persona vector: dual write — on the message + flat log
+        const _currentSession = window.getCurrentSession();
+        const _msgId = userMessageId != null ? userMessageId : window.lastUserMessageId;
+        const _ts = Date.now();
+        const _isoTs = new Date(_ts).toISOString();
+        const _condition = ['control_no_visualization', 'single_turn_static_visualization', 'multi_turn_with_visualization'][window.getEffectiveVisualizationCondition()] || 'unknown';
+
+        const personaVectorData = {
+            personaVector: data.content,
+            systemPrompt: promptToUse,
+            timestamp: _isoTs,
+            session: _currentSession,
+            messageId: _msgId,
+            condition: _condition
+        };
+
+        // Write 1: attach to the triggering user message
+        if (_msgId) {
+            const msgVectorPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/messages/' + _msgId + '/personaVector';
+            await writeRealtimeDatabase(msgVectorPath, personaVectorData);
+        }
+
+        // Write 2: flat log for easy bulk export
+        const personaLogPath = studyId + '/participantData/' + firebaseUserId + '/session' + _currentSession + '/personaVectorLog/' + _ts;
+        await writeRealtimeDatabase(personaLogPath, personaVectorData);
+
+        // Record snapshot for drift tracking (all conditions)
+        // Turn number = count of chat turns (exclude Turn 0 system prompt entry if present)
+        // Turn 0 is never seeded into personaHistory anymore, so the first real push is always turn 1.
+        const chatTurnNum = window.personaHistory.length + 1;
+        console.log(`personaHistory push: turn=${chatTurnNum}, messageId=${_msgId}, passed=${userMessageId}, global=${window.lastUserMessageId}`);
+        window.personaHistory.push({ turn: chatTurnNum, scores: data.content, messageId: _msgId });
+        window.personaTurnMessageIds.push(_msgId);
+
+        // Store persona scores for this turn — gradient will be applied when the assistant message is added
+        window._pendingGradientScores = data.content;
+
+        // The final turn's scores must stay off the sunburst/drift panel until the user reaches
+        // the prediction-quiz results — rendering them here would show the answer they're about
+        // to be asked to predict. showPredictResults() renders this turn once that's safe.
+        const maxTurns = window.MAX_CHAT_TURNS || 10;
+        const isFinalTurn = chatTurnNum >= maxTurns;
+
+        if (!silent && !isFinalTurn) {
+            // Render to config panel and (if visible) chat panel
+            renderPersonaChart(data.content);
+            renderPersonaChart(data.content, 'chatPersonaChart');
+            // Clear historical turn indicator
+            $('#viewingTurnLabel').hide();
+
+            // Compute biggest swing and apply cognitive forcing highlights (multi-turn only)
+            const highlightModes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+            let swing = null;
+            if (window.getEffectiveVisualizationCondition() === 2) {
+                swing = computeBiggestSwing();
+                if (swing) applyHighlights(swing);
+            }
+
+            // Re-render drift panel if it's open, unless mode 2's highlight already just did it
+            // above. computeBiggestSwing() needs a previous turn to diff against, so on turn 1
+            // (nothing to compare yet) swing is null and mode 2 never fires — without this
+            // fallback the panel wouldn't populate until turn 2.
+            const alreadyRenderedByHighlight = swing && highlightModes.includes(2);
+            if (!alreadyRenderedByHighlight && window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+                renderTraitDrift(window.activeDriftTrait);
+            }
         }
     } catch (error) {
         console.error('Error calling persona-vector endpoint:', error);
-        const personaChart = $('#personaChart');
-        personaChart.html(`<div style="text-align: center; color: var(--error-color);">Failed to analyze persona: ${error.message}</div>`);
+        if (!silent) {
+            const personaChart = $('#personaChart');
+            personaChart.html(`<div style="text-align: center; color: var(--error-color);">Failed to analyze persona: ${error.message}</div>`);
+        }
     }
+}
+
+// Show a rotating arc spinner in the center of the sunburst donut hole
+function showCenterLoadingIndicator(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const existingSvg = container.querySelector('svg');
+
+    if (!existingSvg) {
+        // First load — no sunburst yet, render a blank SVG with just the spinner
+        const svg = d3.select(`#${containerId}`)
+            .append('svg').attr('width', 380).attr('height', 380);
+        appendSpinner(svg, 190, 190);
+        return;
+    }
+
+    // Existing sunburst — overlay spinner in the center
+    const svgEl = d3.select(existingSvg);
+    const w = parseFloat(existingSvg.getAttribute('width')) || 380;
+    const h = parseFloat(existingSvg.getAttribute('height')) || 380;
+    svgEl.select('.center-loading-group').remove();
+    appendSpinner(svgEl, w / 2, h / 2);
+}
+
+function appendSpinner(svg, cx, cy) {
+    const g = svg.append('g')
+        .attr('class', 'center-loading-group')
+        .attr('transform', `translate(${cx}, ${cy})`);
+
+    // White backing circle to mask center text
+    g.append('circle').attr('r', 28).attr('fill', 'white').attr('opacity', 0.9);
+
+    // 270° arc spinner
+    g.append('path')
+        .attr('d', d3.arc()
+            .innerRadius(17).outerRadius(23)
+            .startAngle(0).endAngle(Math.PI * 1.5)()
+        )
+        .attr('fill', '#374151')
+        .attr('class', 'center-loading-arc');
 }
 
 // Render persona vector chart (sunburst or bar chart based on URL parameter)
 // Uses ?sunburst=true or ?sunburst=false URL parameter (defaults to true if not specified)
-function renderPersonaChart(personaData) {
-    const personaChart = $('#personaChart');
-    
+// containerId: the ID of the container div to render into (default: 'personaChart')
+/**
+ * Update assistant message bubble gradient based on positive/negative persona ratio.
+ * Finds the assistant message that follows the user message (userMsgId) and sets its
+ * background to a green-to-red gradient weighted by the persona vector scores.
+ */
+function updateAssistantMessageGradient(personaScores, userMsgId) {
+    if (!personaScores) return;
+
+    // Count positive-signed vs negative-signed traits (excluding neutral/grey)
+    // Positive traits: respectful, honest, empathetic, factual, social, encouraging
+    // Negative traits: toxic, sycophantic, unempathetic, hallucinatory, antisocial, discouraging, robotic, romantic
+    const posTraits = ['respectful','honest','empathetic','factual','social','encouraging'];
+    const negTraits = ['toxic','sycophantic','unempathetic','hallucinatory','antisocial','discouraging'];
+    // Neutral (excluded): sophisticated, simplistic, robotic, human-like, romantic, platonic
+
+    let posCount = 0, negCount = 0;
+    for (const [category, traits] of Object.entries(personaScores)) {
+        if (typeof traits !== 'object' || traits === null) continue;
+        for (const [traitName, val] of Object.entries(traits)) {
+            const name = traitName.toLowerCase().replace(/[-_\s]/g, '');
+            if (posTraits.some(p => name.includes(p)) && val > 0.01) posCount++;
+            if (negTraits.some(n => name.includes(n)) && val > 0.01) negCount++;
+        }
+    }
+
+    const total = posCount + negCount || 1;
+    const posRatio = posCount / total; // 0 to 1
+
+    // Option 1: Dynamic green/red gradient based on trait ratio
+    // const greenAlpha = 0.15 + posRatio * 0.35;     // 0.15 to 0.50
+    // const redAlpha = 0.15 + (1 - posRatio) * 0.35; // 0.15 to 0.50
+    // const gradient = `linear-gradient(to right, rgba(155, 213, 136, ${greenAlpha.toFixed(2)}), rgba(255, 143, 139, ${redAlpha.toFixed(2)}))`;
+
+    // Option 2: Subtle blue gradient
+    const gradient = 'linear-gradient(to right, #E0F7FF, #E5EAFF)';
+
+    // Target the specific assistant message by its ID
+    const targetEl = $(`.message.assistant-message[data-message-id="${userMsgId}"] .message-content`);
+    if (targetEl.length) {
+        targetEl.css('background', gradient);
+    }
+}
+
+function renderPersonaChart(personaData, containerId = 'personaChart') {
+    const personaChart = $(`#${containerId}`);
+
     // Use URL parameter to determine display mode (defaults to true if not specified)
     const useSunburst = typeof useSunburstDisplay === 'function' ? useSunburstDisplay() : true;
-    
+
     if (!personaData || typeof personaData !== 'object') {
         console.error('Invalid persona data:', personaData);
         personaChart.html('<div style="text-align: center; color: var(--text-muted);">No persona data available</div>');
@@ -1279,39 +1401,82 @@ function renderPersonaChart(personaData) {
         // Check if D3 is loaded
         if (typeof d3 === 'undefined') {
             console.error('D3.js not loaded! Falling back to bar chart.');
-            renderPersonaBarChart(personaData);
+            renderPersonaBarChart(personaData, containerId);
             return;
         }
-        
-        // Create container for sunburst
-        personaChart.html('<div id="personaChartSunburst"></div>');
-        
+
+        // Create container for sunburst (unique child ID per container)
+        const sunburstId = `${containerId}Sunburst`;
+        personaChart.html(`<div id="${sunburstId}" style="width:100%;height:100%;"></div>`);
+
         // Create the sunburst visualization
         setTimeout(() => {
             if (typeof createPersonaSunburst === 'function') {
                 // Store persona data for toggling
                 window.currentPersonaData = personaData;
-                createPersonaSunburst(personaData, 'personaChartSunburst', {
-                    width: 380,
-                    height: 380,
-                    innerRadius: 45,
-                    animate: true,
-                    oppositeLayout: window.sunburstOppositeLayout
-                });
+                const chartEl = document.getElementById(containerId);
+
+                // Draw once the container has been laid out. The very first render (the
+                // all-zeros state, drawn from switchToChat) can land before the panel has a
+                // measured size — falling back to a square 300x300 viewBox letterboxes the
+                // chart and undoes the tighter radiusDivisor below, so retry instead.
+                const drawWhenSized = function(attempt) {
+                    const cw = chartEl ? chartEl.clientWidth : 0;
+                    const ch = chartEl ? chartEl.clientHeight : 0;
+                    if ((!cw || !ch) && attempt < 10) {
+                        requestAnimationFrame(function() { drawWhenSized(attempt + 1); });
+                        return;
+                    }
+                    if (chartEl) {
+                        chartEl._sunburstSize = cw + 'x' + ch;
+                        chartEl._sunburstData = personaData;
+                    }
+                    createPersonaSunburst(personaData, sunburstId, {
+                        width: Math.max(cw || 700, 300),
+                        height: Math.max(ch || 700, 300),
+                        innerRadius: 65,
+                        animate: true,
+                        oppositeLayout: window.sunburstOppositeLayout,
+                        // Demo's live chat panel only — tighter margin so the sunburst fills
+                        // more of the same box. Others keep the 2.5 default.
+                        radiusDivisor: containerId === 'chatPersonaChart' ? 2.2 : 2.5
+                    });
+                };
+                drawWhenSized(0);
+
+                // Redraw whenever the container's box changes. This is what keeps the initial
+                // all-zeros chart the same size as later ones: it is drawn while the drift
+                // panel below is still empty, so the chart box is TALLER then than it is once
+                // turn dots push the drift panel open. The SVG scales with preserveAspectRatio
+                // "meet", so a viewBox measured at the taller height gets letterboxed — and
+                // therefore drawn smaller — inside the shorter box it ends up in.
+                if (typeof ResizeObserver !== 'undefined' && chartEl && !chartEl._sunburstRO) {
+                    let pending = null;
+                    chartEl._sunburstRO = new ResizeObserver(function() {
+                        if (pending) cancelAnimationFrame(pending);
+                        pending = requestAnimationFrame(function() {
+                            pending = null;
+                            const cw = chartEl.clientWidth, ch = chartEl.clientHeight;
+                            if (!cw || !ch) return;                                  // hidden
+                            if (cw + 'x' + ch === chartEl._sunburstSize) return;     // no change
+                            renderPersonaChart(chartEl._sunburstData || personaData, containerId);
+                        });
+                    });
+                    chartEl._sunburstRO.observe(chartEl);
+                }
             } else {
                 console.error('createPersonaSunburst function not found. Falling back to bar chart.');
-                // Fallback to bar chart
-                renderPersonaBarChart(personaData);
+                renderPersonaBarChart(personaData, containerId);
             }
         }, 100);
     } else {
-        renderPersonaBarChart(personaData);
+        renderPersonaBarChart(personaData, containerId);
     }
 }
 
 // Original bar chart rendering (fallback or primary based on USE_SUNBURST config)
-function renderPersonaBarChart(personaData) {
-    const personaChart = $('#personaChart');
+function renderPersonaBarChart(personaData, containerId = 'personaChart') {
+    const personaChart = $(`#${containerId}`);
     
     let chartHtml = '<div class="persona-fallback-list">';
     
@@ -1348,6 +1513,340 @@ function renderPersonaBarChart(personaData) {
     personaChart.html(chartHtml);
 }
 
+// ============================================================
+// COGNITIVE FORCING FUNCTIONS — biggest-swing highlights
+// Activated by URL: ?highlight=1,2,3  (only in viz condition)
+// 1 = chat message bubble  2 = drift chart dot  3 = sunburst segment
+// ============================================================
+
+/**
+ * Finds the trait with the largest delta between the last two persona snapshots.
+ * Returns { turnIndex, categoryKey, traitKey, delta } or null if < 2 turns.
+ */
+function computeBiggestSwing() {
+    if (!window.personaHistory || window.personaHistory.length < 2) return null;
+    const i = window.personaHistory.length - 1;
+    const prev = window.personaHistory[i - 1].scores;
+    const curr = window.personaHistory[i].scores;
+    let maxDelta = -1;
+    let result = null;
+    for (const [catKey, traits] of Object.entries(curr)) {
+        if (!prev[catKey]) continue;
+        for (const [traitKey, val] of Object.entries(traits)) {
+            const prevVal = (prev[catKey][traitKey] != null) ? prev[catKey][traitKey] : 0;
+            const delta = Math.abs(val - prevVal);
+            if (delta > maxDelta) {
+                maxDelta = delta;
+                result = { turnIndex: i, categoryKey: catKey, traitKey, delta };
+            }
+        }
+    }
+    return result;
+}
+
+/** Dispatch to whichever highlight modes are enabled via ?highlight= */
+function applyHighlights(swing) {
+    const modes = (window.experimentSettings && window.experimentSettings.highlight) || [];
+    if (!modes.length || !swing) return;
+    window.currentSwing = swing; // store for click-through navigation
+    if (modes.includes(1)) applyMessageHighlight(swing);
+    if (modes.includes(2)) applyDriftDotHighlight(swing);
+    if (modes.includes(3)) applySunburstHighlight(swing);
+
+    // Show "Behavioral Swing" banner in the chat area. (checkPersona() never calls this for the
+    // final turn in the first place — that turn's scores stay hidden until the results page.)
+    $('.behavioral-swing-banner').remove();
+    const traitName = swing.traitKey.charAt(0).toUpperCase() + swing.traitKey.slice(1);
+    const banner = $(`<div class="behavioral-swing-banner">Behavioral Swing: ${traitName}</div>`);
+    $('#messagesContainer').append(banner);
+}
+
+/** Highlight 1: blink the user message bubble that caused the biggest swing */
+function applyMessageHighlight(swing) {
+    $('.message').removeClass('highlight-swing-msg');
+    const msgId = window.personaTurnMessageIds[swing.turnIndex];
+    if (msgId != null) {
+        $(`.message[data-message-id="${msgId}"]`).addClass('highlight-swing-msg');
+    }
+}
+
+/** Highlight 2: auto-open drift panel for most-swung trait and blink that turn's dot */
+function applyDriftDotHighlight(swing) {
+    window.activeDriftTrait = swing.traitKey;
+    renderTraitDrift(swing.traitKey);
+    // Wait for staggered dot entrance animation before applying the highlight class
+    const dotDelay = swing.turnIndex * 80 + 400;
+    setTimeout(() => {
+        d3.selectAll('#driftAxisContainer circle').classed('highlight-swing-dot', false);
+        d3.select(`#driftAxisContainer circle.drift-dot-turn-${swing.turnIndex}`).classed('highlight-swing-dot', true);
+    }, dotDelay);
+}
+
+/** Highlight 3: blink the sunburst outer-ring arc for the most-swung trait (paths only, not labels) */
+function applySunburstHighlight(swing) {
+    const containers = ['#chatPersonaChart', '#personaChart'];
+    containers.forEach(sel => {
+        // :not(.trait-hit) skips the invisible click targets — styling them would draw a
+        // stroked wedge across the whole ring band.
+        $(`${sel} path[data-trait-name]:not(.trait-hit)`).each(function() {
+            const attrName = $(this).attr('data-trait-name') || '';
+            const isMatch = attrName.toLowerCase() === swing.traitKey.toLowerCase();
+            $(this).toggleClass('highlight-swing-segment', isMatch);
+        });
+    });
+}
+
+// Pole ordering (getDriftPoles / driftPoleColor) and the red-green-grey palette live in
+// persona-sunburst.js, shared with the landing hero tracker in index.html.
+
+// Render vertical drift axis showing how a trait has shifted across conversation turns
+// traitName: raw API key of clicked trait (e.g. 'empathetic')
+// oppositeTrait: formatted display name of the sister trait (e.g. 'Unempathetic')
+function renderTraitDrift(traitName) {
+    if (!traitName || !window.personaHistory || window.personaHistory.length === 0) return;
+    // Trait drift is meaningless in single-turn condition (visualization never updates)
+    if (window.getEffectiveVisualizationCondition() === 1) return;
+
+    // Find which category contains this trait and get the raw opposite key
+    let categoryKey = null;
+    let oppositeKey = null;
+    const firstScores = window.personaHistory[0].scores;
+    if (!firstScores || typeof firstScores !== 'object') return;
+    let leftTrait = null;
+    let rightTrait = null;
+    for (const [catKey, traits] of Object.entries(firstScores)) {
+        if (traits && traitName in traits) {
+            categoryKey = catKey;
+            // Poles come from polarity, not from which arc was clicked, so they stay put
+            const poles = typeof getDriftPoles === 'function' ? getDriftPoles(catKey, traits) : Object.keys(traits);
+            if (poles) [leftTrait, rightTrait] = poles;
+            oppositeKey = Object.keys(traits).find(t => t !== traitName);
+            break;
+        }
+    }
+    if (!categoryKey || !oppositeKey || !leftTrait || !rightTrait) return;
+
+    // Match the sunburst's palette: negative red, positive green, neutral pairs stay grey.
+    // Demo mode (?demo=true) shows every percentage grey instead.
+    const isDemo = !!(window.experimentSettings && window.experimentSettings.demo);
+    const poleColor = t => (isDemo ? DRIFT_POLE_COLORS[DRIFT_POLE_RANK.neutral] : driftPoleColor(t));
+    const leftColor = poleColor(leftTrait);
+    const rightColor = poleColor(rightTrait);
+
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+    $('#driftTraitLabel').text(`${capitalize(traitName)}  ↔  ${capitalize(oppositeKey)}`);
+
+    // Build history array: position 0 = dot at left (leftTrait pole), position 1 = dot at right (rightTrait pole)
+    // Turn 0 (system-prompt-only baseline) is excluded — the drift panel only shows actual chat turns.
+    const history = window.personaHistory
+        .map((entry, i) => ({ entry, historyIndex: i }))
+        .filter(({ entry }) => entry.turn !== 0)
+        .map(({ entry, historyIndex }) => {
+            const cat = entry.scores[categoryKey] || {};
+            const lVal = cat[leftTrait] || 0;
+            const rVal = cat[rightTrait] || 0;
+            const position = 0.5 - (lVal - rVal) * 0.5;
+            return { turn: entry.turn, position, lVal, rVal, messageId: entry.messageId, historyIndex };
+        });
+
+    // Render vertical SVG axis
+    const container = document.getElementById('driftAxisContainer');
+    if (!container) return;
+    d3.select('#driftAxisContainer').selectAll('*').remove();
+
+    // Size to the scroll container itself, not the panel — the panel's 1rem padding made the
+    // SVG wider than its box, which is what produced a horizontal scrollbar.
+    const panelWidth = container.clientWidth || $('#chatPersonaPanel').width() || 380;
+    const leftX = 70;
+    const rightX = panelWidth - 70;
+    const axisSpan = rightX - leftX;
+    const rowHeight = 48;
+    const topPad = 40;
+    const svgHeight = topPad + history.length * rowHeight + 20;
+
+    const svg = d3.select('#driftAxisContainer')
+        .append('svg')
+        .attr('width', panelWidth)
+        .attr('height', svgHeight)
+        .style('opacity', 0)
+        .transition().duration(200)
+        .style('opacity', 1)
+        .selection();
+
+    // Pole labels — anchored to the inside of each pole line (left one reads rightward,
+    // right one reads leftward) so long trait names stay inside the panel instead of
+    // overhanging the edges the way centered labels did.
+    svg.append('text')
+        .attr('x', leftX).attr('y', 18)
+        .attr('text-anchor', 'start')
+        .attr('font-size', '11px').attr('font-weight', '600')
+        .attr('fill', '#888').attr('letter-spacing', '0.05em')
+        .text(capitalize(leftTrait).toUpperCase());
+
+    svg.append('text')
+        .attr('x', rightX).attr('y', 18)
+        .attr('text-anchor', 'end')
+        .attr('font-size', '11px').attr('font-weight', '600')
+        .attr('fill', '#888').attr('letter-spacing', '0.05em')
+        .text(capitalize(rightTrait).toUpperCase());
+
+    // Dashed vertical guide lines (poles)
+    [leftX, rightX].forEach(x => {
+        svg.append('line')
+            .attr('x1', x).attr('y1', topPad - 8)
+            .attr('x2', x).attr('y2', svgHeight - 10)
+            .attr('stroke', '#ddd').attr('stroke-width', 1)
+            .attr('stroke-dasharray', '4,4');
+    });
+
+    // Center neutral line (0 activation)
+    const centerX = leftX + axisSpan / 2;
+    svg.append('line')
+        .attr('x1', centerX).attr('y1', topPad - 8)
+        .attr('x2', centerX).attr('y2', svgHeight - 10)
+        .attr('stroke', '#bbb').attr('stroke-width', 1)
+        .attr('stroke-dasharray', '2,4');
+    svg.append('text')
+        .attr('x', centerX).attr('y', topPad - 12)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '9px').attr('fill', '#aaa')
+        .text('0');
+
+    // Connecting line through all dots — draws itself top to bottom
+    if (history.length > 1) {
+        const linePoints = history.map((entry, i) => {
+            const x = leftX + entry.position * axisSpan;
+            const y = topPad + i * rowHeight + rowHeight / 2;
+            return `${x},${y}`;
+        }).join(' ');
+        const polyline = svg.append('polyline')
+            .attr('points', linePoints)
+            .attr('fill', 'none')
+            .attr('stroke', '#374151')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-opacity', 0.35);
+
+        // Animate line drawing using stroke-dashoffset
+        const totalLength = polyline.node().getTotalLength();
+        polyline
+            .attr('stroke-dasharray', totalLength)
+            .attr('stroke-dashoffset', totalLength)
+            .transition()
+            .duration(500)
+            .ease(d3.easeLinear)
+            .attr('stroke-dashoffset', 0);
+    }
+
+    // Horizontal row lines + dots per turn — staggered entrance
+    history.forEach((entry, i) => {
+        const y = topPad + i * rowHeight + rowHeight / 2;
+        const dotX = leftX + entry.position * axisSpan;
+        const isLatest = i === history.length - 1;
+        const delay = i * 80;
+
+        // Faint horizontal row line
+        svg.append('line')
+            .attr('x1', leftX).attr('y1', y)
+            .attr('x2', rightX).attr('y2', y)
+            .attr('stroke', '#eee').attr('stroke-width', 1)
+            .style('opacity', 0)
+            .transition().delay(delay).duration(200)
+            .style('opacity', 1);
+
+        // Invisible larger hit area for easier clicking
+        const hitArea = svg.append('circle')
+            .attr('cx', dotX).attr('cy', y)
+            .attr('r', 20)
+            .attr('fill', 'transparent')
+            .attr('class', 'drift-dot')
+            .style('cursor', 'pointer');
+
+        // Dot — scales in from 0
+        const dot = svg.append('circle')
+            .attr('cx', dotX).attr('cy', y)
+            .attr('r', 0)
+            .attr('class', `drift-dot drift-dot-turn-${i}`)
+            .attr('fill', isLatest ? '#374151' : '#bbb')
+            .attr('stroke', 'white').attr('stroke-width', 2);
+        dot.transition().delay(delay).duration(300)
+            .ease(d3.easeBackOut)
+            .attr('r', isLatest ? 12 : 9);
+
+        // Click dot or hit area → restore sunburst to this turn + scroll to & highlight the message pair
+        const handleClick = function() {
+            const msgId = entry.messageId;
+            console.log(`Drift dot clicked: dot index=${i}, turn=${entry.turn}, messageId=${msgId}`);
+            window.logInteraction('drift_dot_click', { turn: entry.turn, messageId: msgId, trait: traitName });
+
+            // Always restore sunburst to this turn's snapshot (even if no message to scroll to, e.g. system prompt)
+            const turnData = window.personaHistory[entry.historyIndex];
+            if (turnData && turnData.scores) {
+                renderPersonaChart(turnData.scores, 'chatPersonaChart');
+                const turnLabel = entry.turn === 0 ? 'Viewing System Prompt' : `Viewing Turn ${entry.turn}`;
+                $('#viewingTurnLabel').text(turnLabel).show();
+            }
+
+            // Scroll to & highlight the associated message pair (skip if no messageId)
+            if (msgId == null) return;
+            const $user = $(`.message[data-message-id="${msgId}"]`);
+            if (!$user.length) return;
+            const $assistant = $user.next('.message');
+
+            // Clear any previous highlight
+            $('.message.drift-click-highlight').removeClass('drift-click-highlight');
+
+            // Add highlight to both messages
+            $user.addClass('drift-click-highlight');
+            if ($assistant.length) $assistant.addClass('drift-click-highlight');
+
+            // Scroll the user message into view
+            $user[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Remove highlight after 1.5 seconds
+            setTimeout(() => {
+                $user.removeClass('drift-click-highlight');
+                if ($assistant.length) $assistant.removeClass('drift-click-highlight');
+            }, 1500);
+        };
+        hitArea.on('click', handleClick);
+        dot.on('click', handleClick);
+
+        // Turn label — fades in after dot
+        svg.append('text')
+            .attr('x', dotX).attr('y', y + 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px').attr('font-weight', '600')
+            .attr('fill', isLatest ? 'white' : '#777')
+            .style('opacity', 0)
+            .text(entry.turn)
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+
+        // Trait activation % labels on either side of dot
+        const lPct = Math.round(entry.lVal * 100);
+        const rPct = Math.round(entry.rVal * 100);
+        svg.append('text')
+            .attr('x', dotX - 18).attr('y', y + 3)
+            .attr('text-anchor', 'end')
+            .attr('font-size', '11px').attr('fill', leftColor)
+            .style('opacity', 0)
+            .text(lPct + '%')
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+        svg.append('text')
+            .attr('x', dotX + 18).attr('y', y + 3)
+            .attr('text-anchor', 'start')
+            .attr('font-size', '11px').attr('fill', rightColor)
+            .style('opacity', 0)
+            .text(rPct + '%')
+            .transition().delay(delay + 150).duration(200)
+            .style('opacity', 1);
+    });
+
+    // Auto-scroll drift panel to show latest dot
+    setTimeout(()=>{ container.scrollTop = container.scrollHeight; }, 100);
+}
+
 // Test persona with mock data - for development/testing without API calls
 function testPersonaWithMockData() {
     const personaChart = $('#personaChart');
@@ -1366,553 +1865,349 @@ function testPersonaWithMockData() {
                 empathetic: 0.82,      // High empathy
                 unempathetic: 0
             },
-            encouraging: {
-                encouraging: 0.75,     // Quite encouraging
-                discouraging: 0
+            erudite: {
+                sophisticated: 0.75,   // Quite sophisticated
+                simplistic: 0
             },
-            sociality: {
-                social: 0.68,          // Moderately social
-                antisocial: 0
+            robotic: {
+                robotic: 0,            // Very human-like (opposite trait active)
+                'human-like': 0.85
             },
-            formality: {
-                formal: 0,             // Very casual (opposite trait active)
-                casual: 0.85
+            romantic: {
+                romantic: 0,           // Platonic (opposite trait active)
+                platonic: 0.65
             },
-            sycophancy: {
+            sycophantic: {
                 sycophantic: 0,        // Mostly honest (opposite trait active)
-                honest: 0.65
+                honest: 0.88
             },
-            funniness: {
-                funny: 0.78,           // Quite funny
-                serious: 0
-            },
-            hallucination: {
-                hallucinatory: 0,      // Very factual/accurate (opposite trait active)
-                factual: 0.88
-            },
-            toxicity: {
+            toxic: {
                 toxic: 0,              // Very respectful (opposite trait active)
                 respectful: 0.92
             }
         };
         
         renderPersonaChart(mockData);
+        renderPersonaChart(mockData, 'chatPersonaChart');
+
+        // Push mock snapshot so drift panel has data to display
+        window.personaHistory.push({ turn: window.personaHistory.length + 1, scores: mockData });
     }, 800); // Simulate network delay
 }
 
-// ============================================
-// PRE-TASK SURVEY FUNCTIONS
-// ============================================
 
-// Initialize pre-task survey (called on page load)
-function initializePreTaskSurvey() {
-    // This is now just a placeholder - actual event listeners are set up
-    // in setupSurveyEventListeners() after HTML is inserted
-}
-
-// Set up survey event listeners (called after HTML is inserted)
-function setupSurveyEventListeners() {
-    const phase1 = $('#surveyPhase1');
-    const phase2 = $('#surveyPhase2');
-    const phase3 = $('#surveyPhase3');
-    
-    const phase1ProceedBtn = $('#phase1ProceedBtn');
-    const phase2ProceedBtn = $('#phase2ProceedBtn');
-    const phase3ProceedBtn = $('#phase3ProceedBtn');
-    
-    // Phase 1: Listen to radio button changes
-    $('input[name="phase1_q1"], input[name="phase1_q2"]').on('change', function() {
-        const q1Answered = $('input[name="phase1_q1"]:checked').length > 0;
-        const q2Answered = $('input[name="phase1_q2"]:checked').length > 0;
-        const bothAnswered = q1Answered && q2Answered;
-        phase1ProceedBtn.prop('disabled', !bothAnswered);
-    });
-    
-    // Phase 1 Proceed button
-    phase1ProceedBtn.on('click', async function() {
-        
-        // Save Phase 1 data to Firebase
-        await savePhase1Data();
-        
-        phase1.hide();
-        phase2.show();
-    });
-    
-    // Phase 2: Listen to all trait radio buttons
-    const traitNames = [
-        'trait_empathy',
-        'trait_encouraging',
-        'trait_sociality',
-        'trait_honesty',
-        'trait_hallucination',
-        'trait_toxicity',
-        'trait_funniness',
-        'trait_formality'
-    ];
-    
-    traitNames.forEach(traitName => {
-        $(`input[name="${traitName}"]`).on('change', validatePhase2);
-    });
-    
-    function validatePhase2() {
-        const allAnswered = traitNames.every(traitName => {
-            return $(`input[name="${traitName}"]:checked`).length > 0;
-        });
-        phase2ProceedBtn.prop('disabled', !allAnswered);
-    }
-    
-    // Phase 2 Proceed button
-    phase2ProceedBtn.on('click', async function() {
-        // Save Phase 2 data to Firebase
-        await savePhase2Data();
-        
-        phase2.hide();
-        phase3.show();
-    });
-    
-    // Phase 3: Listen to trust question
-    $('input[name="phase3_trust"]').on('change', function() {
-        const trustAnswered = $('input[name="phase3_trust"]:checked').length > 0;
-        phase3ProceedBtn.prop('disabled', !trustAnswered);
-    });
-    
-    // Phase 3 Proceed button - save data and close
-    phase3ProceedBtn.on('click', async function() {
-        // Save Phase 3 data to Firebase
-        await savePhase3Data();
-        
-        closePreTaskSurvey();
-    });
-}
-
-// Render survey inline in the right column
-function renderInlineSurvey() {
-    // Show survey instruction modal
-    window.showInstructionModal('survey');
-    
-    // Get survey phases from hidden source
-    const surveySource = $('#surveyPhasesSource .survey-phases-wrapper');
-    
-    if (surveySource.length > 0) {
-        const surveyHTML = surveySource.html();
-        $('#surveyPhasesContainer').html(surveyHTML);
-        
-        // NOW set up event listeners after HTML is in place
-        setupSurveyEventListeners();
-    } else {
-        console.error('Survey source not found!');
-    }
-    
-    // Show survey container
-    $('#preTaskSurveyContainer').show();
-    
-    // Reset to phase 1
-    setTimeout(() => {
-        $('#surveyPhase1').show();
-        $('#surveyPhase2').hide();
-        $('#surveyPhase3').hide();
-    }, 100);
-}
-
-// Close/hide inline survey
-function closePreTaskSurvey() {
-    // Hide survey container
-    $('#preTaskSurveyContainer').hide();
-    
-    // Mark survey as completed
-    localStorage.setItem('preTaskSurveyCompleted', 'true');
-    
-    // Enable interface buttons now that survey is complete
-    enableInterfaceButtons();
-    
-    // Check visualization condition to determine next step
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
-    
-    // Log the condition being applied after survey
-    console.log('=== POST-SURVEY: APPLYING CONDITION ===');
-    console.log('Condition:', visualizationCondition === 0 ? 'CONTROL (no-viz)' : 'EXPERIMENTAL (viz)');
-    console.log('======================================');
-    
-    if (visualizationCondition === 0) {
-        // NO-VIZ CONDITION: Auto-submit persona check
-        // Show placeholder while processing
-        $('#initialPlaceholder').show();
-        $('#initialPlaceholder').html(`
-            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                <p style="margin: 0; font-size: 1.1rem;">Processing your system prompt...</p>
-            </div>
-        `);
-        
-        // Get the system prompt and auto-submit
-        const systemPrompt = $('#systemPromptInput').val();
-        autoSubmitPersonaCheck(systemPrompt);
-        
-    } else {
-        // VIZ CONDITION: Show Check Persona buttons
-        // Show placeholder in persona area with instructions
-        $('#personaVisualization').hide();
-        $('#initialPlaceholder').show();
-        $('#initialPlaceholder').html(`
-            <div style="text-align: center; color: var(--text-muted); padding: 3rem 2rem;">
-                <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                <p style="margin: 0; font-size: 1.1rem;">Click "Check Persona" to analyze and enable chat</p>
-            </div>
-        `);
-        
-        // But keep Start Chat disabled until persona is checked
-        $('#startChatBtn').prop('disabled', true);
-        
-        // Show Check Persona and Test Persona buttons
-        $('.persona-check-buttons').show();
-    }
-}
-
-// Disable interface buttons (called before survey)
-function disableInterfaceButtons() {
-    $('#startChatBtn').prop('disabled', true);
-    $('#resetConfig').prop('disabled', true);
-    $('#checkPersonaBtn').prop('disabled', true);
-    $('#testPersonaBtn').prop('disabled', true);
-    // Submit Prompt button state is controlled by character counter
-    // Don't override it here - let updateCharacterCounter() handle it
-}
-
-// Enable interface buttons (called after survey)
-function enableInterfaceButtons() {
-    $('#startChatBtn').prop('disabled', false);
-    $('#resetConfig').prop('disabled', false);
-    $('#checkPersonaBtn').prop('disabled', false);
-    $('#testPersonaBtn').prop('disabled', false);
-    // Submit Prompt button already hidden/disabled after use
-}
-
-// Save Phase 1 data to Firebase
-async function savePhase1Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        const systemPrompt = $('#systemPromptInput').val();
-        
-        // Collect Phase 1 responses
-        const phase1Data = {
-            "How well could you predict unintended behaviors from your system prompt?": parseInt($('input[name="phase1_q1"]:checked').val()),
-            "How well could you predict negative unintended behaviors from your system prompt?": parseInt($('input[name="phase1_q2"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase1WriteData = {
-            responses: phase1Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase1`, phase1WriteData);
-        
-        // Save metadata on first phase
-        const metadataWriteData = {
-            system_prompt: systemPrompt,
-            start_timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/metadata`, metadataWriteData);
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 1 data:', error);
-    }
-}
-
-// Save Phase 2 data to Firebase
-async function savePhase2Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        // Collect Phase 2 responses (trait predictions)
-        const phase2Data = {
-            "Empathy": parseInt($('input[name="trait_empathy"]:checked').val()),
-            "Encouraging": parseInt($('input[name="trait_encouraging"]:checked').val()),
-            "Sociality": parseInt($('input[name="trait_sociality"]:checked').val()),
-            "Honesty": parseInt($('input[name="trait_honesty"]:checked').val()),
-            "Hallucination": parseInt($('input[name="trait_hallucination"]:checked').val()),
-            "Toxicity": parseInt($('input[name="trait_toxicity"]:checked').val()),
-            "Funniness": parseInt($('input[name="trait_funniness"]:checked').val()),
-            "Formality": parseInt($('input[name="trait_formality"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase2WriteData = {
-            responses: phase2Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase2`, phase2WriteData);
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 2 data:', error);
-    }
-}
-
-// Save Phase 3 data to Firebase
-async function savePhase3Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        // Collect Phase 3 response
-        const phase3Data = {
-            "Given the relevant background about unintended model behaviors, how much do you trust this model?": parseInt($('input[name="phase3_trust"]:checked').val())
-        };
-        
-        // Save to Firebase
-        const basePath = `${studyId}/participantData/${firebaseUserId}/preTaskSurvey`;
-        const phase3WriteData = {
-            responses: phase3Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase3`, phase3WriteData);
-        
-        // Update metadata with completion time
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_timestamp`, timestamp);
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_time`, Date.now());
-        
-        // Mark survey as completed
-        localStorage.setItem('preTaskSurveyCompleted', 'true');
-        
-    } catch (error) {
-        console.error('❌ Error saving Phase 3 data:', error);
-    }
-}
 
 // ============================================
-// TIMER FUNCTIONS
+// PREDICT BEHAVIOR FLOW
 // ============================================
 
-// Start the timer
-async function startTimer() {
-    if (window.timerStartTime !== null) {
-        return;
-    }
-    
-    window.timerStartTime = Date.now();
-    const startTimeISO = new Date().toISOString();
-    
-    // Save timer start to Firebase
-    const timerPath = studyId + '/participantData/' + firebaseUserId + '/timer';
-    await writeRealtimeDatabase(timerPath + '/startTime', startTimeISO);
-    await writeRealtimeDatabase(timerPath + '/duration', window.timerDuration);
-    
-    // Show timer display
-    $('#timerDisplay').show();
-    
-    // Update timer every second
-    window.timerInterval = setInterval(updateTimer, 1000);
-    
-    // Initial update
-    updateTimer();
-}
+// Behavioral dimension pairs (matching actual persona-vector API categories)
+// Format: { category: API object key, pos: positive trait, neg: negative trait }
+const BEHAVIOR_PAIRS = [
+    { category: "toxic",       pos: "respectful",    neg: "toxic",         label: "Respectful ↔ Toxic" },
+    { category: "sycophantic", pos: "honest",        neg: "sycophantic",   label: "Honest ↔ Sycophantic" },
+    { category: "empathy",     pos: "empathetic",    neg: "unempathetic",  label: "Empathetic ↔ Unempathetic" },
+    { category: "erudite",     pos: "sophisticated", neg: "simplistic",    label: "Sophisticated ↔ Simplistic" },
+    { category: "robotic",     pos: "human-like",    neg: "robotic",       label: "Human-Like ↔ Robotic" },
+    { category: "romantic",    pos: "romantic",       neg: "platonic",      label: "Romantic ↔ Platonic" },
+];
 
-// Update timer display
-function updateTimer() {
-    if (window.timerStartTime === null || window.timerExpired) {
-        return;
-    }
-    
-    const elapsed = Math.floor((Date.now() - window.timerStartTime) / 1000);
-    const remaining = Math.max(0, window.timerDuration - elapsed);
-    
-    // Format time as M:SS
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
-    const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    
-    $('#timerText').text(timeString);
-    
-    // Check if timer has expired
-    if (remaining <= 0 && !window.timerExpired) {
-        timerExpired();
-    }
-}
+// End chat and show the predict behavior flow
+function endChatAndPredict() {
+    if (window.chatEnded) return;
+    window.chatEnded = true;
 
-// Timer has expired
-async function timerExpired() {
-    window.timerExpired = true;
-    
-    // Stop the interval
-    if (window.timerInterval) {
-        clearInterval(window.timerInterval);
-        window.timerInterval = null;
-    }
-    
-    // Save timer end to Firebase
-    const endTimeISO = new Date().toISOString();
-    const timerPath = studyId + '/participantData/' + firebaseUserId + '/timer';
-    await writeRealtimeDatabase(timerPath + '/endTime', endTimeISO);
-    
-    // Show post-survey modal
-    showPostSurvey();
-}
-
-// ============================================
-// POST-SURVEY FUNCTIONS
-// ============================================
-
-// Show post-survey modal
-function showPostSurvey() {
-    // Skip post-survey in demo mode
-    const isDemoMode = window.experimentSettings.demo;
-    
-    if (isDemoMode) {
-        console.log('🎬 Demo mode: Skipping post-task survey');
-        // In demo mode, just show a completion message or allow continued chatting
-        // For now, just redirect to completion page
-        completePostSurvey();
-        return;
-    }
-    
-    // Disable chat interface
+    // Disable chat input
     $('#messageInput').prop('disabled', true);
     $('#sendBtn').prop('disabled', true);
-    $('#attachBtn').prop('disabled', true);
-    $('#imageBtn').prop('disabled', true);
-    $('#backToConfigBtn').prop('disabled', true);
-    
-    // Show/hide viz-specific questions based on condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
-    if (visualizationCondition === 1) {
-        // Viz condition: show questions 5 and 6
-        $('#post_q5_container').show();
-        $('#post_q6_container').show();
-    } else {
-        // Control condition: hide and clear questions 5 and 6
-        $('#post_q5_container').hide();
-        $('#post_q6_container').hide();
-        $('input[name="post_q5"]').prop('checked', false);
-        $('input[name="post_q6"]').prop('checked', false);
+    $('#endChatBar').hide();
+
+    // Hide chat input area
+    $('.input-container').hide();
+
+    // Give the user a heads-up, then inject the prediction UI
+    showPredictTransitionPopup(function() {
+        injectPredictBehavior();
+    });
+}
+
+// Brief "get ready" popup shown right before switching to the predict-behavior view.
+// Stays up until the user dismisses it — no auto-continue timer.
+function showPredictTransitionPopup(callback) {
+    let dismissed = false;
+
+    // Unlike the other instruction modals, this one doesn't block the page — no dark/blurred
+    // backdrop, and it sits as a banner at the top of the screen so the interface underneath
+    // stays visible and usable.
+    const popupHtml = `
+        <div id="predictTransitionModal" class="predict-transition-toast">
+            <div class="predict-transition-toast-content">
+                <h4>Now predict the trait scores!</h4>
+                <p>You can still scroll up to review the conversation while you predict.</p>
+                <button type="button" class="btn btn-primary" id="predictTransitionContinueBtn">Continue →</button>
+            </div>
+        </div>`;
+
+    $('body').append(popupHtml);
+
+    function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        $('#predictTransitionModal').remove();
+        callback();
     }
-    
-    // Show modal
-    $('#postSurveyModal').fadeIn(300);
-    
-    // Initialize post-survey event listeners
-    initializePostSurvey();
+
+    $('#predictTransitionContinueBtn').on('click', dismiss);
 }
 
-// Initialize post-survey event listeners
-function initializePostSurvey() {
-    
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
-    
-    // Phase 1: Listen to radio button changes
-    $('input[name="post_q1"], input[name="post_q2"], input[name="post_q3"], input[name="post_q4"], input[name="post_q5"], input[name="post_q6"]').on('change', function() {
-        const q1Answered = $('input[name="post_q1"]:checked').length > 0;
-        const q2Answered = $('input[name="post_q2"]:checked').length > 0;
-        const q3Answered = $('input[name="post_q3"]:checked').length > 0;
-        const q4Answered = $('input[name="post_q4"]:checked').length > 0;
-        
-        let allAnswered = q1Answered && q2Answered && q3Answered && q4Answered;
-        
-        // For viz condition, also require q5 and q6
-        if (visualizationCondition === 1) {
-            const q5Answered = $('input[name="post_q5"]:checked').length > 0;
-            const q6Answered = $('input[name="post_q6"]:checked').length > 0;
-            allAnswered = allAnswered && q5Answered && q6Answered;
-        }
-        
-        $('#postPhase1ProceedBtn').prop('disabled', !allAnswered);
+// Inject neuronpedia-style behavior prediction sliders below the chat log
+function injectPredictBehavior() {
+    // Build slider HTML for each trait pair
+    // Slider: -100 to 100 mapping to -1 to 1 (neg pole to pos pole)
+    // Actual API values are already normalized to -1 to 1 (pos_activation - neg_activation)
+    let slidersHtml = '';
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+    BEHAVIOR_PAIRS.forEach(function(pair) {
+        const posLabel = capitalize(pair.pos);
+        const negLabel = capitalize(pair.neg);
+        slidersHtml += `
+            <div class="predict-rating-item">
+                <div class="top"><span class="neg">${negLabel}</span><span class="pos">${posLabel}</span></div>
+                <input type="range" min="-100" max="100" value="0" id="predict-${pair.category}"
+                    oninput="document.getElementById('predict-val-${pair.category}').textContent =
+                        this.value > 0 ? '${posLabel}: ' + this.value + '%' :
+                        this.value < 0 ? '${negLabel}: ' + Math.abs(this.value) + '%' : 'Neutral'">
+                <div class="val" id="predict-val-${pair.category}">Neutral</div>
+            </div>`;
     });
-    
-    // Phase 1 Proceed button
-    $('#postPhase1ProceedBtn').off('click').on('click', async function() {
-        await savePostPhase1Data();
-        $('#postSurveyPhase1').hide();
-        $('#postSurveyPhase2').show();
-    });
-    
-    // Phase 2: Listen to textarea input
-    $('#postOpenEndedResponse').on('input', function() {
-        const hasText = $(this).val().trim().length > 0;
-        $('#postPhase2SubmitBtn').prop('disabled', !hasText);
-    });
-    
-    // Phase 2 Back button
-    $('#postPhase2BackBtn').off('click').on('click', function() {
-        $('#postSurveyPhase2').hide();
-        $('#postSurveyPhase1').show();
-    });
-    
-    // Phase 2 Submit button
-    $('#postPhase2SubmitBtn').off('click').on('click', async function() {
-        await savePostPhase2Data();
-        completePostSurvey();
-    });
-}
 
-// Save Phase 1 data from post-survey
-async function savePostPhase1Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        const visualizationCondition = window.experimentSettings.visualizationCondition;
-        
-        const phase1Data = {
-            "How well could you predict unintended behaviors from your system prompt?": parseInt($('input[name="post_q1"]:checked').val()),
-            "How well could you predict negative unintended behaviors from your system prompt?": parseInt($('input[name="post_q2"]:checked').val()),
-            "Given the {relevant background abt unintended model behaviors}, how much do you trust this model?": parseInt($('input[name="post_q3"]:checked').val()),
-            "Did you arrive at your desired character?": parseInt($('input[name="post_q4"]:checked').val())
-        };
-        
-        // Add viz-specific questions if in experimental condition
-        if (visualizationCondition === 1) {
-            phase1Data["Did the visualization help you understand model behavior?"] = parseInt($('input[name="post_q5"]:checked').val());
-            phase1Data["Would you like to see this visualization again in future interactions?"] = parseInt($('input[name="post_q6"]:checked').val());
-        }
-        
-        const basePath = `${studyId}/participantData/${firebaseUserId}/postTaskSurvey`;
-        const postPhase1WriteData = {
-            responses: phase1Data,
-            timestamp: timestamp,
-            condition: visualizationCondition === 0 ? 'control' : 'experimental'
-        };
-        await writeRealtimeDatabase(`${basePath}/phase1`, postPhase1WriteData);
-        
-    } catch (error) {
-        console.error('❌ Error saving post-survey Phase 1 data:', error);
-    }
-}
+    const panelHtml = `
+        <div id="predictPanel" class="predict-panel">
+            <div class="predict-header">
+                <h5>Predict Model Behavior</h5>
+                <p>Based on your conversation and feedback from the interface, predict the model's trait scores on the final turn of your conversation with the sliders.</p>
+            </div>
+            <div class="predict-rating-grid">${slidersHtml}</div>
+            <div style="text-align: right; margin-top: 1.25rem;">
+                <button type="button" class="btn btn-primary" id="predictSubmitBtn">Submit Prediction →</button>
+            </div>
+            <div id="predictResults" class="predict-results" style="display: none;"></div>
+        </div>`;
 
-// Save Phase 2 data from post-survey
-async function savePostPhase2Data() {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        const phase2Data = {
-            "openEndedFeedback": $('#postOpenEndedResponse').val().trim()
-        };
-        
-        const basePath = `${studyId}/participantData/${firebaseUserId}/postTaskSurvey`;
-        const postPhase2WriteData = {
-            responses: phase2Data,
-            timestamp: timestamp
-        };
-        await writeRealtimeDatabase(`${basePath}/phase2`, postPhase2WriteData);
-        
-        // Update metadata with completion time
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_timestamp`, timestamp);
-        await writeRealtimeDatabase(`${basePath}/metadata/completion_time`, Date.now());
-        
-    } catch (error) {
-        console.error('❌ Error saving post-survey Phase 2 data:', error);
-    }
-}
+    const messagesContainer = $('#messagesContainer');
+    messagesContainer.append(panelHtml);
 
-// Complete post-survey and redirect to completion page
-function completePostSurvey() {
-    // Hide modal
-    $('#postSurveyModal').fadeOut(300);
-    
-    // Redirect to completion page after a short delay
+    // Unlike the plain research-study flow, the left panel (sunburst + drift) stays live and
+    // visible here rather than being blanked — it's not shown on the right, so there's nothing
+    // to duplicate or hide.
+
+    // Submit handler
+    $('#predictSubmitBtn').on('click', function() {
+        $(this).prop('disabled', true).text('Scoring...');
+        showPredictResults();
+    });
+
+    // Scroll to predict panel
     setTimeout(function() {
-        // Load completion page into the main content area with cache-busting
-        $('#task-main-content').load('html/complete.html?v=' + Date.now());
-        
-        // Or redirect to completion page
-        // window.location.href = 'html/complete.html';
-    }, 500);
+        var panel = document.getElementById('predictPanel');
+        if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+}
+
+// Collect user predictions and compare against actual persona-vector API data
+function showPredictResults() {
+    const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+    // Gather user predictions (slider -100 to 100, map to -1 to 1)
+    const userPredictions = {};
+    BEHAVIOR_PAIRS.forEach(function(pair) {
+        const el = document.getElementById('predict-' + pair.category);
+        userPredictions[pair.category] = el ? +el.value / 100 : 0;
+    });
+
+    // Get actual values from the final turn's persona-vector data
+    // Returns { category: value } on -1 to 1 scale (pos_activation - neg_activation)
+    const actual = getActualBehaviorValues();
+
+    // Mean absolute error across all dimensions (-1 to 1 scale, so max possible error = 2)
+    let sumAbsErr = 0;
+    const perDim = [];
+    BEHAVIOR_PAIRS.forEach(function(pair) {
+        const predicted = userPredictions[pair.category];
+        const actualVal = actual[pair.category];
+        const err = predicted - actualVal;
+        sumAbsErr += Math.abs(err);
+        perDim.push({ pair, predicted, actualVal, err, absErr: Math.abs(err) });
+    });
+    const mae = sumAbsErr / BEHAVIOR_PAIRS.length;
+
+    // Build per-dimension breakdown
+    let breakdownHtml = '';
+    perDim.forEach(function(d) {
+        // Values are on a -1 to 1 scale — shown as -100% to +100% to match the sunburst
+        const asPct = v => Math.round(v * 100) + '%';
+        const signedPct = v => (v >= 0 ? '+' : '') + asPct(v);
+        const errDisplay = asPct(d.absErr);
+        const color = d.absErr < 0.20 ? '#22c55e' : d.absErr < 0.50 ? '#eab308' : '#ef4444';
+        // Match the slider convention: 0% reads as "Neutral" rather than a signed pole label,
+        // but still show the (0%) alongside it.
+        const predPct = Math.round(d.predicted * 100);
+        const actPct = Math.round(d.actualVal * 100);
+        // &nbsp; glues the trait name to its percentage so they never wrap onto separate lines.
+        const predText = predPct === 0 ? `Neutral&nbsp;(${asPct(d.predicted)})` : `${capitalize(predPct > 0 ? d.pair.pos : d.pair.neg)}&nbsp;(${signedPct(d.predicted)})`;
+        const actText = actPct === 0 ? `Neutral&nbsp;(${asPct(d.actualVal)})` : `${capitalize(actPct > 0 ? d.pair.pos : d.pair.neg)}&nbsp;(${signedPct(d.actualVal)})`;
+
+        breakdownHtml += `
+            <div class="predict-breakdown-row">
+                <div class="predict-breakdown-label">${capitalize(d.pair.pos)}<br>&harr;<br>${capitalize(d.pair.neg)}</div>
+                <div class="predict-breakdown-item">
+                    <div class="row-top">
+                        <span class="accuracy" style="color:${color}">Absolute Error = ${errDisplay}</span>
+                    </div>
+                    <div class="details">
+                        <span class="predicted"><strong>Predicted:</strong><br>${predText}</span>
+                        <span class="actual"><strong>Actual:</strong><br>${actText}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    // Grade based on MAE (-1 to 1 scale, theoretical max error = 2.0)
+    let grade, desc;
+    if (mae < 0.15) {
+        grade = 'Outstanding calibration';
+        desc = 'You have an excellent read on this model\'s behavior.';
+    } else if (mae < 0.35) {
+        grade = 'Good calibration';
+        desc = 'The visualization helped you track the model\'s behavioral profile.';
+    } else if (mae < 0.65) {
+        grade = 'Moderate calibration';
+        desc = 'Predicting AI behavior is hard — Neural Transparency helps close this gap.';
+    } else {
+        grade = 'Room for improvement';
+        desc = 'Most people struggle to predict AI behavior. That\'s exactly why Neural Transparency exists.';
+    }
+
+    const maeColor = mae < 0.15 ? '#22c55e' : mae < 0.35 ? '#eab308' : '#ef4444';
+
+    const resultsHtml = `
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-top:1rem;">
+            <div class="predict-header">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <h5 style="margin:0;">Prediction Error (Mean Absolute Error)</h5>
+                    <span class="trait-tooltip">
+                        <i class="fas fa-info-circle" style="color:#fff;opacity:0.85;"></i>
+                        <span class="trait-tooltip-text">
+                            <strong>Absolute Error</strong> is measured as the absolute value between your predicted score and the model's actual score: |predicted &minus; actual|.
+                            <br><br>
+                            <strong>Mean Absolute Error (MAE)</strong> is an average of absolute error across all traits that measures, on average, how far your predicted trait scores were from the model's actual trait scores at the final turn.
+                            <br><br>
+                            <span style="display:block;text-align:center;margin:0.5rem 0;font-weight:700;">
+                                MAE = (1/<i>n</i>)
+                                <span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 0.3em;font-weight:400;line-height:1;">
+                                    <span style="font-size:0.65em;font-style:italic;">n</span>
+                                    <span style="font-size:1.7em;line-height:0.7;">&sum;</span>
+                                    <span style="font-size:0.65em;font-style:italic;">i=1</span>
+                                </span>
+                                |<i>predicted<sub>i</sub></i> &minus; <i>actual<sub>i</sub></i>|
+                            </span>
+                            <br>
+                            where <i>n</i> is the number of trait dimensions (6), <i>predicted<sub>i</sub></i> is your slider value for dimension <i>i</i>, and <i>actual<sub>i</sub></i> is the model's measured score for that dimension.
+                        </span>
+                    </span>
+                </div>
+                <p>Mean absolute error (MAE) between your predicted actual trait scores at the last turn.</p>
+            </div>
+            <div class="predict-scores">
+                <div class="predict-score-card">
+                    <div class="label">MAE</div>
+                    <div class="value" style="color:${maeColor}">${Math.round(mae * 100)}%</div>
+                    <div class="sub">lower is better</div>
+                </div>
+                <div class="predict-score-card">
+                    <div class="label">Grade</div>
+                    <div style="font-size:16px;font-weight:700;margin-top:8px;color:${maeColor}">${grade}</div>
+                    <div class="sub" style="margin-top:4px">${desc}</div>
+                </div>
+            </div>
+            <h5 style="font-size:15px;font-weight:700;margin-bottom:10px;text-align:center;">Trait Breakdown</h5>
+            <div class="predict-breakdown">${breakdownHtml}</div>
+            <div style="margin-top:20px;text-align:center;">
+                <button class="btn btn-primary" onclick="if(typeof showPage==='function'){showPage('science')}else{window.location.hash='science'}" style="padding:10px 24px;font-size:14px;font-weight:600;">Read about the Science →</button>
+            </div>
+        </div>`;
+
+    // Hide the chat log on the results page — only the score/results content should show.
+    $('#messagesContainer .message').hide();
+
+    // Now that the user has locked in their prediction, it's safe to reveal the final turn's
+    // actual scores on the sunburst/drift panel — checkPersona() withheld them until now.
+    const finalTurnEntry = window.personaHistory && window.personaHistory[window.personaHistory.length - 1];
+    if (finalTurnEntry && finalTurnEntry.scores) {
+        renderPersonaChart(finalTurnEntry.scores);
+        renderPersonaChart(finalTurnEntry.scores, 'chatPersonaChart');
+        if (window.activeDriftTrait && $('#traitDriftPanel').is(':visible')) {
+            renderTraitDrift(window.activeDriftTrait);
+        }
+    }
+
+    $('#predictResults').html(resultsHtml).show();
+    $('#predictSubmitBtn').text('Prediction submitted').css('opacity', '0.6');
+
+    setTimeout(function() {
+        var results = document.getElementById('predictResults');
+        if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+
+    savePredictionData(userPredictions, actual, mae);
+}
+
+// Get actual behavior values from the final turn's persona-vector API data
+// Returns { category: value } on -1 to 1 scale (pos_activation - neg_activation)
+function getActualBehaviorValues() {
+    const values = {};
+
+    // Use the latest personaHistory entry (final turn)
+    let scores = null;
+    if (window.personaHistory && window.personaHistory.length > 0) {
+        scores = window.personaHistory[window.personaHistory.length - 1].scores;
+    } else if (window.currentPersonaData) {
+        scores = window.currentPersonaData;
+    }
+
+    BEHAVIOR_PAIRS.forEach(function(pair) {
+        if (scores && scores[pair.category]) {
+            const cat = scores[pair.category];
+            const posVal = cat[pair.pos] || 0; // 0 to 1
+            const negVal = cat[pair.neg] || 0; // 0 to 1
+            // pos - neg gives -1 to 1 scale
+            values[pair.category] = posVal - negVal;
+        } else {
+            values[pair.category] = 0; // neutral fallback
+        }
+    });
+
+    return values;
+}
+
+// Save prediction data to Firebase
+async function savePredictionData(predictions, actual, mae) {
+    try {
+        const session = window.getCurrentSession();
+        const basePath = studyId + '/participantData/' + firebaseUserId + '/session' + session + '/behaviorPrediction';
+        const data = {
+            predictions: predictions,
+            actual: actual,
+            // Field renamed from `rmse` when the metric changed — records written before
+            // 2026-08-08 carry `rmse` instead, so analysis needs to handle both.
+            mae: mae,
+            timestamp: new Date().toISOString(),
+            turnsCompleted: window.conversationHistory ? window.conversationHistory.filter(function(m) { return m.role === 'user'; }).length : 0
+        };
+        await writeRealtimeDatabase(basePath, data);
+    } catch (e) {
+        console.warn('Prediction save error:', e);
+    }
 }
 
 /******************************************************************************
@@ -1962,7 +2257,7 @@ window.dismissInstructionModal = function(type) {
     // Hide the modal
     const modalId = type + 'InstructionModal';
     $('#' + modalId).fadeOut(300);
-    
+
     // Mark as shown
     const instructionsShown = JSON.parse(sessionStorage.getItem('instructionsShown') || '{}');
     instructionsShown[type] = true;
@@ -1972,7 +2267,7 @@ window.dismissInstructionModal = function(type) {
 // Show visualization explanation modal
 window.showVisualizationExplanation = function(forceShow = false) {
     // Don't show in no-viz condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     if (visualizationCondition === 0) {
         return;
     }
@@ -1999,20 +2294,23 @@ window.dismissVisualizationExplanation = function() {
 
 // Show prompt refinement reminder modal
 window.showPromptRefinementModal = function() {
+    // Prompt refinement is disabled — users cannot go back to system prompt from chat
+    return;
+
     // Check if already shown
     const hasShown = sessionStorage.getItem('promptRefinementShown');
-    
+
     if (hasShown) {
         return;
     }
     
-    // Update text based on visualization condition
-    const visualizationCondition = window.experimentSettings.visualizationCondition;
+    // Update text based on effective visualization condition
+    const visualizationCondition = window.getEffectiveVisualizationCondition();
     const modalContent = $('#promptRefinementModal .instruction-modal-content');
-    
+
     if (visualizationCondition === 0) {
         // NO-VIZ: Remove visualization mention
-        modalContent.find('p').eq(1).html('<strong>How to refine:</strong> Click "Back to Configuration" to adjust your prompt and test the updated behavior.');
+        modalContent.find('p').eq(1).html('<strong>How to refine:</strong> Click "View System Prompt" to adjust your prompt and test the updated behavior.');
     }
     
     $('#promptRefinementModal').fadeIn(600);

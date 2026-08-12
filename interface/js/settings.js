@@ -16,14 +16,17 @@
 function getExperimentSettingsFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     
-    // Check for demo mode first - it will override multiple settings
+    // Check for demo mode or neuronpedia mode — both override multiple settings
     const isDemoMode = urlParams.get('demo') === 'true';
+    const isNeuronpediaMode = window.NEURONPEDIA_MODE === true || urlParams.get('neuronpedia') === 'true' || isDemoMode;
     
-    // If demo mode is active, clear any previous sessionStorage assignments
-    // to ensure demo mode settings take precedence
-    if (isDemoMode) {
+    // If neuronpedia/demo mode is active, clear any previous sessionStorage assignments
+    // to ensure neuronpedia mode settings take precedence
+    if (isNeuronpediaMode) {
         sessionStorage.removeItem('visualizationCondition');
         sessionStorage.removeItem('conditionAssignmentMethod');
+        sessionStorage.removeItem('currentSession');
+        sessionStorage.removeItem('promptOrder');
     }
     
     let settings = {
@@ -45,13 +48,6 @@ function getExperimentSettingsFromURL() {
         debug: isDemoMode || urlParams.get('debug') === 'true',
         
         /**
-         * Debug timer mode - shortens timer for testing (10 seconds vs 10 minutes)
-         * URL: ?debugTimer=true
-         * Default: false
-         */
-        debugTimer: urlParams.get('debugTimer') === 'true',
-        
-        /**
          * Fresh mode - clears all session/local storage on load
          * URL: ?fresh=true
          * Default: false
@@ -67,6 +63,50 @@ function getExperimentSettingsFromURL() {
         skipSurvey: isDemoMode || urlParams.get('skipSurvey') === 'true',
         
         /**
+         * Skip mode - auto-reveals all sentence/transcript reveals and unlocks all
+         * gated next buttons immediately on load (for quick navigation during testing)
+         * URL: ?skip=true
+         * Default: false
+         */
+        skip: urlParams.get('skip') === 'true',
+
+        /**
+         * Current session number (1 = baseline, 2 = experimental)
+         * Session 1: No visualization for ANY condition (baseline)
+         * Session 2: Visualization conditions applied (experimental)
+         * Persisted in sessionStorage across page navigations
+         */
+        currentSession: (() => {
+            if (isNeuronpediaMode) {
+                sessionStorage.setItem('currentSession', '2');
+                return 2; // Always session 2 (experimental) in neuronpedia/demo mode
+            }
+            const stored = sessionStorage.getItem('currentSession');
+            if (stored !== null) return parseInt(stored, 10);
+            // Default to session 1
+            sessionStorage.setItem('currentSession', '1');
+            return 1;
+        })(),
+
+        /**
+         * Prompt order counterbalancing — determines which prompt (asst/roleply) is shown in which session
+         * 'asst_first': Session 1 = assistant prompt, Session 2 = role-play prompt
+         * 'roleply_first': Session 1 = role-play prompt, Session 2 = assistant prompt
+         * Random 50/50 assignment, persisted in sessionStorage
+         */
+        promptOrder: (() => {
+            if (isNeuronpediaMode) {
+                sessionStorage.setItem('promptOrder', 'asst_first');
+                return 'asst_first'; // Session 2 = ROLEPLY prompt (the interesting one)
+            }
+            const stored = sessionStorage.getItem('promptOrder');
+            if (stored !== null) return stored;
+            const order = Math.random() < 0.5 ? 'asst_first' : 'roleply_first';
+            sessionStorage.setItem('promptOrder', order);
+            return order;
+        })(),
+
+        /**
          * Shorten system prompt minimum character requirement (bypasses 100 char minimum)
          * URL: ?shortenPrompt=true
          * Default: false
@@ -79,11 +119,24 @@ function getExperimentSettingsFromURL() {
          * Default: false
          */
         sunburst: (() => {
+            if (isNeuronpediaMode) return true; // Always use sunburst in neuronpedia/demo mode
             const sunburstParam = urlParams.get('sunburst');
             if (sunburstParam === null) {
                 return false; // Default to false
             }
             return sunburstParam.toLowerCase() === 'true' || sunburstParam === '1';
+        })(),
+
+        /**
+         * Cognitive forcing function highlights — blink the element that caused the biggest persona swing
+         * Comma-separated list: 1=chat message bubble, 2=drift chart dot, 3=sunburst trait segment
+         * URL: ?highlight=1  or  ?highlight=1,2,3
+         * Default: [1,2,3] (all highlights enabled — only active when visualizationCondition=2)
+         */
+        highlight: (() => {
+            const param = urlParams.get('highlight');
+            if (!param) return [1, 2, 3];
+            return param.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
         })(),
         
         /**
@@ -95,11 +148,11 @@ function getExperimentSettingsFromURL() {
          * Note: Demo mode always forces visualizationCondition=1
          */
         visualizationCondition: (() => {
-            // Demo mode always shows visualization (condition 1)
-            if (isDemoMode) {
-                sessionStorage.setItem('visualizationCondition', '1');
-                sessionStorage.setItem('conditionAssignmentMethod', 'demo_mode');
-                return 1;
+            // Neuronpedia/demo mode always shows multi-turn visualization (condition 2)
+            if (isNeuronpediaMode) {
+                sessionStorage.setItem('visualizationCondition', '2');
+                sessionStorage.setItem('conditionAssignmentMethod', 'neuronpedia_mode');
+                return 2;
             }
             
             const conditionParam = urlParams.get('visualizationCondition');
@@ -107,7 +160,7 @@ function getExperimentSettingsFromURL() {
             // Check for URL parameter override first
             if (conditionParam !== null) {
                 const value = parseInt(conditionParam, 10);
-                if (value === 0 || value === 1) {
+                if (value === 0 || value === 1 || value === 2) {
                     // Store in sessionStorage to maintain across navigations
                     sessionStorage.setItem('visualizationCondition', value.toString());
                     sessionStorage.setItem('conditionAssignmentMethod', 'manual_url');
@@ -122,11 +175,17 @@ function getExperimentSettingsFromURL() {
                 return parseInt(storedCondition, 10);
             }
             
-            // Random 50/50 assignment for new sessions
-            const randomCondition = Math.random() < 0.5 ? 0 : 1;
-            sessionStorage.setItem('visualizationCondition', randomCondition.toString());
-            sessionStorage.setItem('conditionAssignmentMethod', 'random');
-            return randomCondition;
+            // Forced control condition for run4
+            sessionStorage.setItem('visualizationCondition', '0');
+            sessionStorage.setItem('conditionAssignmentMethod', 'forced_control');
+            return 0;
+
+            // Random 1/3 assignment for new sessions (0=control, 1=single-turn, 2=multi-turn)
+            // const rand = Math.random();
+            // const randomCondition = rand < 1/3 ? 0 : rand < 2/3 ? 1 : 2;
+            // sessionStorage.setItem('visualizationCondition', randomCondition.toString());
+            // sessionStorage.setItem('conditionAssignmentMethod', 'random');
+            // return randomCondition;
         })(),
     };
     
@@ -141,12 +200,15 @@ function getExperimentSettingsFromURL() {
 let defaultSettings = {
     demo: false,
     debug: false,
-    debugTimer: false,
     fresh: false,
+    skip: false,
     skipSurvey: false,
     shortenPrompt: false,
     sunburst: false,
-    visualizationCondition: null, // Random assignment (0 or 1)
+    visualizationCondition: null, // Random assignment (0=control, 1=single-turn, 2=multi-turn)
+    highlight: [],
+    currentSession: 1,
+    promptOrder: null, // Random assignment (asst_first/roleply_first)
 };
 
 // ============================================
@@ -155,6 +217,74 @@ let defaultSettings = {
 
 // Create global settings object
 window.experimentSettings = getExperimentSettingsFromURL();
+
+// ============================================
+// SESSION-AWARE HELPERS (must be defined before logging)
+// ============================================
+
+/**
+ * Get the effective visualization condition for the current session.
+ * Session 1 (baseline) ALWAYS returns 0 (no visualization) regardless of assigned condition.
+ * Session 2 (experimental) returns the real assigned condition.
+ * @returns {number} 0, 1, or 2
+ */
+window.getEffectiveVisualizationCondition = function() {
+    const session = parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+    if (session === 1) return 0; // Baseline: no visualization for anyone
+    return window.experimentSettings.visualizationCondition;
+};
+
+/**
+ * Get the prompt type (asst/roleply) for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} 'ASST' or 'ROLEPLY'
+ */
+window.getSessionPromptType = function(sessionNum) {
+    const order = sessionStorage.getItem('promptOrder') || 'asst_first';
+    if (sessionNum === 1) return order === 'asst_first' ? 'ASST' : 'ROLEPLY';
+    return order === 'asst_first' ? 'ROLEPLY' : 'ASST';
+};
+
+/**
+ * Get the system prompt text for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {string} The system prompt text
+ */
+window.getSessionPromptText = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].text
+        : '';
+};
+
+/**
+ * Get the scripted conversation for a given session number.
+ * @param {number} sessionNum - 1 or 2
+ * @returns {Array} The conversation array
+ */
+window.getSessionConversation = function(sessionNum) {
+    const type = window.getSessionPromptType(sessionNum);
+    return (window.STUDY_CONTENT && window.STUDY_CONTENT.PROMPTS[type])
+        ? window.STUDY_CONTENT.PROMPTS[type].conversation
+        : [];
+};
+
+/**
+ * Get the current session number from sessionStorage.
+ * @returns {number} 1 or 2
+ */
+window.getCurrentSession = function() {
+    return parseInt(sessionStorage.getItem('currentSession') || '1', 10);
+};
+
+/**
+ * Advance to the next session (sets currentSession to 2).
+ */
+window.advanceToSession2 = function() {
+    sessionStorage.setItem('currentSession', '2');
+    window.experimentSettings.currentSession = 2;
+    console.log('⏭️ Advanced to Session 2 (Experimental)');
+};
 
 // Debug: explicitly log demo flag and timestamp to verify new version is loaded
 console.log('🔍 DEBUG [v2024-10-21-v2]: demo flag =', window.experimentSettings.demo);
@@ -179,9 +309,15 @@ if (window.experimentSettings.demo) {
 console.log('⚙️ Experiment Settings Loaded:', window.experimentSettings);
 
 // Log visualization condition prominently
-const conditionName = window.experimentSettings.visualizationCondition === 0 ? 'CONTROL (No Visualization)' : 'EXPERIMENTAL (With Visualization)';
+const conditionName = ['CONTROL (No Visualization)', 'SINGLE-TURN (Static Visualization)', 'MULTI-TURN (Dynamic Visualization)'][window.experimentSettings.visualizationCondition] || 'UNKNOWN';
 const conditionMethod = sessionStorage.getItem('conditionAssignmentMethod') || 'unknown';
 console.log(`🔬 Visualization Condition: ${conditionName} (${conditionMethod})`);
+
+// Log session state
+const sessionNum = window.experimentSettings.currentSession;
+const promptOrder = window.experimentSettings.promptOrder;
+console.log(`📋 Session: ${sessionNum} (${sessionNum === 1 ? 'BASELINE' : 'EXPERIMENTAL'})`);
+console.log(`🔀 Prompt Order: ${promptOrder} (Session 1 = ${window.getSessionPromptType(1)}, Session 2 = ${window.getSessionPromptType(2)})`);
 
 // Log which settings were overridden by URL parameters
 const urlParams = new URLSearchParams(window.location.search);
