@@ -14,44 +14,74 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 load_dotenv()
 
-# projects the final-token activation of the full (system prompt + question + response)
-# context onto each layer of a trait's persona vector, fits trait level vs. score per
-# layer, and plots/reports R^2 and MSE for the best-fitting layer.
-#
-# Two scoring metrics are computed per activation, per layer:
-#   cosine     - cosine similarity between the activation and the persona vector.
-#                Both vectors are unit-normalized, so this discards the activation's
-#                magnitude and only reflects the angle between the two.
-#   projection - scalar projection of the activation onto the persona vector's
-#                direction (dot(a, b) / norm(b)). Only the persona vector is
-#                normalized, so this keeps the activation's magnitude information.
+# Projects each response's activation onto a trait's persona vector per layer, fits trait
+# level vs. score per layer, and plots/reports R^2 and MSE for the best-fitting layer.
 
-ALL_METRICS = ("cosine", "projection")
+# If True (pass --validating), always load persona vectors from VALIDATING_VECTORS_DIR instead
+# of --persona-vectors-dir. Set from args.validating at the top of main(); this default only
+# matters when GraphEvaluator/persona_vector_path are used outside of main() (see --plot below).
+USE_VALIDATING_VECTORS = False
+VALIDATING_VECTORS_DIR = Path("../generation/validating_vectors")
 
-# Which response/persona-vector activation-type combos to evaluate: 
-# (response_activation_type, persona_vector_type). 
-COMBOS = [
-    # ("final", "final"),
-    # ("final", "mean"),
-    # ("mean", "final"),
-    # ("mean", "mean"),
-    ("prompt_final", "mean"),
-    # ("conversation_mean", "mean"),
-    # ("prompt_eot", "mean"),
+# Which response activation type(s) to evaluate.
+RESPONSE_ACTIVATION_TYPES = [
+    "response_final",
+    "response_mean",
+    "user_prompt_final",
+    "conversation_mean",
 ]
 
-# Which scoring metrics to compute per activation/layer. Comment a line out to disable it.
-#   cosine     - cosine similarity (angle only, magnitude-blind)
-#   projection - scalar projection onto the persona vector direction (keeps magnitude)
+# Which persona vector activation type(s) to evaluate.
+PERSONA_VECTOR_TYPES = [
+    "final",
+    "mean",
+]
+
+# Cross product of the two lists above: every (response_activation_type, persona_vector_type)
+# combo to evaluate.
+COMBOS = [(r, p) for r in RESPONSE_ACTIVATION_TYPES for p in PERSONA_VECTOR_TYPES]
+
+# Which scoring metrics to compute per activation/layer.
+#   cosine     - cosine similarity
+#   projection - scalar projection onto the persona vector direction
 METRICS = [
     "cosine",
-    # "projection",
+    "projection",
 ]
 
 
 def load_json(filepath) -> dict:
     with open(filepath, "r") as f:
         return json.load(f)
+
+
+def bold(label):
+    """Mathtext-bolded version of `label`, for use as the part before a colon in plot titles
+    (spaces must be escaped for mathtext)."""
+    return r"$\bf{" + label.replace(" ", r"\ ") + "}$"
+
+
+# Some traits are saved under different names in different dirs -- e.g. "sycophancy" (used by
+# persona vector files and stored_prompts/) vs "sycophantic" (used by responses_multiturn/,
+# see generate_responses.py's TRAIT_FOLDER_ALIASES). Checked both ways.
+TRAIT_FILE_ALIASES = {
+    "sycophancy": "sycophantic",
+    "sycophantic": "sycophancy",
+    "toxicity": "toxic",
+    "toxic": "toxicity",
+}
+
+
+def responses_path(trait, multiturn):
+    """Path to the trait's responses file, falling back to TRAIT_FILE_ALIASES if the file isn't
+    found under `trait`'s own name."""
+    subdir = "responses_multiturn" if multiturn else "responses"
+    path = Path(subdir) / f"{trait}.json"
+    if not path.exists() and trait in TRAIT_FILE_ALIASES:
+        aliased_path = Path(subdir) / f"{TRAIT_FILE_ALIASES[trait]}.json"
+        if aliased_path.exists():
+            return aliased_path
+    return path
 
 
 def build_combo_tag(response_activation_type, persona_vector_type, multiturn=False, posthoc_labels=False):
@@ -67,8 +97,8 @@ def build_combo_tag(response_activation_type, persona_vector_type, multiturn=Fal
 
 def parse_combo_tag(combo_tag):
     """Inverse of build_combo_tag. response_activation_type may itself contain underscores
-    (e.g. 'prompt_final', 'conversation_mean'), so it's recovered by splitting on the unique
-    '_persona-' delimiter rather than by position."""
+    (e.g. 'user_prompt_final', 'conversation_mean'), so it's recovered by splitting on the
+    unique '_persona-' delimiter rather than by position."""
     posthoc_labels = combo_tag.endswith("_posthoclabels")
     if posthoc_labels:
         combo_tag = combo_tag[: -len("_posthoclabels")]
@@ -89,11 +119,11 @@ def format_combo_label_lines(combo_tag):
     plot titles."""
     parsed = parse_combo_tag(combo_tag)
     lines = [
-        f"response activation: {parsed['response_activation_type']}",
-        f"persona vector: {parsed['persona_vector_type']}",
+        f"{bold('Response Act')}: {parsed['response_activation_type'].replace('_', ' ').title()}",
+        f"{bold('Vector Act')}: {parsed['persona_vector_type'].replace('_', ' ').title()}",
     ]
     if parsed["posthoc_labels"]:
-        lines.append("post-hoc labels only")
+        lines.append("Post-Hoc Labels Only")
     return lines
 
 
@@ -102,7 +132,7 @@ class GraphEvaluator:
         self,
         model_name="meta-llama/Llama-3.1-8B-Instruct",
         device=None,
-        response_activation_type="final",
+        response_activation_type="response_final",
         persona_vector_type="final",
         persona_vectors_dir="../generation/persona_vectors",
         load_model=True,
@@ -110,10 +140,11 @@ class GraphEvaluator:
     ):
         """
         response_activation_type: which activation to extract from the model's
-            (system prompt + question + response) context: the 'final'
-            response token, the 'mean' over response tokens, or
-            'prompt_final' for the final token of the prompt itself (i.e.
-            system prompt + question, before the response begins).
+            (system prompt + question + response) context: the 'response_final'
+            response token, the 'response_mean' over response tokens,
+            'user_prompt_final' for the final token of the prompt itself (i.e.
+            system prompt + question, before the response begins), or
+            'conversation_mean' (see get_context_activation() for details).
         persona_vector_type: whether the stored persona vector loaded from disk is
             the mean-pooled '{trait}.pt' file (current format) or the legacy
             final-token '{trait}_final.pt' file (see persona_vector_path()).
@@ -162,7 +193,7 @@ class GraphEvaluator:
         elif metric == "projection":
             return self.projection(a, b)
         else:
-            raise ValueError(f"Unknown metric: {metric!r}. Expected one of {ALL_METRICS}.")
+            raise ValueError(f"Unknown metric: {metric!r}. Expected 'cosine' or 'projection'.")
 
     def get_residual_stream_hooks(self):
         """Register forward hooks on each layer's output to capture residual stream."""
@@ -188,26 +219,18 @@ class GraphEvaluator:
         included as prior conversation context.
 
         activation_type:
-          'final'               - final token of the turn being evaluated's response
-          'mean'                - mean over the response tokens of the turn being evaluated
-          'prompt_final'        - final token of the prompt's chat-template preamble for the
+          'response_final'      - final token of the turn being evaluated's response
+          'response_mean'       - mean over the response tokens of the turn being evaluated
+          'user_prompt_final'   - final token of the prompt's chat-template preamble for the
                                    upcoming assistant turn (i.e. Llama's
                                    "<|start_header_id|>assistant<|end_header_id|>\n\n" tokens) —
                                    the position the model actually reads from to start
-                                   generating. This is a few tokens past the end of the user's
-                                   actual message text (see 'prompt_eot' / 'prompt_content_final'
-                                   below for that).
-          'prompt_eot'          - the '<|eot_id|>' token that ends the final user turn, right
-                                   after the user's message content and before the
-                                   assistant-turn preamble.
-          'prompt_content_final'- the last actual content token of the user's message itself
-                                   (one token before 'prompt_eot').
+                                   generating.
           'conversation_mean'   - mean over every token in the conversation so far, including
                                    prior turns (system prompt + all turns up to turn_index)
 
-          All prompt-side variants ('prompt_final', 'prompt_eot', 'prompt_content_final') are
-          sliced out of the same forward pass used for the response, rather than run
-          separately — causal attention means the activation at any of these positions is
+          'user_prompt_final' is sliced out of the same forward pass used for the response,
+          rather than run separately — causal attention means the activation there is
           identical either way.
         """
         activation_type = activation_type or self.response_activation_type
@@ -243,46 +266,38 @@ class GraphEvaluator:
             [captured[i][0].float() for i in range(self.num_layers)], dim=0
         )
 
-        if activation_type == "prompt_final":
+        if activation_type == "user_prompt_final":
             return layer_activations[:, prompt_length - 1, :]
-        if activation_type in ("prompt_eot", "prompt_content_final"):
-            # Re-tokenize the prompt without the assistant-turn preamble to find where the
-            # user's turn itself ends: that string is a prefix of full_prompt, ending in
-            # '<|eot_id|>' right after the user's message content.
-            prompt_no_preamble = self.tokenizer.apply_chat_template(
-                prompt_messages, tokenize=False, add_generation_prompt=False
-            )
-            prompt_no_preamble_length = self.tokenizer(
-                prompt_no_preamble, return_tensors="pt"
-            ).input_ids.shape[1]
-            if activation_type == "prompt_eot":
-                return layer_activations[:, prompt_no_preamble_length - 1, :]
-            else:
-                return layer_activations[:, prompt_no_preamble_length - 2, :]
         if activation_type == "conversation_mean":
             return layer_activations.mean(dim=1)
 
         response_activations = layer_activations[:, prompt_length:, :]
-        if activation_type == "mean":
+        if activation_type == "response_mean":
             return response_activations.mean(dim=1)
-        elif activation_type == "final":
+        elif activation_type == "response_final":
             return response_activations[:, -1, :]
         else:
             raise ValueError(
-                f"Unknown activation_type: {activation_type!r}. Expected 'mean', 'final', "
-                "'prompt_final', 'prompt_eot', 'prompt_content_final', or 'conversation_mean'."
+                f"Unknown activation_type: {activation_type!r}. Expected 'response_final', "
+                "'response_mean', 'user_prompt_final', or 'conversation_mean'."
             )
 
     def persona_vector_path(self, trait):
         """persona_vectors.py now only produces mean-pooled vectors, saved unsuffixed as
         '{trait}.pt'. 'final' vectors are a legacy format (see CLAUDE.md) still saved as
-        '{trait}_final.pt' for traits generated before that change."""
+        '{trait}_final.pt' for traits generated before that change.
+
+        If USE_VALIDATING_VECTORS is set, this ignores self.persona_vectors_dir entirely and
+        always loads "{trait}_{persona_vector_type}.pt" from VALIDATING_VECTORS_DIR, since
+        both 'mean' and 'final' vectors are saved suffixed there."""
+        if USE_VALIDATING_VECTORS:
+            return VALIDATING_VECTORS_DIR / f"{trait}_{self.persona_vector_type}.pt"
         if self.persona_vector_type == "mean":
             return self.persona_vectors_dir / f"{trait}.pt"
         return self.persona_vectors_dir / f"{trait}_{self.persona_vector_type}.pt"
 
     def collect_layer_scores(self, trait, metrics):
-        responses_dict = load_json(f"responses/{trait}.json")
+        responses_dict = load_json(responses_path(trait, multiturn=False))
         persona_vector = torch.load(
             self.persona_vector_path(trait), weights_only=False
         ).float().to(self.device)
@@ -330,7 +345,7 @@ class GraphEvaluator:
         every turn of every conversation separately (context up to and including that turn is
         fed to the model per get_context_activation), so a single 3-turn conversation
         contributes 3 data points instead of 1."""
-        responses_dict = load_json(f"responses_multiturn/{trait}.json")
+        responses_dict = load_json(responses_path(trait, multiturn=True))
         persona_vector = torch.load(
             self.persona_vector_path(trait), weights_only=False
         ).float().to(self.device)
@@ -419,12 +434,11 @@ class GraphEvaluator:
 
         ranked = sorted(entries, key=lambda e: e["result"]["r_squared"], reverse=True)
 
-        n_cols = 2
-        n_rows = -(-len(ranked) // n_cols)  # ceil division
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols, 6 * n_rows))
+        n_cols, n_rows = 4, 2
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 3, 6 * n_rows - 2))
         axes = np.atleast_1d(axes).flatten()
 
-        for ax, entry in zip(axes, ranked):
+        for i, (ax, entry) in enumerate(zip(axes, ranked)):
             result = entry["result"]
             x = np.array(entry["levels"])
             y = np.array(entry["scores"])
@@ -433,35 +447,31 @@ class GraphEvaluator:
             x_fit = np.linspace(x.min(), x.max(), 100)
             y_fit = result["slope"] * x_fit + result["intercept"]
             ax.plot(x_fit, y_fit, "r--", linewidth=2)
-            mid_level = (x.min() + x.max()) / 2
-            mean_score = y.mean()
-            fit_at_mid = result["slope"] * mid_level + result["intercept"]
-            mean_fit_delta = mean_score - fit_at_mid
-            ax.axhline(mean_score, color="blue", alpha=0.5, label="mean score")
-            ax.axhline(
-                fit_at_mid, color="green", alpha=0.5,
-                label=f"fit value at level {mid_level:.2g}",
+
+            x_min, x_max = x.min(), x.max()
+            x_mid = (x_min + x_max) / 2
+            xs_summary = [x_min, x_mid, x_max]
+            ys_summary = [result["slope"] * xv + result["intercept"] for xv in xs_summary]
+            ax.scatter(
+                xs_summary, ys_summary, color="red", s=20,
+                edgecolors="none", zorder=5,
             )
-            ax.legend(fontsize=8, loc="best")
 
             title_lines = format_combo_label_lines(entry["combo_tag"]) + [
-                f"layer: {entry['layer_idx']}",
-                f"R²: {result['r_squared']:.3f}",
-                f"normalized MSE: {result['normalized_mse']:.4f}",
-                f"mean − fit@mid Δ: {mean_fit_delta:.3f}",
+                f"{bold('R²')}: {result['r_squared']:.3f}",
+                f"{bold('Normalized MSE')}: {result['normalized_mse']:.4f}",
             ]
-            ax.set_title("\n".join(title_lines), fontsize=10)
-            ax.set_xlabel("Trait Level", fontsize=10)
-            ax.set_ylabel(f"Persona Score ({metric})", fontsize=10)
+            ax.set_title("\n".join(title_lines), fontsize=13)
+            if i >= len(ranked) - n_cols:  # bottom row only
+                ax.set_xlabel("Trait Level", fontsize=15)
+            if i % n_cols == 0:  # left column only
+                ax.set_ylabel("Persona Score", fontsize=15)
+            ax.tick_params(labelsize=15)
 
         for ax in axes[len(ranked):]:
             ax.axis("off")
 
-        fig.suptitle(
-            f"{trait.title()} — Best Layer per Method (metric: {metric})",
-            fontsize=18, fontweight="bold",
-        )
-        fig.tight_layout(rect=(0, 0, 1, 0.96))
+        fig.tight_layout()
 
         plots_dir = Path(results_dir) / "evaluate_plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
@@ -590,6 +600,13 @@ def main():
              "contributes 3 data points instead of 1.",
     )
     parser.add_argument(
+        "--validating", action="store_true",
+        help="Always load persona vectors from VALIDATING_VECTORS_DIR "
+             "(../generation/validating_vectors) instead of --persona-vectors-dir, and switch "
+             "the graphing/results-dir behavior to validating-vectors mode (see "
+             "USE_VALIDATING_VECTORS).",
+    )
+    parser.add_argument(
         "--persona-vectors-dir", default="../generation/persona_vectors",
         help="Directory to load persona vector .pt files from, and to discover the trait "
              "list from (every '*.pt' file's stem, minus its trailing '_final'/'_mean' "
@@ -599,15 +616,22 @@ def main():
              "persona vectors.",
     )
     parser.add_argument(
-        "--results-dir", default="results",
+        "--results-dir", default=None,
         help="Directory to write results.json, cached per-layer scores (cache/), and plots "
              "(evaluate_plots/) to -- and, under --plot, to read them back from. Defaults to "
-             "'results'.",
+             "'results_validating' when USE_VALIDATING_VECTORS is True, else 'results' -- kept "
+             "separate so a validating-vectors run can't clobber the full multi-trait sweep.",
     )
     args = parser.parse_args()
     multiturn = not args.singleturn
 
-    results_dir = Path(args.results_dir)
+    global USE_VALIDATING_VECTORS
+    USE_VALIDATING_VECTORS = args.validating
+
+    if args.results_dir is not None:
+        results_dir = Path(args.results_dir)
+    else:
+        results_dir = Path("results_validating" if USE_VALIDATING_VECTORS else "results")
     results_path = results_dir / "results.json"
 
     if args.plot:
@@ -631,44 +655,68 @@ def main():
                         "levels": layer_levels[best_layer],
                         "scores": layer_scores[metric][best_layer],
                     })
-            # Collapse each trait down to its single best (highest R²) combo, since the
-            # combined all-traits plot doesn't distinguish response activation / persona
-            # vector type -- only R² is shown.
-            for metric, entries in entries_by_metric.items():
-                best_entry = max(entries, key=lambda e: e["result"]["r_squared"])
-                entries_by_metric_by_trait.setdefault(metric, {})[trait] = best_entry
 
-        for metric, entries_by_trait in entries_by_metric_by_trait.items():
-            evaluator.plot_all_traits_summary(metric, entries_by_trait, results_dir)
+            if USE_VALIDATING_VECTORS:
+                for metric, entries in entries_by_metric.items():
+                    if entries:
+                        evaluator.plot_comparison(trait, metric, entries, results_dir)
+            else:
+                # Collapse each trait down to its single best (highest R²) combo, since the
+                # combined all-traits plot doesn't distinguish response activation / persona
+                # vector type -- only R² is shown.
+                for metric, entries in entries_by_metric.items():
+                    best_entry = max(entries, key=lambda e: e["result"]["r_squared"])
+                    entries_by_metric_by_trait.setdefault(metric, {})[trait] = best_entry
+
+        if not USE_VALIDATING_VECTORS:
+            for metric, entries_by_trait in entries_by_metric_by_trait.items():
+                evaluator.plot_all_traits_summary(metric, entries_by_trait, results_dir)
         return
 
     login(token=os.environ.get("HF_TOKEN"))
     torch.manual_seed(42)
 
-    persona_vectors_dir = Path(args.persona_vectors_dir)
+    persona_vectors_dir = VALIDATING_VECTORS_DIR if USE_VALIDATING_VECTORS else Path(args.persona_vectors_dir)
     traits = sorted(set(
         p.stem.rsplit("_", 2)[0]
         for p in persona_vectors_dir.glob("*.pt")
     ))
+    def system_prompts_exists(t):
+        if Path(f"system_prompts/{t}.json").exists():
+            return True
+        alias = TRAIT_FILE_ALIASES.get(t)
+        return alias is not None and Path(f"system_prompts/{alias}.json").exists()
+
     if multiturn:
-        traits = [t for t in traits if Path(f"responses_multiturn/{t}.json").exists()]
+        traits = [t for t in traits if responses_path(t, multiturn=True).exists()]
     else:
         traits = [
             t for t in traits
-            if Path(f"system_prompts/{t}.json").exists() and Path(f"responses/{t}.json").exists()
+            if system_prompts_exists(t) and responses_path(t, multiturn=False).exists()
         ]
     print("Traits found:", traits)
 
     os.makedirs(results_dir, exist_ok=True)
 
     # Load the model once and reuse it across every combo in COMBOS of:
-    #   response_activation_type: "final" or "mean" activation extracted from the
+    #   response_activation_type: one of RESPONSE_ACTIVATION_TYPES, extracted from the
     #       model's own (system prompt + question + response) context.
     #   persona_vector_type: "final" or "mean" stored persona vector file to load
     #       (../generation/persona_vectors/{trait}_{persona_vector_type}.pt).
     evaluator = GraphEvaluator(posthoc_labels_only=args.posthoc_labels, persona_vectors_dir=persona_vectors_dir)
 
+    # USE_VALIDATING_VECTORS controls the graphing too: True means comparing several combos
+    # against each other (one graph per metric, all combos plotted as panels -- plot_comparison);
+    # False means comparing traits under a single combo (one graph per metric, all traits plotted
+    # as panels -- plot_all_traits_summary), which only makes sense with exactly one combo enabled.
+    if not USE_VALIDATING_VECTORS and len(COMBOS) != 1:
+        raise ValueError(
+            "COMBOS must have exactly one entry when USE_VALIDATING_VECTORS is False "
+            "(RESPONSE_ACTIVATION_TYPES/PERSONA_VECTOR_TYPES should each have one enabled)."
+        )
+
     all_results = {}
+    entries_by_metric_by_trait = {metric: {} for metric in METRICS}
     for trait in traits:
         entries_by_metric = {metric: [] for metric in METRICS}
 
@@ -680,7 +728,7 @@ def main():
             evaluator.response_activation_type = response_activation_type
             evaluator.persona_vector_type = persona_vector_type
 
-            print(f"\n=== {trait} [{combo_tag}] ===")
+            tqdm.write(f"\n=== {trait} [{combo_tag}] ===")
             metric_results, layer_levels, layer_scores = evaluator.collect_and_fit(
                 trait, results_dir, combo_tag, METRICS, multiturn=multiturn
             )
@@ -689,24 +737,32 @@ def main():
             for metric, result in metric_results.items():
                 best_layer = result["best_layer"]
                 best = result["layers"][str(best_layer)]
-                print(
+                tqdm.write(
                     f"{trait} [{metric}]: best layer {best_layer}, R²={best['r_squared']:.4f}, "
                     f"normalized MSE={best['normalized_mse']:.4f}"
                 )
-                entries_by_metric[metric].append({
+                entry = {
                     "combo_tag": combo_tag,
                     "layer_idx": best_layer,
                     "result": best,
                     "levels": layer_levels[best_layer],
                     "scores": layer_scores[metric][best_layer],
-                })
+                }
+                entries_by_metric[metric].append(entry)
+                entries_by_metric_by_trait[metric][trait] = entry
 
             with open(results_path, "w") as f:
                 json.dump(all_results, f, indent=2)
 
-        for metric, entries in entries_by_metric.items():
-            if entries:
-                evaluator.plot_comparison(trait, metric, entries, results_dir)
+        if USE_VALIDATING_VECTORS:
+            for metric, entries in entries_by_metric.items():
+                if entries:
+                    evaluator.plot_comparison(trait, metric, entries, results_dir)
+
+    if not USE_VALIDATING_VECTORS:
+        for metric, entries_by_trait in entries_by_metric_by_trait.items():
+            if entries_by_trait:
+                evaluator.plot_all_traits_summary(metric, entries_by_trait, results_dir)
 
 
 if __name__ == "__main__":

@@ -8,11 +8,10 @@ normalize_score against scale.json's per-trait midpoint/min/max -- the same two-
 modal/persona_score_api.py applies at runtime (see rescale.py's normalize_to_unit_range for
 where those calibration numbers come from).
 
-By default only the 'user_final' activation type is computed/scored (matching what the live
-Modal endpoint uses), and each turn's log is a flat persona_scores dict. Pass
---compare-activations to instead compute and score every ACTIVATION_TYPES/
-NO_CONTEXT_ACTIVATION_TYPES variant (one extra forward pass per turn), logged as
-persona_scores_by_activation_type.
+Only the ACTIVATION_TYPE activation ('user_final' by default, matching what the live Modal
+endpoint uses) is computed/scored, one forward pass per turn, and each turn's log is a flat
+persona_scores dict. For comparing scores across multiple activation-extraction methods
+(including no-context variants), see compare_example_convo.py instead.
 """
 import argparse
 import json
@@ -37,8 +36,8 @@ DEFAULT_ASSISTANT_SYSTEM_PROMPT = (
 )
 VECTORS_DIR = Path(__file__).parent / "../generation/persona_vectors"
 
-# Five ways to extract a persona-vector-scoring activation from Llama's residual stream for a
-# given turn, all sliced out of one forward pass over the full completed conversation so far:
+# Which activation to extract from Llama's residual stream for scoring each turn, sliced out
+# of one forward pass over the full completed conversation so far. One of:
 #   response_final - final token of this turn's assistant response (what the old single-mode
 #                     scoring used)
 #   user_final     - final token of the prompt right before this turn's response starts (i.e.
@@ -47,17 +46,8 @@ VECTORS_DIR = Path(__file__).parent / "../generation/persona_vectors"
 #   full_mean      - mean over every token in the conversation so far, including this response
 #   response_mean  - mean over just this turn's assistant-response tokens
 #   user_mean      - mean over just this turn's user-message tokens
-ACTIVATION_TYPES = ("response_final", "user_final", "full_mean", "response_mean", "user_mean")
-
-# "No context" counterparts of four of the above, computed from a second, separate forward
-# pass over just this turn's system prompt + user_msg + assistant_msg in isolation (empty
-# prior_history), instead of the full accumulated conversation. Lets you compare whether the
-# persona-vector signal depends on the conversation-so-far or is inherent to this one exchange.
-# full_mean has no no-context counterpart -- with an empty history it would just be the mean
-# over this same isolated exchange, i.e. not meaningfully different from a fifth type here.
-NO_CONTEXT_BASE_TYPES = ("response_final", "user_final", "response_mean", "user_mean")
-NO_CONTEXT_ACTIVATION_TYPES = tuple(f"{t}_no_context" for t in NO_CONTEXT_BASE_TYPES)
-ALL_ACTIVATION_TYPES = ACTIVATION_TYPES + NO_CONTEXT_ACTIVATION_TYPES
+# Defaults to 'user_final' to match what the live Modal endpoint uses.
+ACTIVATION_TYPE = "user_final"
 
 # Appended to every USER_SYSTEM_PROMPTS entry to keep the simulated user from drifting into
 # writing the assistant's answer for it (observed failure mode: it starts producing critique/
@@ -124,21 +114,13 @@ def parse_args():
     )
     parser.add_argument("--assistant-system", type=str, default=DEFAULT_ASSISTANT_SYSTEM_PROMPT,
                          help="System prompt for the local Llama assistant")
-    parser.add_argument("--scenarios", type=str, nargs="+", default=["prompt_1"],
+    parser.add_argument("--scenarios", type=str, nargs="+", default=["all"],
                          choices=list(USER_SCENARIOS.keys()) + ["all"],
                          help="Which USER_SCENARIOS labels to run, or 'all' for every one. "
-                              "Defaults to just prompt_1.")
+                              "Defaults to all.")
     parser.add_argument("--turns", type=int, default=20, help="Number of user+assistant exchange pairs")
     parser.add_argument("--max-tokens", type=int, default=256, help="Max new tokens per Llama response")
     parser.add_argument("--output-dir", type=str, default=".", help="Directory to write output JSON files to")
-    parser.add_argument(
-        "--compare-activations", action="store_true",
-        help="Compute and score every ACTIVATION_TYPES/NO_CONTEXT_ACTIVATION_TYPES variant "
-             "each turn (an extra forward pass per turn for the no-context ones), logged as "
-             "persona_scores_by_activation_type. Default is just the single 'user_final' "
-             "activation (what the live Modal endpoint uses), logged as a flat persona_scores "
-             "dict.",
-    )
     return parser.parse_args()
 
 
@@ -179,8 +161,9 @@ def _template_length(tokenizer, messages, add_generation_prompt):
 
 
 def get_turn_activations(model, tokenizer, system_prompt, prior_history, user_msg, assistant_msg, layer_idxs, device):
-    """All five ACTIVATION_TYPES, for each layer in `layer_idxs`, from one forward pass over
-    the full conversation (system prompt + prior_history + this turn's user_msg + assistant_msg).
+    """The ACTIVATION_TYPE activation, for each layer in `layer_idxs`, from one forward pass
+    over the full conversation (system prompt + prior_history + this turn's user_msg +
+    assistant_msg). Returns {layer_idx: vector}.
 
     prior_history is the accumulated llama_history from BEFORE this turn (i.e. not yet
     including the user_msg/assistant_msg being scored), so the boundaries between "prior
@@ -218,16 +201,18 @@ def get_turn_activations(model, tokenizer, system_prompt, prior_history, user_ms
         for hook in hooks:
             hook.remove()
 
-    activations = {activation_type: {} for activation_type in ACTIVATION_TYPES}
-    for layer_idx in layer_idxs:
-        seq = captured[layer_idx]
-        activations["response_final"][layer_idx] = seq[full_len - 1, :]
-        activations["user_final"][layer_idx] = seq[response_start_len - 1, :]
-        activations["full_mean"][layer_idx] = seq[:full_len, :].mean(dim=0)
-        activations["response_mean"][layer_idx] = seq[response_start_len:full_len, :].mean(dim=0)
-        activations["user_mean"][layer_idx] = seq[history_prefix_len:user_end_len, :].mean(dim=0)
+    # Slice extractors for each supported ACTIVATION_TYPE, keyed so switching the constant
+    # still works without touching this function.
+    slice_fns = {
+        "response_final": lambda seq: seq[full_len - 1, :],
+        "user_final": lambda seq: seq[response_start_len - 1, :],
+        "full_mean": lambda seq: seq[:full_len, :].mean(dim=0),
+        "response_mean": lambda seq: seq[response_start_len:full_len, :].mean(dim=0),
+        "user_mean": lambda seq: seq[history_prefix_len:user_end_len, :].mean(dim=0),
+    }
+    extract = slice_fns[ACTIVATION_TYPE]
 
-    return activations
+    return {layer_idx: extract(captured[layer_idx]) for layer_idx in layer_idxs}
 
 
 def cosine_similarity(a, b):
@@ -277,7 +262,7 @@ def compute_persona_scores(activations, traits, scale, persona_vectors, device):
 def simulate_conversation(
     openai_client, model, tokenizer, scenario, assistant_system_prompt,
     traits, scale, persona_vectors, device, num_turns, max_tokens, label, pbar,
-    results, output_path, compare_activations=False,
+    results, output_path,
 ):
     llama_history = []  # actual conversation, from Llama's point of view
     gpt_history = []    # same conversation with roles flipped, from GPT-user's point of view
@@ -288,8 +273,6 @@ def simulate_conversation(
         "assistant_system_prompt": assistant_system_prompt,
         "turns": turns_log,
     }
-    if compare_activations:
-        results[label]["activation_types"] = list(ALL_ACTIVATION_TYPES)
 
     for turn in range(num_turns):
         pbar.set_description(f"{label} | turn {turn + 1}/{num_turns}")
@@ -307,7 +290,7 @@ def simulate_conversation(
         llama_history.append({"role": "assistant", "content": assistant_msg})
         gpt_history.append({"role": "user", "content": assistant_msg})
 
-        activations_by_type = get_turn_activations(
+        activations = get_turn_activations(
             model, tokenizer, assistant_system_prompt, prior_history, user_msg, assistant_msg,
             needed_layers, device,
         )
@@ -317,24 +300,8 @@ def simulate_conversation(
             "mode": current_mode_key(scenario, turn),
             "user": user_msg,
             "assistant": assistant_msg,
+            "persona_scores": compute_persona_scores(activations, traits, scale, persona_vectors, device),
         }
-
-        if compare_activations:
-            no_context_activations = get_turn_activations(
-                model, tokenizer, assistant_system_prompt, [], user_msg, assistant_msg,
-                needed_layers, device,
-            )
-            for base_type in NO_CONTEXT_BASE_TYPES:
-                activations_by_type[f"{base_type}_no_context"] = no_context_activations[base_type]
-
-            turn_entry["persona_scores_by_activation_type"] = {
-                activation_type: compute_persona_scores(activations, traits, scale, persona_vectors, device)
-                for activation_type, activations in activations_by_type.items()
-            }
-        else:
-            turn_entry["persona_scores"] = compute_persona_scores(
-                activations_by_type["user_final"], traits, scale, persona_vectors, device
-            )
 
         turns_log.append(turn_entry)
 
@@ -390,7 +357,7 @@ def main():
     scenario_labels = list(USER_SCENARIOS.keys()) if "all" in args.scenarios else args.scenarios
     scenarios_to_run = {label: USER_SCENARIOS[label] for label in scenario_labels}
 
-    output_path = output_dir / "example_convos.json"
+    output_path = output_dir / "example_convos_single.json"
     # Load any existing results so regenerating just a subset of scenarios (e.g.
     # --scenarios prompt_1) merges into the file instead of dropping the other scenarios'
     # previously-generated data. Labels being regenerated this run are overwritten below by
@@ -406,7 +373,7 @@ def main():
             simulate_conversation(
                 openai_client, model, tokenizer, scenario, args.assistant_system,
                 traits, scale, persona_vectors, device, args.turns, args.max_tokens, label, pbar,
-                results, output_path, compare_activations=args.compare_activations,
+                results, output_path,
             )
 
 
