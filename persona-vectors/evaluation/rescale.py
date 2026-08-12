@@ -23,9 +23,9 @@ SCALE_PATH = RESULTS_DIR / "scale.json"
 PERSONA_VECTORS_SCALE_PATH = Path("../generation/persona_vectors/scale.json")
 
 # scale.json only records the one combo/metric actually used downstream (chat/turn_effects.py,
-# modal/persona_score_api.py): the multiturn prompt_final activation against the mean-pooled
+# modal/persona_score_api.py): the multiturn user_prompt_final activation against the mean-pooled
 # persona vector, scored by cosine similarity.
-SCALE_COMBO_TAG = "prompt_final_persona-mean_multiturn"
+SCALE_COMBO_TAG = "user_prompt_final_persona-mean_multiturn"
 SCALE_METRIC = "cosine"
 
 

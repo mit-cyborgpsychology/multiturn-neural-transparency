@@ -223,16 +223,18 @@ def get_turn_activations(model, tokenizer, system_prompt, prior_history, user_ms
         for hook in hooks:
             hook.remove()
 
-    activations = {activation_type: {} for activation_type in ACTIVATION_TYPES}
-    for layer_idx in layer_idxs:
-        seq = captured[layer_idx]
-        activations["response_final"][layer_idx] = seq[full_len - 1, :]
-        activations["user_final"][layer_idx] = seq[response_start_len - 1, :]
-        activations["full_mean"][layer_idx] = seq[:full_len, :].mean(dim=0)
-        activations["response_mean"][layer_idx] = seq[response_start_len:full_len, :].mean(dim=0)
-        activations["user_mean"][layer_idx] = seq[history_prefix_len:user_end_len, :].mean(dim=0)
+    # Slice extractors for each supported ACTIVATION_TYPE, keyed so switching the constant
+    # still works without touching this function.
+    slice_fns = {
+        "response_final": lambda seq: seq[full_len - 1, :],
+        "user_final": lambda seq: seq[response_start_len - 1, :],
+        "full_mean": lambda seq: seq[:full_len, :].mean(dim=0),
+        "response_mean": lambda seq: seq[response_start_len:full_len, :].mean(dim=0),
+        "user_mean": lambda seq: seq[history_prefix_len:user_end_len, :].mean(dim=0),
+    }
+    extract = slice_fns[ACTIVATION_TYPE]
 
-    return activations
+    return {layer_idx: extract(captured[layer_idx]) for layer_idx in layer_idxs}
 
 
 def cosine_similarity(a, b):
@@ -277,7 +279,7 @@ def compute_persona_scores(activations, traits, scale, persona_vectors, device):
 def simulate_conversation(
     openai_client, model, tokenizer, scenario, assistant_system_prompt,
     traits, scale, persona_vectors, device, num_turns, max_tokens, label, pbar,
-    results, output_path, compare_activations=False,
+    results, output_path,
 ):
     llama_history = []  # actual conversation, from Llama's point of view
     gpt_history = []    # same conversation with roles flipped, from GPT-user's point of view
@@ -288,8 +290,6 @@ def simulate_conversation(
         "assistant_system_prompt": assistant_system_prompt,
         "turns": turns_log,
     }
-    if compare_activations:
-        results[label]["activation_types"] = list(ALL_ACTIVATION_TYPES)
 
     for turn in range(num_turns):
         pbar.set_description(f"{label} | turn {turn + 1}/{num_turns}")
@@ -307,7 +307,7 @@ def simulate_conversation(
         llama_history.append({"role": "assistant", "content": assistant_msg})
         gpt_history.append({"role": "user", "content": assistant_msg})
 
-        activations_by_type = get_turn_activations(
+        activations = get_turn_activations(
             model, tokenizer, assistant_system_prompt, prior_history, user_msg, assistant_msg,
             needed_layers, device,
         )
@@ -317,24 +317,8 @@ def simulate_conversation(
             "mode": current_mode_key(scenario, turn),
             "user": user_msg,
             "assistant": assistant_msg,
+            "persona_scores": compute_persona_scores(activations, traits, scale, persona_vectors, device),
         }
-
-        if compare_activations:
-            no_context_activations = get_turn_activations(
-                model, tokenizer, assistant_system_prompt, [], user_msg, assistant_msg,
-                needed_layers, device,
-            )
-            for base_type in NO_CONTEXT_BASE_TYPES:
-                activations_by_type[f"{base_type}_no_context"] = no_context_activations[base_type]
-
-            turn_entry["persona_scores_by_activation_type"] = {
-                activation_type: compute_persona_scores(activations, traits, scale, persona_vectors, device)
-                for activation_type, activations in activations_by_type.items()
-            }
-        else:
-            turn_entry["persona_scores"] = compute_persona_scores(
-                activations_by_type["user_final"], traits, scale, persona_vectors, device
-            )
 
         turns_log.append(turn_entry)
 
@@ -404,7 +388,7 @@ def main():
             simulate_conversation(
                 openai_client, model, tokenizer, scenario, args.assistant_system,
                 traits, scale, persona_vectors, device, args.turns, args.max_tokens, label, pbar,
-                results, output_path, compare_activations=args.compare_activations,
+                results, output_path,
             )
 
 
