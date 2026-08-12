@@ -272,7 +272,7 @@
 
             <p>We used our behavioral vectors to construct <strong>behavioral scores</strong>, which quantify the level of expression for a specific trait in a prompt, whether a system prompt or a prompt in a multi-turn conversation. For each trait, the behavioral score <i>s</i> is defined as the cosine similarity between the activation of the final token <strong>a</strong> &isin; &#8477;<sup>d</sup> and the trait's behavioral vector <strong>v</strong> &isin; &#8477;<sup>d</sup>:</p>
 
-            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:30%;border-radius:6px;display:block;margin:16px auto">
+            <img src="images/cos_sim.png" alt="Behavioral Score Computation" style="width:25%;border-radius:6px;display:block;margin:16px auto">
 
             <p>where <i>d</i> is the hidden dimension of the model, (&middot;) denotes the dot product, and &Vert;<strong>v</strong>&Vert; denotes the Euclidean norm of a vector <i>v</i>.</p>
 
@@ -302,7 +302,7 @@
             <div class="callout"><p><strong>Finding 3 (Right Figure) &mdash; The overconfidence trap:</strong> Control participants significantly <em>increased</em> their self-rated predictive ability (p = .046) despite no actual improvement in accuracy. Visualization users maintained calibrated confidence &mdash; suggesting transparency reduces metacognitive overconfidence.</p></div>
             <div class="callout"><p><strong>Finding 4 (Middle Figure) &mdash; Greatest benefit for volatile personas:</strong> The Roleplay persona exhibited significantly greater behavioral variability (p = .025) and was harder to predict. Multi-turn transparency provided its greatest benefit precisely in this condition, where trajectory information is most informative.</p></div>
 
-            <p>Read the full paper <a href="https://arxiv.org/pdf/2605.15455" target="_blank" rel="noopener">here</a>.</p>
+            <p style="text-align:center">Read the full paper <a href="https://arxiv.org/pdf/2605.15455" target="_blank" rel="noopener">here</a>.</p>
 
             <h3>Citation</h3>
             <div class="figure-box" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7">
@@ -906,15 +906,15 @@ function initScience(){
     studyTraits.forEach(p=>{
         const posColor = p.cat==='neutral' ? '#757575' : 'var(--green)';
         const negColor = p.cat==='neutral' ? '#757575' : 'var(--red)';
-        const gradL    = p.cat==='neutral' ? '#e0e0e0'  : 'var(--green-light)';
-        const gradR    = p.cat==='neutral' ? '#e0e0e0'  : 'var(--red-light)';
+        const gradL    = p.cat==='neutral' ? '#9e9e9e'  : 'var(--green)';
+        const gradR    = p.cat==='neutral' ? '#9e9e9e'  : 'var(--red)';
         td.insertAdjacentHTML('beforeend',
             '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
             '<div style="flex:1">' +
             '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:3px">' +
             '<span style="color:'+posColor+'">'+p.pos+'</span>' +
             '<span style="color:'+negColor+'">'+p.neg+'</span></div>' +
-            '<div style="height:4px;border-radius:2px;background:linear-gradient(to right,'+gradL+',var(--bg3),'+gradR+')"></div>' +
+            '<div style="height:4px;border-radius:2px;background:linear-gradient(to right,'+gradL+' 0%,'+gradL+' 35%,var(--bg3) 50%,'+gradR+' 65%,'+gradR+' 100%)"></div>' +
             '<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--text2);margin-top:3px">' +
             '<span style="text-align:left">'+p.posDesc+'</span>' +
             '<span style="text-align:right">'+p.negDesc+'</span></div></div>' +
