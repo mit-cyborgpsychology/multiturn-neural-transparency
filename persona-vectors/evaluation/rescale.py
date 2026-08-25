@@ -15,7 +15,7 @@ from evaluate import GraphEvaluator, load_json
 # and results/cache/.
 
 RESULTS_DIR = Path("results")
-SCALED_PLOTS_DIR = RESULTS_DIR / "scaled_plots"
+SCALED_PLOTS_DIR = RESULTS_DIR
 SCALE_PATH = RESULTS_DIR / "scale.json"
 # modal/persona_score_api.py reads scale.json from alongside the persona vector .pt files it
 # loads at runtime (VECTORS_PATH, mounted from generation/persona_vectors/), not from
@@ -93,7 +93,7 @@ def plot_all_traits_summary_scaled(metric, entries_by_trait, output_dir):
     traits = sorted(entries_by_trait)
     n_cols = 3
     n_rows = -(-len(traits) // n_cols)  # ceil division
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows - 1))
     axes = np.atleast_1d(axes).flatten()
 
     for i, (ax, trait) in enumerate(zip(axes, traits)):
@@ -117,8 +117,8 @@ def plot_all_traits_summary_scaled(metric, entries_by_trait, output_dir):
 
         title_lines = [
             r"$\bf{" + trait.title() + "}$",
-            f"R²: {entry['r_squared']:.3f}",
-            f"normalized MSE: {entry['mse']:.3f}",
+            f"R²: {entry['r_squared']:.2f}",
+            f"normalized MSE: {entry['mse']:.2f}",
         ]
         ax.set_title("\n".join(title_lines), fontsize=19)
         if i >= len(traits) - n_cols:  # bottom row only

@@ -7,3 +7,7 @@ __pycache__/
 
 # Environment variables
 .env
+
+old_vector_results/
+responses/
+.claude/

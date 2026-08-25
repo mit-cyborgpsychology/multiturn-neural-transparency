@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 from scipy import stats
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -435,7 +436,7 @@ class GraphEvaluator:
         ranked = sorted(entries, key=lambda e: e["result"]["r_squared"], reverse=True)
 
         n_cols, n_rows = 4, 2
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 3, 6 * n_rows - 2))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 2, 6 * n_rows - 2))
         axes = np.atleast_1d(axes).flatten()
 
         for i, (ax, entry) in enumerate(zip(axes, ranked)):
@@ -458,25 +459,28 @@ class GraphEvaluator:
             )
 
             title_lines = format_combo_label_lines(entry["combo_tag"]) + [
-                f"{bold('R²')}: {result['r_squared']:.3f}",
-                f"{bold('Normalized MSE')}: {result['normalized_mse']:.4f}",
+                f"{bold('R²')}: {result['r_squared']:.2f}",
+                f"{bold('Normalized MSE')}: {result['normalized_mse']:.2f}",
             ]
-            ax.set_title("\n".join(title_lines), fontsize=13)
+            ax.set_title("\n".join(title_lines), fontsize=19)
             if i >= len(ranked) - n_cols:  # bottom row only
-                ax.set_xlabel("Trait Level", fontsize=15)
+                ax.set_xlabel("Trait Level", fontsize=17)
             if i % n_cols == 0:  # left column only
-                ax.set_ylabel("Persona Score", fontsize=15)
-            ax.tick_params(labelsize=15)
+                ax.set_ylabel("Persona Score", fontsize=17)
+            ax.tick_params(labelsize=16)
+            if i == 6:  # 7th subplot
+                ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+                ax.margins(0.05)
 
         for ax in axes[len(ranked):]:
             ax.axis("off")
 
-        fig.tight_layout()
+        fig.tight_layout(w_pad=0.2, h_pad=3.0)
 
-        plots_dir = Path(results_dir) / "evaluate_plots"
+        plots_dir = Path(results_dir)
         plots_dir.mkdir(parents=True, exist_ok=True)
         output_path = plots_dir / f"comparison_{trait}_{metric}.png"
-        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+        fig.savefig(output_path, dpi=400, bbox_inches="tight")
         plt.close(fig)
 
     def plot_all_traits_summary(self, metric, entries_by_trait, results_dir):
@@ -492,7 +496,7 @@ class GraphEvaluator:
         traits = sorted(entries_by_trait)
         n_cols = 3
         n_rows = -(-len(traits) // n_cols)  # ceil division
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.5 * n_cols + 4, 6 * n_rows - 1))
         axes = np.atleast_1d(axes).flatten()
 
         for i, (ax, trait) in enumerate(zip(axes, traits)):
@@ -517,8 +521,8 @@ class GraphEvaluator:
 
             title_lines = [
                 r"$\bf{" + trait.title() + "}$",
-                f"R²: {result['r_squared']:.3f}",
-                f"normalized MSE: {result['normalized_mse']:.3f}",
+                f"R²: {result['r_squared']:.2f}",
+                f"normalized MSE: {result['normalized_mse']:.2f}",
             ]
             ax.set_title("\n".join(title_lines), fontsize=19)
             if i >= len(traits) - n_cols:  # bottom row only
@@ -532,7 +536,7 @@ class GraphEvaluator:
 
         fig.tight_layout()
 
-        plots_dir = Path(results_dir) / "evaluate_plots"
+        plots_dir = Path(results_dir)
         plots_dir.mkdir(parents=True, exist_ok=True)
         output_path = plots_dir / "all_traits_evaluation.png"
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -617,8 +621,8 @@ def main():
     )
     parser.add_argument(
         "--results-dir", default=None,
-        help="Directory to write results.json, cached per-layer scores (cache/), and plots "
-             "(evaluate_plots/) to -- and, under --plot, to read them back from. Defaults to "
+        help="Directory to write results.json, cached per-layer scores (cache/), and the plot "
+             "PNGs to -- and, under --plot, to read them back from. Defaults to "
              "'results_validating' when USE_VALIDATING_VECTORS is True, else 'results' -- kept "
              "separate so a validating-vectors run can't clobber the full multi-trait sweep.",
     )

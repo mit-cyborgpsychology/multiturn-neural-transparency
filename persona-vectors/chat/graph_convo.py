@@ -17,6 +17,11 @@ import matplotlib.pyplot as plt
 
 VECTORS_DIR = Path(__file__).parent / "../generation/persona_vectors"
 
+
+def bold(label):
+    """Mathtext-bolded version of `label` (spaces must be escaped for mathtext)."""
+    return r"$\bf{" + label.replace(" ", r"\ ") + "}$"
+
 # Validated categorical palette (dataviz skill, references/palette.md). Color identifies the
 # activation-extraction family -- the palette caps at 8 fixed-order hues and a generated 9th
 # is explicitly disallowed.
@@ -32,12 +37,17 @@ ACTIVATION_COLORS = {
     "response_final": "#eda100",     # slot 4 - yellow
 }
 
+# Legend/display label overrides for families whose title-cased key isn't the desired label.
+FAMILY_LABELS = {
+    "user_final": "User Prompt Final",
+}
+
 # (activation_type key, family, has_context) in the fixed draw/legend order.
 ACTIVATION_SERIES = (
-    ("response_final", "response_final", True),
-    ("user_final", "user_final", True),
     ("conversation_mean", "conversation_mean", True),
     ("response_mean", "response_mean", True),
+    ("response_final", "response_final", True),
+    ("user_final", "user_final", True),
 )
 
 GRIDLINE = "#e1e0d9"
@@ -78,26 +88,22 @@ def signed_score(trait_scores, positive_label, negative_label):
     return trait_scores[positive_label] - trait_scores[negative_label]
 
 
-def plot_trait(label, convo, trait, trait_meta, output_dir):
+def draw_trait_panel(ax, convo, trait, trait_meta):
     turns = convo["turns"]
     turn_nums = [t["turn"] for t in turns]
     positive_label, negative_label = trait_meta["positive"], trait_meta["negative"]
 
-    plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
-    plt.rcParams["font.family"] = "sans-serif"
-    fig, ax = plt.subplots(figsize=(8, 7))
-
     # mode_b is the block trying to elicit the trait's positive pole, mode_a the negative pole
     # (matches the +positive_label/-negative_label convention on the y-axis).
-    mode_text = {"mode_b": f"+{positive_label}", "mode_a": f"-{negative_label}"}
+    mode_text = {"mode_b": r"$\uparrow$ " + positive_label, "mode_a": r"$\downarrow$ " + negative_label}
 
     blocks = mode_blocks(turns)
     for start, end, mode in blocks:
         if mode == "mode_b":
             ax.axvspan(start - 0.5, end + 0.5, color=MODE_SHADE, alpha=0.08, zorder=0, linewidth=0)
         ax.text(
-            (start + end) / 2, 0.98, mode_text[mode], transform=ax.get_xaxis_transform(),
-            ha="center", va="top", fontsize=7.5, color=PRIMARY_TEXT,
+            (start + end) / 2, 1.04, mode_text[mode], transform=ax.get_xaxis_transform(),
+            ha="center", va="top", fontsize=9.5, color=PRIMARY_TEXT,
         )
     for start, end, _mode in blocks[:-1]:
         ax.axvline(x=end + 0.5, color=AXIS, linestyle=":", linewidth=1, alpha=0.8, zorder=0)
@@ -108,18 +114,12 @@ def plot_trait(label, convo, trait, trait_meta, output_dir):
             for t in turns
         ]
 
-        # Per-5-turn-window average, drawn as a flat segment at full opacity in the series'
-        # own color, so it reads clearly against the faded per-turn line behind it.
+        # Per-5-turn-window average, used below for the legend's mean-jump stat.
         window_avgs = []
         for start, end, _mode in blocks:
             window_scores = [s for tn, s in zip(turn_nums, scores) if start <= tn <= end]
             window_avg = sum(window_scores) / len(window_scores)
             window_avgs.append(window_avg)
-            ax.hlines(
-                window_avg, start - 0.5, end + 0.5,
-                colors=ACTIVATION_COLORS[family], alpha=1.0, linewidth=2.5,
-                linestyles="solid" if has_context else "dashed", zorder=5,
-            )
 
         # Mean jump between each pair of consecutive window averages (3 jumps across 4
         # windows), shown in the legend -- but a jump only counts (at its magnitude) if it
@@ -136,17 +136,18 @@ def plot_trait(label, convo, trait, trait_meta, output_dir):
 
         ax.plot(
             turn_nums, scores,
-            marker="o" if has_context else "x", linewidth=1.2 if has_context else 0.9,
+            marker="o" if has_context else "x", linewidth=2.4 if has_context else 1.8,
             markersize=6 if has_context else 7, alpha=0.6,
             linestyle="-" if has_context else "--",
             color=ACTIVATION_COLORS[family],
-            label=f"{family.replace('_', ' ')} — mean Δ={mean_window_delta:.3f}",
+            label=f"{bold(FAMILY_LABELS.get(family, family.replace('_', ' ').title()))}\nMean Δ = {mean_window_delta:.2f}",
         )
 
     ax.axhline(y=0, color=AXIS, linestyle="--", linewidth=1, alpha=0.7)
     ax.set_xlabel("Turn", color=PRIMARY_TEXT)
-    ax.set_ylabel(f"{trait.title()} Persona Score (Unscaled)", color=PRIMARY_TEXT)
+    ax.set_ylabel(f"Unscaled Behavioral Score ({trait.title()})", color=PRIMARY_TEXT)
     ax.set_xticks(turn_nums)
+    ax.set_xlim(turn_nums[0] - 0.5, turn_nums[-1] + 0.5)
     ax.grid(True, color=GRIDLINE, linewidth=1, alpha=0.8)
     ax.set_axisbelow(True)
     for spine in ("top", "right"):
@@ -154,14 +155,10 @@ def plot_trait(label, convo, trait, trait_meta, output_dir):
     for spine in ("left", "bottom"):
         ax.spines[spine].set_color(AXIS)
 
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.09), ncol=1, fontsize=8, frameon=False)
-
-    fig.tight_layout(rect=(0, 0.045, 1, 1))
-    n = label.split("_")[-1]
-    output_path = output_dir / f"example_{n}_{trait}_act_comparison.png"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    return output_path
+    ax.legend(
+        loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=len(ACTIVATION_SERIES),
+        fontsize=10, frameon=False,
+    )
 
 
 # Which single trait plot to produce for each conversation label -- everything else is skipped.
@@ -170,6 +167,22 @@ SELECTED_TRAIT_BY_LABEL = {
     "prompt_2": "romantic",
     "prompt_3": "robotic",
 }
+
+
+def plot_examples(labels_and_traits, conversations, traits, output_dir):
+    plt.rcParams["font.sans-serif"] = ["Helvetica", "Arial", "DejaVu Sans"]
+    plt.rcParams["font.family"] = "sans-serif"
+
+    n = len(labels_and_traits)
+    fig, axes = plt.subplots(n, 1, figsize=(9, 6 * n - 4))
+    for (label, trait), ax in zip(labels_and_traits, axes):
+        draw_trait_panel(ax, conversations[label], trait, traits[trait])
+
+    fig.tight_layout(rect=(0, 0.02, 1, 1), h_pad=3.0)
+    output_path = output_dir / "examples_activation_comparison.png"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return output_path
 
 
 def main():
@@ -183,11 +196,8 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for label, trait in SELECTED_TRAIT_BY_LABEL.items():
-        convo = conversations[label]
-        trait_meta = traits[trait]
-        output_path = plot_trait(label, convo, trait, trait_meta, output_dir)
-        print(f"Saved {output_path}")
+    output_path = plot_examples(list(SELECTED_TRAIT_BY_LABEL.items()), conversations, traits, output_dir)
+    print(f"Saved {output_path}")
 
 
 if __name__ == "__main__":
