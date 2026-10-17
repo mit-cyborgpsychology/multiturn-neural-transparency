@@ -15,8 +15,7 @@ Chatbot behavior is often opaque to users, as responses can shift unpredictably 
 ```
 neural-transparency-1/
 ├── interface/                  # Chat interface
-├── persona-vectors/            # Persona generation
-└── user-study-analysis/        # Data analysis
+└── persona-vectors/            # Persona generation
 ```
 
 
@@ -26,16 +25,12 @@ Web-based experimental platform for running participant studies. See [interface/
 ### 2. Persona Vectors
 Backend systems for generating AI personality vectors from neural network activations. See [persona-vectors/readme.md](persona-vectors/readme.md)
 
-### 3. Data Analysis
-Statistical analysis pipeline and visualization tools for research data. See [user-study-analysis/README.md](user-study-analysis/README.md)
-
 
 ## Documentation
 
 **Component READMEs:**
 - [interface/README.md](interface/README.md) - Chat interface
 - [persona-vectors/readme.md](persona-vectors/readme.md) - Persona vectors
-- [user-study-analysis/README.md](user-study-analysis/README.md) - Data analysis
 
 ## License
 

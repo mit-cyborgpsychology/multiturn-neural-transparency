@@ -342,7 +342,7 @@ def main():
         "Act like a proud coach celebrating small wins. I got through a whole day without crying.",
     ]
 
-    persona_vectors_dir = Path("../generation/stored_persona_vectors")
+    persona_vectors_dir = Path("../generation/persona_vectors")
     regenerate_chats = False  # set to True to regenerate and overwrite saved chats
     if not regenerate_chats:
         print(f"Loading existing chats")
