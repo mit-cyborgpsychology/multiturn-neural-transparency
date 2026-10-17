@@ -6,9 +6,9 @@ every turn.
 Scores are cosine similarity between activation and persona vector, rescaled by normalize_score
 against scale.json -- the same scaling modal/persona_score_api.py applies at runtime.
 
-By default only the 'user_final' activation is scored (what the live Modal endpoint uses),
-logged as a flat persona_scores dict. --compare-activations scores every activation-type
-variant instead, logged as persona_scores_by_activation_type.
+Only the ACTIVATION_TYPE activation ('user_final' by default, what the live Modal endpoint uses)
+is scored, logged as a flat persona_scores dict. To compare activation-extraction methods, see
+compare_example_convo.py.
 """
 import argparse
 import json
@@ -33,21 +33,14 @@ DEFAULT_ASSISTANT_SYSTEM_PROMPT = (
 )
 VECTORS_DIR = Path(__file__).parent / "../generation/persona_vectors"
 
-# Ways to slice a scoring activation out of Llama's residual stream, all from one forward pass
-# over the conversation so far:
+# Which slice of Llama's residual stream to score, from one forward pass over the conversation
+# so far. One of:
 #   response_final - final token of this turn's response
 #   user_final     - final token before the response starts, i.e. where generation begins
 #   full_mean      - mean over the whole conversation, including this response
 #   response_mean  - mean over this turn's response tokens
 #   user_mean      - mean over this turn's user-message tokens
-ACTIVATION_TYPES = ("response_final", "user_final", "full_mean", "response_mean", "user_mean")
-
-# Same slices, but from a second forward pass over this turn's exchange alone (empty
-# prior_history), to test whether the signal depends on the conversation so far. full_mean is
-# excluded: with no history it would just duplicate the isolated exchange's mean.
-NO_CONTEXT_BASE_TYPES = ("response_final", "user_final", "response_mean", "user_mean")
-NO_CONTEXT_ACTIVATION_TYPES = tuple(f"{t}_no_context" for t in NO_CONTEXT_BASE_TYPES)
-ALL_ACTIVATION_TYPES = ACTIVATION_TYPES + NO_CONTEXT_ACTIVATION_TYPES
+ACTIVATION_TYPE = "user_final"
 
 # Keeps the simulated user from drifting into writing the assistant's answer for it (observed
 # failure mode: it produces critique/advice itself instead of asking for it).
@@ -117,12 +110,6 @@ def parse_args():
     parser.add_argument("--turns", type=int, default=12, help="Number of user+assistant exchange pairs")
     parser.add_argument("--max-tokens", type=int, default=256, help="Max new tokens per Llama response")
     parser.add_argument("--output-dir", type=str, default=".", help="Directory to write output JSON files to")
-    parser.add_argument(
-        "--compare-activations", action="store_true",
-        help="Score every activation-type variant each turn (one extra forward pass for the "
-             "no-context ones), logged as persona_scores_by_activation_type. Default is just "
-             "'user_final', logged as a flat persona_scores dict.",
-    )
     return parser.parse_args()
 
 
@@ -185,7 +172,7 @@ def _template_length(tokenizer, messages, add_generation_prompt):
 
 
 def get_turn_activations(model, tokenizer, system_prompt, prior_history, user_msg, assistant_msg, layer_idxs, device):
-    """Every ACTIVATION_TYPES slice, per layer in `layer_idxs`, from one forward pass over
+    """The ACTIVATION_TYPE slice, per layer in `layer_idxs`, from one forward pass over
     system prompt + prior_history + this turn's user_msg and assistant_msg.
 
     prior_history is llama_history from before this turn, so the boundaries between prior
