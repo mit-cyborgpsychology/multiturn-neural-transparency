@@ -10,7 +10,7 @@ This directory is the "persona vectors" backend for a research project (multi-tu
 
 ## Setup
 
-- Dependencies are declared in the **repo root** `../requirements.txt` (not a local one): `transformers`, `huggingface_hub`, `transformer_lens`, `tqdm`, `requests`, `dotenv`, `openai`, `anthropic`, `scipy`, `matplotlib`. `torch`, `numpy`, `fastapi`, `pydantic`, and `modal` are also imported but not pinned there.
+- Dependencies are declared in the **repo root** `../requirements.txt` (not a local one): `transformers`, `huggingface_hub`, `transformer_lens`, `tqdm`, `requests`, `dotenv`, `openai`, `anthropic`, `scipy`, `matplotlib`, `torch`, `numpy`, `fastapi`, `pydantic`, `modal`. `transformers>=4.56` is needed for the `dtype=` argument to `from_pretrained`.
 - All scripts call `load_dotenv()` and expect a `.env` file (gitignored) with `HF_TOKEN`, `ANTHROPIC_API_KEY`, and `OPENAI_API_KEY`.
 - Requires GPU (`torch.device("cuda")`) for any script that loads Llama-3.1-8B-Instruct; falls back to CPU but will be very slow.
 - **Scripts use paths relative to their own directory**, not the repo root — run each one with its own folder as the working directory (`cd generation && python persona_vectors.py ...`, `cd evaluation && python evaluate.py`, etc.). Several `evaluation/` scripts also reach across to `../generation/...`.

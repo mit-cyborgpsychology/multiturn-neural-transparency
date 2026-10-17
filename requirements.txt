@@ -1,4 +1,4 @@
-transformers
+transformers>=4.56
 huggingface_hub
 transformer_lens
 tqdm
@@ -8,3 +8,8 @@ openai
 anthropic
 scipy
 matplotlib
+torch
+numpy
+fastapi
+pydantic
+modal
