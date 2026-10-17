@@ -166,10 +166,10 @@ get_response_activation.printed_first_prompt = False
 
 def main():
     load_dotenv()
+    args = parse_args()
     login(token=os.environ.get('HF_TOKEN'))
     openai = OpenAIAPI(api_key=os.environ.get('OPENAI_API_KEY'))
     torch.manual_seed(42)
-    args = parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_name = "meta-llama/Llama-3.1-8B-Instruct"

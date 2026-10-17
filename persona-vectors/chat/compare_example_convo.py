@@ -214,8 +214,8 @@ def _silence_non_tqdm_output():
 def main():
     _silence_non_tqdm_output()
     load_dotenv()
-    login(token=os.environ.get("HF_TOKEN"))
     args = parse_args()
+    login(token=os.environ.get("HF_TOKEN"))
 
     input_path = Path(args.input)
     if not input_path.exists():
